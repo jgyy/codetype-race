@@ -16,15 +16,25 @@ Real-time multiplayer typing race for code snippets. A host creates a room, shar
 
 ---
 
-## Stack
+## Stack (AWS — cheapest serverless path)
 
-- **Frontend:** Next.js 16 (App Router) + TypeScript + Tailwind + shadcn/ui (same as P1)
-- **Backend:** Next.js Route Handlers + Supabase (Postgres + Auth + **Realtime**)
-- **Realtime transport:** Supabase Realtime channels (Postgres changes + presence + broadcast)
-- **Auth:** Supabase email magic link (required this time — no guest mode for hosts; players can join with a display name only)
-- **Deploy:** Vercel
+- **Frontend:** Next.js 16 (App Router, **static export** where possible) + TypeScript + Tailwind + shadcn/ui (same as P1)
+- **Hosting:** **S3 + CloudFront** for the static bundle (free tier covers demo traffic). Fallback if SSR is unavoidable: **AWS Amplify Hosting** (free tier: 1000 build min/mo, 15 GB served).
+- **Backend compute:** **AWS Lambda** (Node.js 20, ARM/Graviton) behind **API Gateway HTTP API** for REST and **API Gateway WebSocket API** for realtime. Free tier: 1M Lambda req/mo + 1M API GW req/mo.
+- **Realtime transport:** **API Gateway WebSocket API** + Lambda handlers (`$connect`, `$disconnect`, `$default`) + the `@connections` management endpoint for server→client pushes. No always-on server.
+- **Database:** **DynamoDB on-demand** (single-table design, free tier 25 GB + 25 WCU/RCU). Stream → Lambda fan-out for "Postgres changes"-style room status broadcasts.
+- **Auth:** **Amazon Cognito User Pool** with email magic link (passwordless via custom auth flow, or hosted UI). Free tier: 50k MAU. Players who join by code stay unauthenticated — display name only, signed by a short-lived JWT minted by a Lambda.
+- **IaC / deploy:** **AWS CDK** (TypeScript) — one stack, deployed from GitHub Actions on push to `main`. Cheaper than Amplify if SSR isn't needed; everything lives in the free tier.
 
-**Why Supabase Realtime over Socket.IO:** zero ops, presence + broadcast built in, scales to programme demo without a separate server. Trade-off: harder to optimise message rate; mitigated by throttling cursor broadcasts to ~10 Hz.
+**Estimated monthly cost at demo scale (≤100 races, ≤8 players each):** $0 — fully inside the AWS Free Tier. After free tier expires (12 months), steady-state cost for an idle app is dominated by CloudFront minimums and rounds to **<$1/mo**.
+
+**Why API Gateway WebSockets over AppSync / IoT / self-hosted Socket.IO:**
+- AppSync has a managed subscriptions model but pricing leans toward $4/M messages and assumes GraphQL — overkill for this app.
+- IoT Core is cheaper per message but MQTT topic ACLs are awkward for room-scoped auth.
+- Self-hosting Socket.IO on EC2/Fargate has an always-on cost ($5+/mo minimum) — disqualified by the "cheapest" constraint.
+- API Gateway WebSockets: $1/M connection-minutes + $1/M messages, **and the connection-minute meter is in the free tier for the first 750k**. Wins on cost at this scale.
+
+**Trade-off vs. Supabase:** no built-in presence or Postgres-changes channel — we build presence by storing `connectionId → (room_code, display_name)` in DynamoDB with a TTL, and fan out room events via DynamoDB Streams → Lambda → `PostToConnection`. More code, but the realtime layer becomes a thing *we* designed (better interview story).
 
 ---
 
@@ -47,26 +57,25 @@ Real-time multiplayer typing race for code snippets. A host creates a room, shar
 
 ---
 
-## Data model (Supabase / Postgres)
+## Data model (DynamoDB single-table)
 
-```sql
-profiles      (id uuid pk, email text, display_name text)
-rooms         (id uuid pk, code text unique, host_id fk, snippet_id fk,
-               status text, -- 'lobby' | 'running' | 'finished'
-               created_at, started_at, finished_at)
-room_players  (room_id fk, user_id fk nullable, display_name text,
-               joined_at, finished_at, wpm float, accuracy float, progress float,
-               primary key (room_id, display_name))
-snippets      (id uuid pk, language text, title text, code text)
-```
+Table `codetype` with composite key `(PK, SK)` and one GSI `GSI1(PK=code, SK=room_id)` for join-by-code.
 
-RLS:
-- `rooms`: anyone can SELECT by code; only host can UPDATE.
-- `room_players`: any room member can SELECT; players can only UPDATE their own row.
+| Entity     | PK                  | SK                        | Attributes |
+|------------|---------------------|---------------------------|------------|
+| Room       | `ROOM#{room_id}`    | `META`                    | `code`, `host_id`, `snippet_id`, `status` (`lobby`\|`running`\|`finished`), `started_at`, `finished_at` |
+| Player     | `ROOM#{room_id}`    | `PLAYER#{display_name}`   | `user_id?`, `joined_at`, `finished_at?`, `wpm?`, `accuracy?`, `progress` (0–1) |
+| Connection | `ROOM#{room_id}`    | `CONN#{connection_id}`    | `display_name`, `ttl` (epoch, +30s, refreshed on heartbeat) |
+| Snippet    | `SNIPPET#{id}`      | `META`                    | `language`, `title`, `code` |
+| CodeIndex  | `CODE#{code}`       | `ROOM#{room_id}`          | (sparse, GSI1 source) — alt: just use `GSI1PK=code` on Room item |
 
-**Realtime channels:**
-- `room:{code}` (broadcast) — cursor positions (high-frequency, ephemeral).
-- `room:{code}:db` (Postgres changes) — room status transitions, player joins/leaves.
+**Authorization (replaces RLS):**
+- All writes go through Lambda — IAM policies + in-handler checks enforce: only host can mutate `status`; a player can only mutate their own `progress`/`wpm` row (matched on `connection_id → display_name`).
+- Anonymous reads of `code → room_id` are allowed; reading `email` from Cognito is never exposed via API.
+
+**Realtime channels (logical, over a single WebSocket):**
+- Client sends `{ action: "cursor", progress }` → Lambda throttles + writes to player row, then `PostToConnection`s to all peers in the room. High-frequency, ephemeral.
+- DynamoDB Stream on the table → Lambda → broadcasts room-status transitions and player join/leave to all `CONN#` items in that room. Replaces the Postgres-changes channel.
 
 ---
 
@@ -88,9 +97,14 @@ codetype-race/
 │   │   ├── race/               # opponent cursors, leaderboard, podium
 │   │   └── lobby/
 │   ├── lib/
-│   │   ├── supabase/
-│   │   └── realtime/           # channel wrapper, throttled broadcast
+│   │   ├── aws/                # cognito client, ddb doc client, ws client
+│   │   └── realtime/           # WS wrapper, throttled broadcast (10 Hz)
 │   └── server/
+├── infra/                      # AWS CDK app (one stack: S3+CF, Cognito, DDB, API GW HTTP+WS, Lambdas)
+├── lambdas/                    # handler source — bundled by CDK NodejsFunction
+│   ├── http/                   # createRoom, joinRoom, listHistory, ...
+│   ├── ws/                     # connect, disconnect, default, cursor, start, finish
+│   └── stream/                 # ddb-stream → broadcast room events
 ├── tests/
 ├── docs/
 │   ├── ai-log.md
@@ -111,16 +125,17 @@ codetype-race/
 | 3 | Race start + countdown + shared snippet | Race starts simultaneously across clients |
 | 4 | Live cursors + leaderboard via Realtime broadcast | Two browsers race, see each other's progress |
 | 5 | Finish detection + podium + room history | Full happy path works end-to-end |
-| 6 | Polish + reconnection handling + README + deploy | Shippable demo on Vercel |
+| 6 | Polish + reconnection handling + README + deploy | Shippable demo on CloudFront URL (CDK `cdk deploy` from CI) |
 
 ---
 
 ## Hard problems (worth flagging in the interview)
 
-1. **Server-authoritative finish time.** Clients can lie about WPM. Mitigation: server validates `final_progress = snippet.length` and computes `wpm = (snippet.length/5) / ((server_now - started_at)/60s)`. Client-reported WPM is only used for the live ticker, not the final score.
-2. **Cursor broadcast volume.** 8 players × 60 keystrokes/min × N broadcasts each → message storm. Mitigation: throttle to 10 Hz per player; send `progress` (0–1) not raw cursor index.
-3. **Player drops mid-race.** Mitigation: presence channel; if a player goes offline for >10s, they're marked DNF; race continues as long as ≥1 player still typing.
-4. **Race start sync.** Network latency means "start now" arrives at different times. Mitigation: server sends `start_at_ts` (3-second future timestamp); each client counts down to that absolute time.
+1. **Server-authoritative finish time.** Clients can lie about WPM. Mitigation: the `finish` Lambda validates `final_progress = snippet.length` and computes `wpm = (snippet.length/5) / ((server_now - started_at)/60s)` from DDB-stored timestamps. Client-reported WPM is only used for the live ticker, not the final score.
+2. **Cursor broadcast volume.** 8 players × 60 keystrokes/min × N broadcasts each → message storm = $$ on API GW WS. Mitigation: client throttles to 10 Hz; cursor Lambda further coalesces using a 100 ms in-memory window per `connectionId` (Lambda execution context reuse) before fanning out via `PostToConnection`. Send `progress` (0–1) not raw cursor index.
+3. **Player drops mid-race.** Mitigation: `CONN#` items have a 30 s TTL refreshed by client heartbeats; `$disconnect` handler marks DNF immediately, TTL is the safety net. Race continues as long as ≥1 player still typing.
+4. **Race start sync.** Network latency means "start now" arrives at different times. Mitigation: `start` Lambda writes `started_at = server_now + 3s` to DDB; the DDB-stream broadcaster pushes that absolute timestamp to all connections; each client counts down locally to that absolute time.
+5. **Stale `connectionId`s after API GW idle timeout (10 min).** Mitigation: client sends a ping every 5 minutes during lobby; `GoneException` from `PostToConnection` triggers a row cleanup.
 
 ---
 
@@ -130,7 +145,7 @@ Same logging discipline as P1, but with extra emphasis on:
 
 - **Prompts where the AI got concurrency wrong** (likely: race conditions, RLS holes, double-finish bugs). These are gold for the interview's *"explain what the AI did and what you did"* line.
 - **Prompts where I rejected AI's first realtime architecture** (e.g., AI is likely to suggest broadcasting full game state on every keystroke; I'll override to throttle + send progress only).
-- **Tools used:** opencode for code gen; manual review of all SQL + RLS policies; manual end-to-end testing with 2 incognito windows.
+- **Tools used:** opencode for code gen; manual review of all IAM policies, DDB access patterns, and Lambda authorizers; manual end-to-end testing with 2 incognito windows against the deployed CloudFront URL.
 
 ---
 
@@ -140,7 +155,8 @@ Same logging discipline as P1, but with extra emphasis on:
 |---|---|
 | Realtime sync bugs eat 2+ days | Build the sync layer in isolation Day 2 with a tiny test page (2 cursors, no game) before integrating |
 | RLS misconfig leaks private data | Write a smoke test that hits the DB as anon; assert it can't see `profiles.email` |
-| Vercel cold starts hurt perceived realtime | Realtime is Supabase-side, not Vercel — only the initial page load is cold |
+| Lambda cold starts hurt perceived realtime | Keep WS handlers small (<5 MB bundles, ARM, no SDK v2). `$connect` cold start is one-time per session; cursor handler stays warm during a race. Provisioned concurrency disqualified — not free. |
+| AWS Free Tier expires after 12 months | Acceptable — submission is 15 May 2026, well inside the window. Post-tier steady-state for an idle app is <$1/mo. |
 | Hosting >2 demo players is too risky live | Pre-record a demo GIF with 4 browsers; have a live demo with 2 as backup |
 
 ---
