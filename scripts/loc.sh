@@ -4,8 +4,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 mapfile -t files < <(git ls-files --cached --others --exclude-standard \
-    '*.ts' '*.tsx' '*.js' '*.mjs' '*.cjs' \
-    '*.json' '*.yaml' '*.yml' '*.toml' '*.css' '*.sh' \
+    '*.ts' '*.tsx' '*.js' '*.cjs' '*.yaml' '*.yml' '*.toml' '*.css' '*.sh' \
     ':!:bun.lock' ':!:**/package-lock.json')
 
 total=0
