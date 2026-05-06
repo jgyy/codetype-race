@@ -1,0 +1,12 @@
+{
+  "name": "codetype-race",
+  "private": true,
+  "scripts": {
+    "dev": "cd web && bun run dev",
+    "build": "cd web && bun run build",
+    "start": "cd web && bun run start",
+    "lint": "cd web && bun run lint",
+    "test": "cd web && bun run test",
+    "sync-shared": "cd web && bun run sync-shared"
+  }
+}
