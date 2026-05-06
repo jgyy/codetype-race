@@ -18,7 +18,7 @@ Real-time multiplayer typing race for code snippets. A host creates a room, shar
 
 ## Stack (AWS — cheapest serverless path)
 
-- **Runtime / package manager:** **Bun** (used for installs, scripts, and TS execution; Lambda bundles still target Node.js 20 ARM via CDK `NodejsFunction` + esbuild)
+- **Runtime / package manager:** **Bun everywhere** — installs, scripts, TS execution, and test runner (`bun test`). Lambda bundles still target Node.js 20 ARM via CDK `NodejsFunction` + esbuild (Lambda runtime is Node, but the toolchain that produces the bundle is Bun). No `npm`, no `pnpm`, no `yarn` — `bun.lock` is the only lockfile committed.
 - **Frontend:** Next.js 16 (App Router, **static export** where possible) + TypeScript + Tailwind + shadcn/ui (same as P1)
 - **Hosting:** **S3 + CloudFront** for the static bundle (free tier covers demo traffic). Fallback if SSR is unavoidable: **AWS Amplify Hosting** (free tier: 1000 build min/mo, 15 GB served).
 - **Backend compute:** **AWS Lambda** (Node.js 20, ARM/Graviton) behind **API Gateway HTTP API** for REST and **API Gateway WebSocket API** for realtime. Free tier: 1M Lambda req/mo + 1M API GW req/mo.
@@ -60,23 +60,65 @@ Real-time multiplayer typing race for code snippets. A host creates a room, shar
 
 ## Data model (DynamoDB single-table)
 
-Table `codetype` with composite key `(PK, SK)` and one GSI `GSI1(PK=code, SK=room_id)` for join-by-code.
+One table, `codetype`, on-demand billing, point-in-time recovery on. Composite primary key `(PK, SK)` plus one GSI `GSI1(GSI1PK, GSI1SK)` for join-by-code lookups. All entity types live in the same table — this is canonical AWS single-table design and keeps reads to one RCU per fetch.
 
-| Entity     | PK                  | SK                        | Attributes |
-|------------|---------------------|---------------------------|------------|
-| Room       | `ROOM#{room_id}`    | `META`                    | `code`, `host_id`, `snippet_id`, `status` (`lobby`\|`running`\|`finished`), `started_at`, `finished_at` |
-| Player     | `ROOM#{room_id}`    | `PLAYER#{display_name}`   | `user_id?`, `joined_at`, `finished_at?`, `gross_wpm?`, `net_wpm?`, `accuracy?`, `scaled_wpm?`, `chars_typed`, `errors`, `progress` (0–1) |
-| Connection | `ROOM#{room_id}`    | `CONN#{connection_id}`    | `display_name`, `ttl` (epoch, +30s, refreshed on heartbeat) |
-| Snippet    | `SNIPPET#{id}`      | `META`                    | `language`, `title`, `code` |
-| CodeIndex  | `CODE#{code}`       | `ROOM#{room_id}`          | (sparse, GSI1 source) — alt: just use `GSI1PK=code` on Room item |
+**Item shapes (all attributes shown — `?` = optional):**
 
-**Authorization (replaces RLS):**
-- All writes go through Lambda — IAM policies + in-handler checks enforce: only host can mutate `status`; a player can only mutate their own `progress`/`wpm` row (matched on `connection_id → display_name`).
-- Anonymous reads of `code → room_id` are allowed; reading `email` from Cognito is never exposed via API.
+| Entity     | PK                  | SK                        | GSI1PK         | GSI1SK              | Attributes |
+|------------|---------------------|---------------------------|----------------|---------------------|------------|
+| Room       | `ROOM#{room_id}`    | `META`                    | `CODE#{code}`  | `ROOM#{room_id}`    | `room_id` (uuid v7), `code` (6-char base32, no `0/O/1/I`), `host_id` (Cognito sub), `snippet_id`, `status` (`lobby`\|`countdown`\|`running`\|`finished`), `created_at`, `started_at?`, `finished_at?`, `version` (number, used for optimistic locking on status transitions) |
+| Player     | `ROOM#{room_id}`    | `PLAYER#{display_name}`   | —              | —                   | `display_name`, `user_id?`, `joined_at`, `finished_at?`, `gross_wpm?`, `net_wpm?`, `accuracy?`, `scaled_wpm?`, `chars_typed` (default 0), `errors` (default 0), `progress` (0–1, default 0), `is_dnf?` (bool) |
+| Connection | `ROOM#{room_id}`    | `CONN#{connection_id}`    | `CONN#{connection_id}` | `ROOM#{room_id}` | `connection_id`, `display_name`, `joined_at`, `ttl` (epoch seconds, +30s, refreshed by client heartbeat; DDB TTL attribute = `ttl`) |
+| Snippet    | `SNIPPET#{id}`      | `META`                    | `LANG#{language}` | `SNIPPET#{id}`   | `snippet_id`, `language`, `title`, `code` (the literal text to type), `length` (chars) |
+| RaceResult | `ROOM#{room_id}`    | `RESULT#{finished_at}#{display_name}` | `HOST#{host_id}` | `FINISHED#{finished_at}` | snapshot of final Player row at finish, immutable. Used for room history without mutating live `PLAYER#` items. |
 
-**Realtime channels (logical, over a single WebSocket):**
-- Client sends `{ action: "cursor", progress }` → Lambda throttles + writes to player row, then `PostToConnection`s to all peers in the room. High-frequency, ephemeral.
-- DynamoDB Stream on the table → Lambda → broadcasts room-status transitions and player join/leave to all `CONN#` items in that room. Replaces the Postgres-changes channel.
+**Why these key choices:**
+- All items inside one room share `PK=ROOM#{room_id}`, so the lobby state, all players, all live connections, and the history rows for that room come back from a single `Query(PK=ROOM#{room_id})` — one RCU window, one network round trip, no scatter-gather.
+- `GSI1` carries two unrelated lookup needs on the same index by partitioning on type-prefixed keys: `CODE#{code} → ROOM#{room_id}` for join-by-code, and `CONN#{connection_id} → ROOM#{room_id}` for the `$disconnect` handler (which only knows the connection id). This keeps GSI count at 1 (cheaper, fewer eventual-consistency surprises) at the cost of slightly less obvious key design.
+- `RaceResult` items are append-only and live forever; `Player` items churn during a race. Splitting them means history reads don't compete with live cursor writes on the same item.
+- `version` on Room enables conditional writes for `lobby → countdown → running → finished` transitions: `UpdateItem` with `ConditionExpression: status = :expected AND version = :v` — protects against double-start when two clients click "Start" in the same second.
+
+**Capacity & cost:**
+- On-demand billing — no capacity planning, free tier covers 25 GB + 25 WCU/RCU equivalent of on-demand usage for the demo.
+- TTL on `Connection` items auto-cleans stale connection rows within ~48 h even if `$disconnect` never fires (which happens on hard network drops). This is a backstop, not the primary cleanup path.
+- DynamoDB Streams enabled with `NEW_AND_OLD_IMAGES` — the stream Lambda needs the old image to detect status transitions (`OldImage.status = lobby` AND `NewImage.status = countdown`) without re-reading the table.
+
+**Authorization (replaces Supabase RLS):**
+- All writes go through Lambda. Lambda IAM execution roles are scoped per handler — e.g. the `cursor` Lambda has `dynamodb:UpdateItem` only, scoped via `Condition: { "ForAllValues:StringLike": { "dynamodb:LeadingKeys": ["ROOM#*"] } }`, and only on attributes `progress, chars_typed, errors`. It cannot touch `status` or any other player's row.
+- In-handler checks layered on top of IAM: every WS handler resolves `connectionId → (room_id, display_name)` from the `Connection` item, then asserts the requested mutation matches that identity. A connection cannot mutate another player's row even if it spoofs the `display_name` in the message body.
+- Only the player whose `user_id == Room.host_id` can call `start` and transition `status`. Verified server-side from the Cognito-issued JWT in the WS connect query string (validated at `$connect`).
+- Anonymous reads: a `GET /room/{code}` endpoint returns `{ room_id, status, snippet_id }` — enough for the join page to render — but never exposes `host_id`, `email`, or other player rows. Email lives only in the Cognito user pool and is never written to DynamoDB.
+- Idempotency: `createRoom` and `joinRoom` accept a client-provided `idempotency_key` (uuid) stored as a conditional-write item with a 10-minute TTL — protects against double-clicks creating ghost rooms.
+
+**Realtime channels (logical, all multiplexed over one WebSocket):**
+
+| Channel             | Direction | Trigger                                               | Payload                                                                                  |
+|---------------------|-----------|-------------------------------------------------------|------------------------------------------------------------------------------------------|
+| `cursor`            | client→server, then server→peers | client throttle (10 Hz max)            | `{ action: "cursor", progress: 0..1, chars_typed, errors }` — Lambda updates Player row, fans out `{ type: "cursor", display_name, progress }` to all peer connections in the same room |
+| `heartbeat`         | client→server                    | every 5 s                              | `{ action: "ping" }` — Lambda refreshes `Connection.ttl = now + 30s`. No fan-out.        |
+| `start`             | client→server (host only), then broadcast | host clicks Start             | server writes `status=countdown`, `started_at = server_now + 3000ms`; stream Lambda broadcasts `{ type: "start", started_at }` so every client counts down to the same absolute timestamp |
+| `finish`            | client→server, then broadcast    | client detects `progress === 1`        | server validates `final_progress = snippet.length`, computes all four scores authoritatively, writes Player row + RaceResult row; stream Lambda broadcasts `{ type: "finish", display_name, scaled_wpm, net_wpm, gross_wpm, accuracy, finished_at }` |
+| `room-event`        | server→clients                   | DDB Stream on Room/Player/Connection items | broadcasts join/leave/status-change; replaces Supabase Postgres-changes channel |
+
+**DDB Stream → broadcast Lambda logic:**
+1. Receive batch of stream records (max 1000, 5 s window).
+2. Group records by `room_id` (parsed from `PK`).
+3. For each room, query `Connection` items under that PK to get the live connection list.
+4. For each meaningful change (status transition, player added/removed, finish), `PostToConnection` to every connection in the room.
+5. On `GoneException` (connection already dropped), best-effort `DeleteItem` on the stale `Connection` row. Don't retry the broadcast — the disconnected client will catch up via initial state on reconnect.
+6. Dead-letter queue (SQS) attached for batches that fail repeatedly — keeps free-tier usage but flags real bugs.
+
+**Throttling & coalescing (cost-critical path):**
+- Client sends at most 10 cursor messages/sec. The race lasts ~30–60 s → ~600 client messages × 8 players = 4800 inbound messages per race.
+- Cursor Lambda uses execution-context reuse: an in-memory `Map<connectionId, latestProgress>` flushed every 100 ms via `setInterval` on cold start. This collapses up to 10 inbound messages into 1 fan-out per peer.
+- Net per-race messages: ~4800 inbound + ~4800 fan-out × 7 peers ≈ 38k messages → still well under the 1M API GW free-tier monthly budget for the entire submission demo period.
+- `PostToConnection` calls are issued in parallel (`Promise.all`), bounded at 25 in flight to avoid Lambda throttling against the management API.
+
+**Validation & limits enforced server-side:**
+- `display_name`: 1–24 chars, `[A-Za-z0-9 _-]+`, must be unique within a room (conditional `attribute_not_exists(SK)` on insert).
+- Room capacity: max 8 players. `joinRoom` Lambda checks `Query(PK=ROOM#{id}, SK begins_with PLAYER#)` count before insert.
+- One connection per `(room_id, display_name)`: a second connect with the same identity kicks the older connection (best-effort `PostToConnection({type:"kicked"})` then delete its row). Prevents the same browser ghosting itself.
+- Snippet length: 50–800 chars. Anything outside that range is rejected at room creation — keeps races bounded between ~10 s (very short) and ~3 min (very long) for a 60 WPM typist.
 
 ---
 
@@ -101,18 +143,26 @@ Podium sort key: `scaled_wpm DESC`, tiebreak `finished_at ASC`. All four are sto
 
 ## Local dev & deploy commands
 
+No root `package.json`, no Bun workspaces. Each of `web/`, `infra/`, and `lambdas/` is an independent package with its own `package.json` and its own `bun.lock`. Shared code (e.g. `scoring.ts`, DDB key helpers) is duplicated by file copy or symlinked from `shared/` — not linked through a workspace protocol. Trade-off: small amount of duplication, but each package installs and deploys in isolation and the CDK bundler doesn't have to resolve workspace symlinks.
+
 ```bash
-# install (root manages workspace: web, infra, lambdas)
-bun install
+# install — run inside each package directory
+cd web      && bun install
+cd ../infra && bun install
+cd ../lambdas && bun install
 
 # run web app
-bun run --cwd src dev
+cd web && bun run dev
 
 # CDK — always use the jgyy profile
-bun run --cwd infra cdk -- bootstrap --profile jgyy   # one-time per account/region
-bun run --cwd infra cdk -- diff      --profile jgyy
-bun run --cwd infra cdk -- deploy    --profile jgyy
-bun run --cwd infra cdk -- destroy   --profile jgyy
+cd infra
+bun run cdk bootstrap --profile jgyy   # one-time per account/region
+bun run cdk diff      --profile jgyy
+bun run cdk deploy    --profile jgyy
+bun run cdk destroy   --profile jgyy
+
+# tests (Bun's built-in runner, no Jest/Vitest)
+bun test                                # inside any package
 ```
 
 CI (GitHub Actions) assumes a role in the `jgyy` account via OIDC and exports the same profile shape so the commands are identical to local.
@@ -121,38 +171,60 @@ CI (GitHub Actions) assumes a role in the `jgyy` account via OIDC and exports th
 
 ## Folder structure (matches B1 spec)
 
+Three sibling packages, each independent. No root `package.json`.
+
 ```
 codetype-race/
 ├── README.md
 ├── LICENSE
 ├── .gitignore
-├── package.json
-├── src/
-│   ├── app/
-│   │   ├── (marketing)/        # landing
-│   │   ├── room/[code]/        # lobby + race + podium
-│   │   └── api/                # route handlers
-│   ├── components/
-│   │   ├── typing/             # SHARED with codetype-solo (copy initially, extract later)
-│   │   ├── race/               # opponent cursors, leaderboard, podium
-│   │   └── lobby/
-│   ├── lib/
-│   │   ├── aws/                # cognito client, ddb doc client, ws client
-│   │   └── realtime/           # WS wrapper, throttled broadcast (10 Hz)
-│   └── server/
-├── infra/                      # AWS CDK app (one stack: S3+CF, Cognito, DDB, API GW HTTP+WS, Lambdas)
-├── lambdas/                    # handler source — bundled by CDK NodejsFunction
+├── shared/                     # plain .ts files, copied/symlinked into each package's src
+│   ├── scoring.ts              # WPM/accuracy formulas — single source of truth
+│   ├── ddb-keys.ts             # PK/SK builders for the single-table layout
+│   └── types.ts                # Room/Player/Snippet/WSMessage types
+├── web/                        # Next.js 16 app — its own package.json + bun.lock
+│   ├── package.json
+│   ├── bun.lock
+│   ├── next.config.ts
+│   ├── tsconfig.json
+│   ├── src/
+│   │   ├── app/
+│   │   │   ├── (marketing)/    # landing
+│   │   │   ├── room/[code]/    # lobby + race + podium
+│   │   │   └── api/            # route handlers
+│   │   ├── components/
+│   │   │   ├── typing/         # copied from codetype-solo (P1)
+│   │   │   ├── race/           # opponent cursors, leaderboard, podium
+│   │   │   └── lobby/
+│   │   └── lib/
+│   │       ├── aws/            # cognito client, ws client (browser-side)
+│   │       └── realtime/       # WS wrapper, throttled sender (10 Hz)
+│   └── tests/                  # bun test
+├── infra/                      # AWS CDK app — its own package.json + bun.lock
+│   ├── package.json
+│   ├── bun.lock
+│   ├── cdk.json
+│   ├── tsconfig.json
+│   ├── bin/app.ts              # CDK entry
+│   ├── lib/codetype-stack.ts   # one stack: S3+CF, Cognito, DDB, API GW HTTP+WS, Lambdas
+│   └── tests/
+├── lambdas/                    # handler source — its own package.json + bun.lock
+│   ├── package.json            # deps: @aws-sdk/client-dynamodb, client-apigatewaymanagementapi
+│   ├── bun.lock
+│   ├── tsconfig.json
 │   ├── http/                   # createRoom, joinRoom, listHistory, ...
 │   ├── ws/                     # connect, disconnect, default, cursor, start, finish
-│   └── stream/                 # ddb-stream → broadcast room events
-├── tests/
+│   ├── stream/                 # ddb-stream → broadcast room events
+│   └── tests/
 ├── docs/
 │   ├── ai-log.md
 │   └── architecture.md         # MUST cover: state ownership, race conditions, room lifecycle
-├── scripts/
+├── scripts/                    # bash/bun scripts (seed snippets, smoke tests)
 ├── assets/
-└── data/
+└── data/                       # seed snippet JSON
 ```
+
+**Why duplicate `shared/` instead of using a workspace?** CDK's `NodejsFunction` bundler resolves `require`/`import` against the package directory and doesn't follow workspace symlinks cleanly without extra config. With three independent packages, each one's bundle is self-contained — no `nohoist`, no `bundledDependencies` gymnastics. The duplication is ~3 small files; the CI cost saved is real.
 
 ---
 
