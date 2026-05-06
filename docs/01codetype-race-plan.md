@@ -2,7 +2,9 @@
 
 **Programme:** B1 Builders — Project 2 of 2
 **Submission deadline:** 15 May 2026
-**Target build window:** ~5–6 days (after P1 ships)
+**Target build window:** ~5–6 tasks (after P1 ships)
+
+**Environment assumption:** Bun, AWS CLI (with `jgyy` profile), CDK CLI, and Node 20 are already installed locally and in CI. No install steps appear below — `bun install` inside each package is the only setup command needed.
 
 ---
 
@@ -124,7 +126,9 @@ One table, `codetype`, on-demand billing, point-in-time recovery on. Composite p
 
 ## Scoring formulas (single source of truth)
 
-All four metrics are computed in `src/lib/scoring.ts` (pure functions, shared between client live-ticker and server `finish` Lambda — server result is authoritative).
+All four metrics are computed in `shared/src/wpm.ts` (pure functions, shared between client live-ticker and server `finish` Lambda — server result is authoritative).
+
+> 🧑 **User contribution:** the three WPM formulas (`grossWpm`, `netWpm`, `accuracy` → `scaledWpm` derives from them) are implemented by hand in `shared/src/wpm.ts`. The signatures and the `elapsed_ms`/`chars_typed`/`errors` inputs are fixed by the spec below; the *implementation* is yours. Unit tests for these formulas (boundary cases: `chars_typed === 0`, `errors > chars_typed/5`, sub-second elapsed times) are also user-written under `shared/tests/wpm.test.ts` using `bun test`.
 
 ```ts
 // inputs: chars_typed (correct + incorrect keystrokes committed),
@@ -143,14 +147,11 @@ Podium sort key: `scaled_wpm DESC`, tiebreak `finished_at ASC`. All four are sto
 
 ## Local dev & deploy commands
 
-No root `package.json`, no Bun workspaces. Each of `web/`, `infra/`, and `lambdas/` is an independent package with its own `package.json` and its own `bun.lock`. Shared code (e.g. `scoring.ts`, DDB key helpers) is duplicated by file copy or symlinked from `shared/` — not linked through a workspace protocol. Trade-off: small amount of duplication, but each package installs and deploys in isolation and the CDK bundler doesn't have to resolve workspace symlinks.
+No root `package.json`, no Bun workspaces. Each of `web/`, `infra/`, and `lambdas/` is an independent package with its own `package.json` and its own `bun.lock`. Shared code (e.g. `wpm.ts`, DDB key helpers) is duplicated by file copy or symlinked from `shared/` — not linked through a workspace protocol. Trade-off: small amount of duplication, but each package installs and deploys in isolation and the CDK bundler doesn't have to resolve workspace symlinks.
+
+Tooling (Bun, AWS CLI with the `jgyy` profile, CDK CLI) is already installed; the commands below assume a clean working tree only.
 
 ```bash
-# install — run inside each package directory
-cd web      && bun install
-cd ../infra && bun install
-cd ../lambdas && bun install
-
 # run web app
 cd web && bun run dev
 
@@ -179,9 +180,12 @@ codetype-race/
 ├── LICENSE
 ├── .gitignore
 ├── shared/                     # plain .ts files, copied/symlinked into each package's src
-│   ├── scoring.ts              # WPM/accuracy formulas — single source of truth
-│   ├── ddb-keys.ts             # PK/SK builders for the single-table layout
-│   └── types.ts                # Room/Player/Snippet/WSMessage types
+│   ├── src/
+│   │   ├── wpm.ts              # WPM/accuracy formulas — single source of truth (USER-WRITTEN)
+│   │   ├── ddb-keys.ts         # PK/SK builders for the single-table layout
+│   │   ├── streak.ts           # UTC day-boundary helpers for daily streaks (USER-WRITTEN)
+│   │   └── types.ts            # Room/Player/Snippet/WSMessage types
+│   └── tests/                  # bun test — wpm.test.ts, streak.test.ts (USER-WRITTEN)
 ├── web/                        # Next.js 16 app — its own package.json + bun.lock
 │   ├── package.json
 │   ├── bun.lock
@@ -228,9 +232,11 @@ codetype-race/
 
 ---
 
-## Build sequence (6 days)
+## Build sequence (6 tasks)
 
-| Day | Goal | Deliverable |
+Tasks are ordered, not time-boxed — calendar dates are unreliable for this scope. Finish each before starting the next.
+
+| Task | Goal | Deliverable |
 |---|---|---|
 | 1 | Scaffold + auth + room CRUD | Host can create a room, join code works |
 | 2 | Lobby + presence | Multiple browsers see each other in lobby |
@@ -238,6 +244,24 @@ codetype-race/
 | 4 | Live cursors + leaderboard via Realtime broadcast | Two browsers race, see each other's progress |
 | 5 | Finish detection + podium + room history | Full happy path works end-to-end |
 | 6 | Polish + reconnection handling + README + deploy | Shippable demo on CloudFront URL (CDK `cdk deploy` from CI) |
+
+---
+
+## User contributions (hand-written, not AI-generated)
+
+These four pieces are implemented by the human, not delegated to the AI. They are the load-bearing decisions where the trade-offs matter most and are the clearest signal of authorship for the interview.
+
+1. **WPM formulas — `shared/src/wpm.ts`.** Three pure functions: `grossWpm(charsTyped, elapsedMs)`, `netWpm(charsTyped, errors, elapsedMs)`, `accuracy(charsTyped, errors)`. The composite `scaledWpm = netWpm * accuracy` is derived at call sites. Constraints: must return finite numbers for `elapsedMs > 0`, `accuracy` must be clamped to `[0, 1]`, `netWpm` floors at 0. Spec lines 129–138 are the source of truth.
+
+2. **Live-diff render strategy in `TypingArea` — `web/src/components/typing/TypingArea.tsx`.** Render the snippet as one `<span>` per character with one of four classes — `pending`, `correct`, `incorrect`, `cursor`. On each keystroke, only the spans whose state changed are re-styled (React reconciliation handles this naturally if the key is the char index). Trade-off considered and rejected: a single `<pre>` with diff overlay (cheaper DOM, but cursor-positioning fights with monospaced kerning across browsers). The char-span approach is ~N nodes for an N-char snippet (≤800), which is well within React's comfort zone and avoids canvas/measureText hacks.
+
+3. **Streak boundary logic — `shared/src/streak.ts`.** Daily-race streaks count consecutive **UTC** calendar days, not local-timezone days. Reason: room results store `finished_at` as epoch ms in UTC; using local time would let a player in UTC+14 and a player in UTC-12 disagree on whether the same race counted toward "today." Helpers: `utcDayKey(epochMs): string` returning `YYYY-MM-DD`, and `isConsecutiveUtcDay(prevKey, nextKey): boolean`. Edge case: a race that starts 23:59 UTC and finishes 00:01 UTC counts toward the **finish** day only.
+
+4. **Unit tests — `shared/tests/wpm.test.ts` and `shared/tests/streak.test.ts`.** Bun's built-in test runner (`bun test`). Required cases:
+   - `wpm.test.ts`: zero chars typed, errors exceeding chars, sub-second elapsed, exact 60 s elapsed, accuracy clamping at 0 and 1.
+   - `streak.test.ts`: same-day twice (no increment), consecutive days (increment), one-day gap (reset), DST-equivalent crossings (no special handling needed because UTC has no DST), year boundary (`2025-12-31` → `2026-01-01`).
+
+The `finish` Lambda imports `wpm.ts` directly so the server's authoritative score uses the exact same code paths the tests cover — there is no second implementation to drift.
 
 ---
 
