@@ -18,13 +18,14 @@ Real-time multiplayer typing race for code snippets. A host creates a room, shar
 
 ## Stack (AWS — cheapest serverless path)
 
+- **Runtime / package manager:** **Bun** (used for installs, scripts, and TS execution; Lambda bundles still target Node.js 20 ARM via CDK `NodejsFunction` + esbuild)
 - **Frontend:** Next.js 16 (App Router, **static export** where possible) + TypeScript + Tailwind + shadcn/ui (same as P1)
 - **Hosting:** **S3 + CloudFront** for the static bundle (free tier covers demo traffic). Fallback if SSR is unavoidable: **AWS Amplify Hosting** (free tier: 1000 build min/mo, 15 GB served).
 - **Backend compute:** **AWS Lambda** (Node.js 20, ARM/Graviton) behind **API Gateway HTTP API** for REST and **API Gateway WebSocket API** for realtime. Free tier: 1M Lambda req/mo + 1M API GW req/mo.
 - **Realtime transport:** **API Gateway WebSocket API** + Lambda handlers (`$connect`, `$disconnect`, `$default`) + the `@connections` management endpoint for server→client pushes. No always-on server.
 - **Database:** **DynamoDB on-demand** (single-table design, free tier 25 GB + 25 WCU/RCU). Stream → Lambda fan-out for "Postgres changes"-style room status broadcasts.
 - **Auth:** **Amazon Cognito User Pool** with email magic link (passwordless via custom auth flow, or hosted UI). Free tier: 50k MAU. Players who join by code stay unauthenticated — display name only, signed by a short-lived JWT minted by a Lambda.
-- **IaC / deploy:** **AWS CDK** (TypeScript) — one stack, deployed from GitHub Actions on push to `main`. Cheaper than Amplify if SSR isn't needed; everything lives in the free tier.
+- **IaC / deploy:** **AWS CDK** (TypeScript) — one stack, deployed via `cdk deploy --profile jgyy` (locally and from GitHub Actions on push to `main` using the same named profile via OIDC-assumed role). Cheaper than Amplify if SSR isn't needed; everything lives in the free tier.
 
 **Estimated monthly cost at demo scale (≤100 races, ≤8 players each):** $0 — fully inside the AWS Free Tier. After free tier expires (12 months), steady-state cost for an idle app is dominated by CloudFront minimums and rounds to **<$1/mo**.
 
@@ -64,7 +65,7 @@ Table `codetype` with composite key `(PK, SK)` and one GSI `GSI1(PK=code, SK=roo
 | Entity     | PK                  | SK                        | Attributes |
 |------------|---------------------|---------------------------|------------|
 | Room       | `ROOM#{room_id}`    | `META`                    | `code`, `host_id`, `snippet_id`, `status` (`lobby`\|`running`\|`finished`), `started_at`, `finished_at` |
-| Player     | `ROOM#{room_id}`    | `PLAYER#{display_name}`   | `user_id?`, `joined_at`, `finished_at?`, `wpm?`, `accuracy?`, `progress` (0–1) |
+| Player     | `ROOM#{room_id}`    | `PLAYER#{display_name}`   | `user_id?`, `joined_at`, `finished_at?`, `gross_wpm?`, `net_wpm?`, `accuracy?`, `scaled_wpm?`, `chars_typed`, `errors`, `progress` (0–1) |
 | Connection | `ROOM#{room_id}`    | `CONN#{connection_id}`    | `display_name`, `ttl` (epoch, +30s, refreshed on heartbeat) |
 | Snippet    | `SNIPPET#{id}`      | `META`                    | `language`, `title`, `code` |
 | CodeIndex  | `CODE#{code}`       | `ROOM#{room_id}`          | (sparse, GSI1 source) — alt: just use `GSI1PK=code` on Room item |
@@ -76,6 +77,45 @@ Table `codetype` with composite key `(PK, SK)` and one GSI `GSI1(PK=code, SK=roo
 **Realtime channels (logical, over a single WebSocket):**
 - Client sends `{ action: "cursor", progress }` → Lambda throttles + writes to player row, then `PostToConnection`s to all peers in the room. High-frequency, ephemeral.
 - DynamoDB Stream on the table → Lambda → broadcasts room-status transitions and player join/leave to all `CONN#` items in that room. Replaces the Postgres-changes channel.
+
+---
+
+## Scoring formulas (single source of truth)
+
+All four metrics are computed in `src/lib/scoring.ts` (pure functions, shared between client live-ticker and server `finish` Lambda — server result is authoritative).
+
+```ts
+// inputs: chars_typed (correct + incorrect keystrokes committed),
+//         errors (uncorrected wrong characters at finish),
+//         elapsed_ms (server_finished_at - started_at)
+const minutes  = elapsed_ms / 60_000;
+const grossWpm = (chars_typed / 5) / minutes;
+const netWpm   = Math.max(0, ((chars_typed / 5) - errors) / minutes);
+const accuracy = chars_typed === 0 ? 0 : (chars_typed - errors) / chars_typed; // 0..1
+const scaledWpm = netWpm * accuracy; // composite, used for podium ranking
+```
+
+Podium sort key: `scaled_wpm DESC`, tiebreak `finished_at ASC`. All four are stored on the Player row and shown on the podium card.
+
+---
+
+## Local dev & deploy commands
+
+```bash
+# install (root manages workspace: web, infra, lambdas)
+bun install
+
+# run web app
+bun run --cwd src dev
+
+# CDK — always use the jgyy profile
+bun run --cwd infra cdk -- bootstrap --profile jgyy   # one-time per account/region
+bun run --cwd infra cdk -- diff      --profile jgyy
+bun run --cwd infra cdk -- deploy    --profile jgyy
+bun run --cwd infra cdk -- destroy   --profile jgyy
+```
+
+CI (GitHub Actions) assumes a role in the `jgyy` account via OIDC and exports the same profile shape so the commands are identical to local.
 
 ---
 
@@ -131,7 +171,13 @@ codetype-race/
 
 ## Hard problems (worth flagging in the interview)
 
-1. **Server-authoritative finish time.** Clients can lie about WPM. Mitigation: the `finish` Lambda validates `final_progress = snippet.length` and computes `wpm = (snippet.length/5) / ((server_now - started_at)/60s)` from DDB-stored timestamps. Client-reported WPM is only used for the live ticker, not the final score.
+1. **Server-authoritative finish time + scoring.** Clients can lie about WPM. Mitigation: the `finish` Lambda validates `final_progress = snippet.length` and computes **all four metrics server-side** from DDB-stored timestamps and the player's reported `errors` (cross-checked against final keystroke log if available):
+   - `minutes = (server_finished_at - started_at) / 60_000`
+   - `gross_wpm = (chars_typed / 5) / minutes` — raw speed, ignores errors
+   - `net_wpm  = max(0, ((chars_typed / 5) - errors) / minutes)` — penalises uncorrected errors (Monkeytype-style)
+   - `accuracy = (chars_typed - errors) / chars_typed` — fraction in [0, 1]
+   - `scaled_wpm = net_wpm * accuracy` — single composite ranking metric used for the podium order; favours fast *and* accurate typists, eliminates the "spam-keys-for-high-WPM" exploit
+   Client-reported values are only used for the live ticker, never for the final score or leaderboard order.
 2. **Cursor broadcast volume.** 8 players × 60 keystrokes/min × N broadcasts each → message storm = $$ on API GW WS. Mitigation: client throttles to 10 Hz; cursor Lambda further coalesces using a 100 ms in-memory window per `connectionId` (Lambda execution context reuse) before fanning out via `PostToConnection`. Send `progress` (0–1) not raw cursor index.
 3. **Player drops mid-race.** Mitigation: `CONN#` items have a 30 s TTL refreshed by client heartbeats; `$disconnect` handler marks DNF immediately, TTL is the safety net. Race continues as long as ≥1 player still typing.
 4. **Race start sync.** Network latency means "start now" arrives at different times. Mitigation: `start` Lambda writes `started_at = server_now + 3s` to DDB; the DDB-stream broadcaster pushes that absolute timestamp to all connections; each client counts down locally to that absolute time.
