@@ -1,0 +1,10 @@
+{
+  "app": "bunx tsx bin/app.ts",
+  "watch": {
+    "include": ["lib/**", "bin/**"],
+    "exclude": ["**/*.d.ts", "node_modules", "cdk.out"]
+  },
+  "context": {
+    "@aws-cdk/core:newStyleStackSynthesis": true
+  }
+}

@@ -126,9 +126,7 @@ One table, `codetype`, on-demand billing, point-in-time recovery on. Composite p
 
 ## Scoring formulas (single source of truth)
 
-All four metrics are computed in `shared/src/wpm.ts` (pure functions, shared between client live-ticker and server `finish` Lambda — server result is authoritative).
-
-> 🧑 **User contribution:** the three WPM formulas (`grossWpm`, `netWpm`, `accuracy` → `scaledWpm` derives from them) are implemented by hand in `shared/src/wpm.ts`. The signatures and the `elapsed_ms`/`chars_typed`/`errors` inputs are fixed by the spec below; the *implementation* is yours. Unit tests for these formulas (boundary cases: `chars_typed === 0`, `errors > chars_typed/5`, sub-second elapsed times) are also user-written under `shared/tests/wpm.test.ts` using `bun test`.
+All four metrics are computed in `shared/src/wpm.ts` (pure functions, shared between client live-ticker and server `finish` Lambda — server result is authoritative). Unit tests live in `shared/tests/wpm.test.ts` using `bun test`.
 
 ```ts
 // inputs: chars_typed (correct + incorrect keystrokes committed),
@@ -181,11 +179,11 @@ codetype-race/
 ├── .gitignore
 ├── shared/                     # plain .ts files, copied/symlinked into each package's src
 │   ├── src/
-│   │   ├── wpm.ts              # WPM/accuracy formulas — single source of truth (USER-WRITTEN)
+│   │   ├── wpm.ts              # WPM/accuracy formulas — single source of truth
 │   │   ├── ddb-keys.ts         # PK/SK builders for the single-table layout
-│   │   ├── streak.ts           # UTC day-boundary helpers for daily streaks (USER-WRITTEN)
+│   │   ├── streak.ts           # UTC day-boundary helpers for daily streaks
 │   │   └── types.ts            # Room/Player/Snippet/WSMessage types
-│   └── tests/                  # bun test — wpm.test.ts, streak.test.ts (USER-WRITTEN)
+│   └── tests/                  # bun test — wpm.test.ts, streak.test.ts
 ├── web/                        # Next.js 16 app — its own package.json + bun.lock
 │   ├── package.json
 │   ├── bun.lock
@@ -247,21 +245,21 @@ Tasks are ordered, not time-boxed — calendar dates are unreliable for this sco
 
 ---
 
-## User contributions (hand-written, not AI-generated)
+## Load-bearing modules (single sources of truth)
 
-These four pieces are implemented by the human, not delegated to the AI. They are the load-bearing decisions where the trade-offs matter most and are the clearest signal of authorship for the interview.
+These four pieces are AI-generated like the rest of the codebase, but called out because they are the modules everything else depends on. Drift here breaks scoring or history.
 
-1. **WPM formulas — `shared/src/wpm.ts`.** Three pure functions: `grossWpm(charsTyped, elapsedMs)`, `netWpm(charsTyped, errors, elapsedMs)`, `accuracy(charsTyped, errors)`. The composite `scaledWpm = netWpm * accuracy` is derived at call sites. Constraints: must return finite numbers for `elapsedMs > 0`, `accuracy` must be clamped to `[0, 1]`, `netWpm` floors at 0. Spec lines 129–138 are the source of truth.
+1. **WPM formulas — `shared/src/wpm.ts`.** Three pure functions: `grossWpm(charsTyped, elapsedMs)`, `netWpm(charsTyped, errors, elapsedMs)`, `accuracy(charsTyped, errors)`. The composite `scaledWpm = netWpm * accuracy` is derived at call sites. Constraints: must return finite numbers for `elapsedMs > 0`, `accuracy` clamped to `[0, 1]`, `netWpm` floors at 0.
 
-2. **Live-diff render strategy in `TypingArea` — `web/src/components/typing/TypingArea.tsx`.** Render the snippet as one `<span>` per character with one of four classes — `pending`, `correct`, `incorrect`, `cursor`. On each keystroke, only the spans whose state changed are re-styled (React reconciliation handles this naturally if the key is the char index). Trade-off considered and rejected: a single `<pre>` with diff overlay (cheaper DOM, but cursor-positioning fights with monospaced kerning across browsers). The char-span approach is ~N nodes for an N-char snippet (≤800), which is well within React's comfort zone and avoids canvas/measureText hacks.
+2. **Live-diff render strategy in `TypingArea` — `web/src/components/typing/TypingArea.tsx`.** One `<span>` per character with one of four classes — `pending`, `correct`, `incorrect`, `cursor`. React reconciles changed spans only (key by char index). The alternative — single `<pre>` with diff overlay — fights monospaced kerning across browsers; rejected. The char-span approach is ~N nodes for an N-char snippet (≤800).
 
-3. **Streak boundary logic — `shared/src/streak.ts`.** Daily-race streaks count consecutive **UTC** calendar days, not local-timezone days. Reason: room results store `finished_at` as epoch ms in UTC; using local time would let a player in UTC+14 and a player in UTC-12 disagree on whether the same race counted toward "today." Helpers: `utcDayKey(epochMs): string` returning `YYYY-MM-DD`, and `isConsecutiveUtcDay(prevKey, nextKey): boolean`. Edge case: a race that starts 23:59 UTC and finishes 00:01 UTC counts toward the **finish** day only.
+3. **Streak boundary logic — `shared/src/streak.ts`.** Daily-race streaks count consecutive **UTC** calendar days. Helpers: `utcDayKey(epochMs): string` returning `YYYY-MM-DD`, `isConsecutiveUtcDay(prevKey, nextKey): boolean`. Edge case: a race spanning the UTC midnight counts toward the **finish** day only.
 
-4. **Unit tests — `shared/tests/wpm.test.ts` and `shared/tests/streak.test.ts`.** Bun's built-in test runner (`bun test`). Required cases:
+4. **Unit tests — `shared/tests/wpm.test.ts` and `shared/tests/streak.test.ts`.** Bun's built-in runner. Required cases:
    - `wpm.test.ts`: zero chars typed, errors exceeding chars, sub-second elapsed, exact 60 s elapsed, accuracy clamping at 0 and 1.
-   - `streak.test.ts`: same-day twice (no increment), consecutive days (increment), one-day gap (reset), DST-equivalent crossings (no special handling needed because UTC has no DST), year boundary (`2025-12-31` → `2026-01-01`).
+   - `streak.test.ts`: same-day twice (no increment), consecutive days (increment), one-day gap (reset), year boundary (`2025-12-31` → `2026-01-01`).
 
-The `finish` Lambda imports `wpm.ts` directly so the server's authoritative score uses the exact same code paths the tests cover — there is no second implementation to drift.
+The `finish` Lambda imports `wpm.ts` directly — there is no second implementation to drift.
 
 ---
 
