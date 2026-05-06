@@ -1,0 +1,1147 @@
+{
+  "/CodetypeStack": [
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/Table": [
+    {
+      "type": "aws:cdk:hasPhysicalName",
+      "data": {
+        "Ref": "TableCD117FA1"
+      }
+    }
+  ],
+  "/CodetypeStack/Custom::S3AutoDeleteObjectsCustomResourceProvider": [
+    {
+      "type": "aws:cdk:is-custom-resource-handler-customResourceProvider",
+      "data": true
+    }
+  ],
+  "/CodetypeStack/HttpApiUrl": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiUrl"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:5544)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/WsApiUrl": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "WsApiUrl"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:5605)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/UserPoolId": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "UserPoolId"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:5729)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/UserPoolClientId": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "UserPoolClientId"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:5790)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/SiteBucket": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SiteBucket"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:5869)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/CdnDomain": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CdnDomain"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:5932)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/TableName": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "TableName"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:6008)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/BootstrapVersion": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "BootstrapVersion"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, node internals, tsx, source-map-support...",
+        "(no user code in 9007199254740991 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/CodetypeStack/CheckBootstrapVersion": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CheckBootstrapVersion"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, node internals, tsx, source-map-support...",
+        "(no user code in 9007199254740991 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/CodetypeStack/Table/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "TableCD117FA1"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Table2 in aws-cdk-lib...",
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:1139)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/Users/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "Users0A0EEA89"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new UserPool2 in aws-cdk-lib...",
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:1690)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/CreateRoom/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CreateRoomC411A5EA"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new NodejsFunction in aws-cdk-lib...",
+        "fn (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:2006)",
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:2428)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/JoinRoom/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "JoinRoomB703429C"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new NodejsFunction in aws-cdk-lib...",
+        "fn (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:2006)",
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:2481)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/GetRoom/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "GetRoom9F2581A2"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new NodejsFunction in aws-cdk-lib...",
+        "fn (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:2006)",
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:2529)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/ListHistory/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ListHistoryE11D46AA"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new NodejsFunction in aws-cdk-lib...",
+        "fn (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:2006)",
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:2579)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/HttpApi/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiF5A9A8A7"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new HttpApi2 in aws-cdk-lib...",
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:2715)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/WsConnect/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "WsConnect41AA3906"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new NodejsFunction in aws-cdk-lib...",
+        "fn (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:2006)",
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:3691)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/WsDisconnect/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "WsDisconnect817EF55B"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new NodejsFunction in aws-cdk-lib...",
+        "fn (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:2006)",
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:3742)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/WsDefault/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "WsDefault7F3FFA47"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new NodejsFunction in aws-cdk-lib...",
+        "fn (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:2006)",
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:3796)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/Broadcast/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "Broadcast21A29F1F"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new NodejsFunction in aws-cdk-lib...",
+        "fn (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:2006)",
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:3846)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/WsApi/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "WsApi88D84716"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new WebSocketApi2 in aws-cdk-lib...",
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:3983)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/WsStage/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "WsStage9AD02499"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new WebSocketStage2 in aws-cdk-lib...",
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:4349)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/Site/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SiteE53D7754"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Bucket2 in aws-cdk-lib...",
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:5072)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    },
+    {
+      "type": "aws:cdk:analytics:mixin",
+      "data": {
+        "mixin": "aws-cdk-lib.aws_s3.mixins.BucketAutoDeleteObjects"
+      }
+    }
+  ],
+  "/CodetypeStack/Custom::S3AutoDeleteObjectsCustomResourceProvider/Role": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Bucket2 in aws-cdk-lib...",
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:5072)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/Custom::S3AutoDeleteObjectsCustomResourceProvider/Handler": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CustomS3AutoDeleteObjectsCustomResourceProviderHandler9D90184F"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Bucket2 in aws-cdk-lib...",
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:5072)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/Cdn/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "Cdn9963B1AD"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Distribution2 in aws-cdk-lib...",
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:5228)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/CDKMetadata/Default": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CDKMetadata"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, node internals, tsx, source-map-support...",
+        "(no user code in 9007199254740991 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/CodetypeStack/Users/WebClient/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "UsersWebClient8EE36D42"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...WrappedClass.addClient in aws-cdk-lib...",
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:1902)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/CreateRoom/ServiceRole/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CreateRoomServiceRole85FE9B42"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new NodejsFunction in aws-cdk-lib...",
+        "fn (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:2006)",
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:2428)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/JoinRoom/ServiceRole/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "JoinRoomServiceRole02A08A91"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new NodejsFunction in aws-cdk-lib...",
+        "fn (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:2006)",
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:2481)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/GetRoom/ServiceRole/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "GetRoomServiceRoleB045BF48"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new NodejsFunction in aws-cdk-lib...",
+        "fn (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:2006)",
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:2529)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/ListHistory/ServiceRole/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ListHistoryServiceRoleE7C82A8D"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new NodejsFunction in aws-cdk-lib...",
+        "fn (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:2006)",
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:2579)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/HttpApi/DefaultStage/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiDefaultStage3EEB07D6"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new HttpApi2 in aws-cdk-lib...",
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:2715)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/HttpApi/POST--rooms/CreateRoom-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPOSTroomsCreateRoomPermission7B23CF71"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        ".../home/jegoh/Documents/repo/codetype-race/infra/node_modules/aws-cdk-lib/aws-apigatewayv2/lib/http/api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:3065)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/HttpApi/POST--rooms/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPOSTroomsFD65FE66"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        ".../home/jegoh/Documents/repo/codetype-race/infra/node_modules/aws-cdk-lib/aws-apigatewayv2/lib/http/api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:3065)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/HttpApi/JwtAuth/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiJwtAuthDC0890A1"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        ".../home/jegoh/Documents/repo/codetype-race/infra/node_modules/aws-cdk-lib/aws-apigatewayv2/lib/http/api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:3065)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/HttpApi/POST--rooms--join/JoinRoom-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPOSTroomsjoinJoinRoomPermission0352570C"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        ".../home/jegoh/Documents/repo/codetype-race/infra/node_modules/aws-cdk-lib/aws-apigatewayv2/lib/http/api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:3229)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/HttpApi/POST--rooms--join/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPOSTroomsjoin2D9D641D"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        ".../home/jegoh/Documents/repo/codetype-race/infra/node_modules/aws-cdk-lib/aws-apigatewayv2/lib/http/api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:3229)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/HttpApi/GET--rooms--{code}/GetRoom-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETroomscodeGetRoomPermission0C5A58F4"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        ".../home/jegoh/Documents/repo/codetype-race/infra/node_modules/aws-cdk-lib/aws-apigatewayv2/lib/http/api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:3375)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/HttpApi/GET--rooms--{code}/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETroomscodeF40309B4"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        ".../home/jegoh/Documents/repo/codetype-race/infra/node_modules/aws-cdk-lib/aws-apigatewayv2/lib/http/api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:3375)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/HttpApi/GET--history/History-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGEThistoryHistoryPermission5EE46C87"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        ".../home/jegoh/Documents/repo/codetype-race/infra/node_modules/aws-cdk-lib/aws-apigatewayv2/lib/http/api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:3520)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/HttpApi/GET--history/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGEThistory9647AF6D"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        ".../home/jegoh/Documents/repo/codetype-race/infra/node_modules/aws-cdk-lib/aws-apigatewayv2/lib/http/api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:3520)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/WsConnect/ServiceRole/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "WsConnectServiceRoleCFFF046B"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new NodejsFunction in aws-cdk-lib...",
+        "fn (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:2006)",
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:3691)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/WsDisconnect/ServiceRole/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "WsDisconnectServiceRole807438D6"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new NodejsFunction in aws-cdk-lib...",
+        "fn (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:2006)",
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:3742)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/WsDefault/ServiceRole/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "WsDefaultServiceRole1721FB24"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new NodejsFunction in aws-cdk-lib...",
+        "fn (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:2006)",
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:3796)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/Broadcast/ServiceRole/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "BroadcastServiceRoleDDAD68B6"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new NodejsFunction in aws-cdk-lib...",
+        "fn (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:2006)",
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:3846)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/Broadcast/DynamoDBEventSource:CodetypeStackTable6191D9AB/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "BroadcastDynamoDBEventSourceCodetypeStackTable6191D9AB72F39F47"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...NodejsFunction.addEventSource in aws-cdk-lib...",
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:4878)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/WsApi/$connect-Route/Connect-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "WsApiconnectRouteConnectPermission3D692CF8"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new WebSocketApi2 in aws-cdk-lib...",
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:3983)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/WsApi/$connect-Route/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "WsApiconnectRoute3B404673"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new WebSocketApi2 in aws-cdk-lib...",
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:3983)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/WsApi/$disconnect-Route/Disconnect-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "WsApidisconnectRouteDisconnectPermission424CD4ED"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new WebSocketApi2 in aws-cdk-lib...",
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:3983)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/WsApi/$disconnect-Route/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "WsApidisconnectRoute52949C4E"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new WebSocketApi2 in aws-cdk-lib...",
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:3983)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/WsApi/$default-Route/DefaultInteg-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "WsApidefaultRouteDefaultIntegPermissionE46725C3"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new WebSocketApi2 in aws-cdk-lib...",
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:3983)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/WsApi/$default-Route/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "WsApidefaultRoute688BE5A5"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new WebSocketApi2 in aws-cdk-lib...",
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:3983)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/Site/Policy/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SitePolicyC4000D7D"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Bucket2 in aws-cdk-lib...",
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:5072)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    },
+    {
+      "type": "aws:cdk:analytics:mixin",
+      "data": {
+        "mixin": "aws-cdk-lib.aws_s3.mixins.BucketPolicyStatements"
+      }
+    }
+  ],
+  "/CodetypeStack/Site/AutoDeleteObjectsCustomResource/Default": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SiteAutoDeleteObjectsCustomResourceBFAA9B42"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Bucket2 in aws-cdk-lib...",
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:5072)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/CreateRoom/ServiceRole/DefaultPolicy/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CreateRoomServiceRoleDefaultPolicyB743A4A6"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...WrappedClass.grantReadWriteData in aws-cdk-lib...",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:26 (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:267)",
+        "Array.forEach (:)",
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:2661)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/JoinRoom/ServiceRole/DefaultPolicy/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "JoinRoomServiceRoleDefaultPolicy66D2E6CA"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...WrappedClass.grantReadWriteData in aws-cdk-lib...",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:26 (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:267)",
+        "Array.forEach (:)",
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:2661)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/GetRoom/ServiceRole/DefaultPolicy/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "GetRoomServiceRoleDefaultPolicyF2192BEC"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...WrappedClass.grantReadWriteData in aws-cdk-lib...",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:26 (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:267)",
+        "Array.forEach (:)",
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:2661)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/ListHistory/ServiceRole/DefaultPolicy/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ListHistoryServiceRoleDefaultPolicy9639895A"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...WrappedClass.grantReadWriteData in aws-cdk-lib...",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:26 (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:267)",
+        "Array.forEach (:)",
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:2661)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/HttpApi/POST--rooms/CreateRoom/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPOSTroomsCreateRoom2A0B507F"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        ".../home/jegoh/Documents/repo/codetype-race/infra/node_modules/aws-cdk-lib/aws-apigatewayv2/lib/http/api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:3065)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/HttpApi/POST--rooms--join/JoinRoom/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPOSTroomsjoinJoinRoom9F1249EB"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        ".../home/jegoh/Documents/repo/codetype-race/infra/node_modules/aws-cdk-lib/aws-apigatewayv2/lib/http/api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:3229)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/HttpApi/GET--rooms--{code}/GetRoom/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETroomscodeGetRoomD1227BC7"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        ".../home/jegoh/Documents/repo/codetype-race/infra/node_modules/aws-cdk-lib/aws-apigatewayv2/lib/http/api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:3375)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/HttpApi/GET--history/History/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGEThistoryHistory39D0E45C"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        ".../home/jegoh/Documents/repo/codetype-race/infra/node_modules/aws-cdk-lib/aws-apigatewayv2/lib/http/api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:3520)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/WsConnect/ServiceRole/DefaultPolicy/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "WsConnectServiceRoleDefaultPolicyB3EFDBD1"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...WrappedClass.grantReadWriteData in aws-cdk-lib...",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:39 (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:394)",
+        "Array.forEach (:)",
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:3931)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/WsDisconnect/ServiceRole/DefaultPolicy/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "WsDisconnectServiceRoleDefaultPolicyAB1BA126"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...WrappedClass.grantReadWriteData in aws-cdk-lib...",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:39 (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:394)",
+        "Array.forEach (:)",
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:3931)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/WsDefault/ServiceRole/DefaultPolicy/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "WsDefaultServiceRoleDefaultPolicy4CC27795"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...WrappedClass.grantReadWriteData in aws-cdk-lib...",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:39 (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:394)",
+        "Array.forEach (:)",
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:3931)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/Broadcast/ServiceRole/DefaultPolicy/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "BroadcastServiceRoleDefaultPolicy1C3EECB2"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...WrappedClass.grantReadWriteData in aws-cdk-lib...",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:39 (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:394)",
+        "Array.forEach (:)",
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:3931)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/WsApi/$connect-Route/Connect/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "WsApiconnectRouteConnectA43FA445"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new WebSocketApi2 in aws-cdk-lib...",
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:3983)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/WsApi/$disconnect-Route/Disconnect/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "WsApidisconnectRouteDisconnectD1A88DFA"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new WebSocketApi2 in aws-cdk-lib...",
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:3983)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/WsApi/$default-Route/DefaultInteg/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "WsApidefaultRouteDefaultInteg9A86DDAA"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new WebSocketApi2 in aws-cdk-lib...",
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:3983)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CodetypeStack/Cdn/Origin1/S3OriginAccessControl/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CdnOrigin1S3OriginAccessControl6AC0AEFC"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Distribution2 in aws-cdk-lib...",
+        "new CodetypeStack (file:///home/jegoh/Documents/repo/codetype-race/infra/lib/codetype-stack.ts:1:5228)",
+        "file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:1 (file:///home/jegoh/Documents/repo/codetype-race/infra/bin/app.ts:2:14)",
+        "...node internals..."
+      ]
+    }
+  ]
+}

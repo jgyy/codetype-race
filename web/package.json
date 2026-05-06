@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "test": "bun test",
-    "sync-shared": "rm -rf src/shared && mkdir -p src/shared && cp ../shared/src/*.ts src/shared/"
+    "sync-shared": "rm -rf src/shared && mkdir -p src/shared src/data && cp ../shared/src/*.ts src/shared/ && cp ../data/snippets.json src/data/snippets.json"
   },
   "dependencies": {
     "@aws-amplify/auth": "^6.5.0",

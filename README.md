@@ -23,11 +23,11 @@ scripts/   Bun scripts (seed)
 # Run shared tests
 cd shared && bun install && bun test
 
-# Deploy infra (uses AWS_PROFILE=jgyy)
-cd infra && bun install && bunx cdk deploy --profile jgyy
+# Deploy infra (uses AWS_PROFILE=your_profile)
+cd infra && bun install && bunx cdk deploy --profile your_profile
 
 # Seed snippets after first deploy
-AWS_PROFILE=jgyy TABLE_NAME=codetype bun scripts/seed-snippets.ts
+AWS_PROFILE=your_profile TABLE_NAME=codetype bun scripts/seed-snippets.ts
 
 # Run web app locally — set NEXT_PUBLIC_* from CDK outputs
 cd web && bun install && bun run dev

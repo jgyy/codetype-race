@@ -21,6 +21,11 @@ interface Props {
 export function TypingArea({ snippet, disabled, onProgress, onFinish }: Props) {
   const [typed, setTyped] = useState("");
   const finishedRef = useRef(false);
+  const boxRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!disabled) boxRef.current?.focus();
+  }, [disabled]);
 
   const errors = useMemo(() => {
     let e = 0;
@@ -64,8 +69,12 @@ export function TypingArea({ snippet, disabled, onProgress, onFinish }: Props) {
 
   return (
     <div
+      ref={boxRef}
       tabIndex={0}
       onKeyDown={onKey}
+      onBlur={(e) => {
+        if (!disabled && !finishedRef.current) e.currentTarget.focus();
+      }}
       className="rounded-lg border border-neutral-700 bg-neutral-900 p-4 font-mono text-base leading-relaxed outline-none focus:border-emerald-500"
       aria-label="typing area"
     >

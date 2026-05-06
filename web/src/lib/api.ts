@@ -11,8 +11,28 @@ async function req(
     const tok = await getIdToken();
     if (tok) headers.set("Authorization", `Bearer ${tok}`);
   }
+  if (!HTTP_API) {
+    throw new Error(
+      "API endpoint is not configured. Set NEXT_PUBLIC_HTTP_API in web/.env.local and restart the dev server.",
+    );
+  }
   const r = await fetch(`${HTTP_API}${path}`, { ...init, headers });
   return r;
+}
+
+async function failWith(r: Response): Promise<never> {
+  const ct = r.headers.get("content-type") ?? "";
+  let detail = "";
+  if (ct.includes("application/json")) {
+    try {
+      const body = await r.json();
+      detail = body?.message ?? body?.error ?? JSON.stringify(body);
+    } catch {
+      // fall through
+    }
+  }
+  if (!detail) detail = r.statusText || "Request failed";
+  throw new Error(`HTTP ${r.status}: ${detail}`);
 }
 
 export async function createRoom(snippet_id: string) {
@@ -21,7 +41,7 @@ export async function createRoom(snippet_id: string) {
     auth: true,
     body: JSON.stringify({ snippet_id }),
   });
-  if (!r.ok) throw new Error(await r.text());
+  if (!r.ok) await failWith(r);
   return r.json() as Promise<{ room_id: string; code: string }>;
 }
 
@@ -30,7 +50,7 @@ export async function joinRoom(code: string, display_name: string) {
     method: "POST",
     body: JSON.stringify({ code, display_name }),
   });
-  if (!r.ok) throw new Error(await r.text());
+  if (!r.ok) await failWith(r);
   return r.json() as Promise<{
     room_id: string;
     snippet_id: string;
@@ -40,12 +60,12 @@ export async function joinRoom(code: string, display_name: string) {
 
 export async function getRoom(code: string) {
   const r = await req(`/rooms/${code}`);
-  if (!r.ok) throw new Error(await r.text());
+  if (!r.ok) await failWith(r);
   return r.json();
 }
 
 export async function listHistory() {
   const r = await req("/history", { auth: true });
-  if (!r.ok) throw new Error(await r.text());
+  if (!r.ok) await failWith(r);
   return r.json() as Promise<{ results: any[] }>;
 }

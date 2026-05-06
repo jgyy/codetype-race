@@ -1,6 +1,7 @@
 "use client";
 
 interface Result {
+  id: string;
   display_name: string;
   scaled_wpm: number;
   net_wpm: number;
@@ -21,7 +22,7 @@ export function Podium({ results }: { results: Result[] }) {
       <ol className="space-y-2">
         {sorted.map((r, i) => (
           <li
-            key={r.display_name}
+            key={r.id}
             className="flex items-center justify-between rounded border border-neutral-800 bg-neutral-900 p-3"
           >
             <span className="flex items-center gap-3">

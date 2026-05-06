@@ -9,7 +9,7 @@ import {
 } from "@/lib/aws/cognito";
 import { createRoom } from "@/lib/api";
 import { useRouter } from "next/navigation";
-import snippets from "../../../../data/snippets.json";
+import snippets from "@/data/snippets.json";
 
 type Mode = "signin" | "signup" | "confirm" | "ready";
 
@@ -52,7 +52,7 @@ export default function HostPage() {
       const r = await createRoom(snippetId);
       sessionStorage.setItem("is_host", "1");
       sessionStorage.setItem("display_name", "host");
-      router.push(`/room/${r.code}`);
+      router.push(`/room/?code=${r.code}`);
     } catch (e: any) {
       setErr(e.message);
     }

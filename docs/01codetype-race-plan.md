@@ -4,7 +4,7 @@
 **Submission deadline:** 15 May 2026
 **Target build window:** ~5–6 tasks (after P1 ships)
 
-**Environment assumption:** Bun, AWS CLI (with `jgyy` profile), CDK CLI, and Node 20 are already installed locally and in CI. No install steps appear below — `bun install` inside each package is the only setup command needed.
+**Environment assumption:** Bun, AWS CLI (with `your_profile` profile), CDK CLI, and Node 20 are already installed locally and in CI. No install steps appear below — `bun install` inside each package is the only setup command needed.
 
 ---
 
@@ -27,7 +27,7 @@ Real-time multiplayer typing race for code snippets. A host creates a room, shar
 - **Realtime transport:** **API Gateway WebSocket API** + Lambda handlers (`$connect`, `$disconnect`, `$default`) + the `@connections` management endpoint for server→client pushes. No always-on server.
 - **Database:** **DynamoDB on-demand** (single-table design, free tier 25 GB + 25 WCU/RCU). Stream → Lambda fan-out for "Postgres changes"-style room status broadcasts.
 - **Auth:** **Amazon Cognito User Pool** with email magic link (passwordless via custom auth flow, or hosted UI). Free tier: 50k MAU. Players who join by code stay unauthenticated — display name only, signed by a short-lived JWT minted by a Lambda.
-- **IaC / deploy:** **AWS CDK** (TypeScript) — one stack, deployed via `cdk deploy --profile jgyy` (locally and from GitHub Actions on push to `main` using the same named profile via OIDC-assumed role). Cheaper than Amplify if SSR isn't needed; everything lives in the free tier.
+- **IaC / deploy:** **AWS CDK** (TypeScript) — one stack, deployed via `cdk deploy --profile your_profile` (locally and from GitHub Actions on push to `main` using the same named profile via OIDC-assumed role). Cheaper than Amplify if SSR isn't needed; everything lives in the free tier.
 
 **Estimated monthly cost at demo scale (≤100 races, ≤8 players each):** $0 — fully inside the AWS Free Tier. After free tier expires (12 months), steady-state cost for an idle app is dominated by CloudFront minimums and rounds to **<$1/mo**.
 
@@ -147,24 +147,24 @@ Podium sort key: `scaled_wpm DESC`, tiebreak `finished_at ASC`. All four are sto
 
 No root `package.json`, no Bun workspaces. Each of `web/`, `infra/`, and `lambdas/` is an independent package with its own `package.json` and its own `bun.lock`. Shared code (e.g. `wpm.ts`, DDB key helpers) is duplicated by file copy or symlinked from `shared/` — not linked through a workspace protocol. Trade-off: small amount of duplication, but each package installs and deploys in isolation and the CDK bundler doesn't have to resolve workspace symlinks.
 
-Tooling (Bun, AWS CLI with the `jgyy` profile, CDK CLI) is already installed; the commands below assume a clean working tree only.
+Tooling (Bun, AWS CLI with the `your_profile` profile, CDK CLI) is already installed; the commands below assume a clean working tree only.
 
 ```bash
 # run web app
 cd web && bun run dev
 
-# CDK — always use the jgyy profile
+# CDK — always use the your_profile profile
 cd infra
-bun run cdk bootstrap --profile jgyy   # one-time per account/region
-bun run cdk diff      --profile jgyy
-bun run cdk deploy    --profile jgyy
-bun run cdk destroy   --profile jgyy
+bun run cdk bootstrap --profile your_profile   # one-time per account/region
+bun run cdk diff      --profile your_profile
+bun run cdk deploy    --profile your_profile
+bun run cdk destroy   --profile your_profile
 
 # tests (Bun's built-in runner, no Jest/Vitest)
 bun test                                # inside any package
 ```
 
-CI (GitHub Actions) assumes a role in the `jgyy` account via OIDC and exports the same profile shape so the commands are identical to local.
+CI (GitHub Actions) assumes a role in the `your_profile` account via OIDC and exports the same profile shape so the commands are identical to local.
 
 ---
 

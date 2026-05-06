@@ -1,6 +1,7 @@
 "use client";
 
 interface Player {
+  id: string;
   display_name: string;
   progress: number;
   finished_at?: number;
@@ -20,7 +21,7 @@ export function Leaderboard({ players }: { players: Player[] }) {
   return (
     <ul className="space-y-2">
       {sorted.map((p) => (
-        <li key={p.display_name} className="flex items-center gap-3">
+        <li key={p.id} className="flex items-center gap-3">
           <span className="w-32 truncate text-sm">{p.display_name}</span>
           <div className="flex-1 h-3 rounded bg-neutral-800 overflow-hidden">
             <div

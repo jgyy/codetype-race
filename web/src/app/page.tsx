@@ -16,7 +16,7 @@ export default function Home() {
     try {
       await joinRoom(code, name);
       sessionStorage.setItem("display_name", name);
-      router.push(`/room/${code.toUpperCase()}`);
+      router.push(`/room/?code=${code.toUpperCase()}`);
     } catch (e: any) {
       setErr(e.message);
     }

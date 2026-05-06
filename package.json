@@ -7,6 +7,16 @@
     "start": "cd web && bun run start",
     "lint": "cd web && bun run lint",
     "test": "cd web && bun run test",
-    "sync-shared": "cd web && bun run sync-shared"
+    "sync-shared": "cd web && bun run sync-shared",
+    "cdk": "bunx cdk",
+    "seed": "bun scripts/seed-snippets.ts"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.658.0",
+    "@aws-sdk/lib-dynamodb": "^3.658.0"
+  },
+  "devDependencies": {
+    "aws-cdk": "^2.158.0",
+    "tsx": "^4.19.0"
   }
 }
