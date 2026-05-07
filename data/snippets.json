@@ -3,18 +3,24 @@
     "snippet_id": "ts-fizzbuzz",
     "language": "typescript",
     "title": "FizzBuzz",
+    "difficulty": 1,
+    "tags": ["loop", "modulo"],
     "code": "for (let i = 1; i <= 15; i++) {\n  if (i % 15 === 0) console.log('FizzBuzz');\n  else if (i % 3 === 0) console.log('Fizz');\n  else if (i % 5 === 0) console.log('Buzz');\n  else console.log(i);\n}\n"
   },
   {
     "snippet_id": "py-quicksort",
     "language": "python",
     "title": "Quicksort",
+    "difficulty": 3,
+    "tags": ["recursion", "sort"],
     "code": "def quicksort(xs):\n    if len(xs) <= 1:\n        return xs\n    pivot = xs[0]\n    lo = [x for x in xs[1:] if x < pivot]\n    hi = [x for x in xs[1:] if x >= pivot]\n    return quicksort(lo) + [pivot] + quicksort(hi)\n"
   },
   {
     "snippet_id": "ts-debounce",
     "language": "typescript",
     "title": "Debounce",
+    "difficulty": 4,
+    "tags": ["closure", "timing"],
     "code": "export function debounce<T extends (...args: any[]) => void>(fn: T, ms: number) {\n  let t: ReturnType<typeof setTimeout> | null = null;\n  return (...args: Parameters<T>) => {\n    if (t) clearTimeout(t);\n    t = setTimeout(() => fn(...args), ms);\n  };\n}\n"
   }
 ]

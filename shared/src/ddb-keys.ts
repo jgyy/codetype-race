@@ -10,6 +10,13 @@ export const snippetPK = (snippetId: string) => `SNIPPET#${snippetId}`;
 export const codeGSI1PK = (code: string) => `CODE#${code}`;
 export const connGSI1PK = (connectionId: string) => `CONN#${connectionId}`;
 export const langGSI1PK = (language: string) => `LANG#${language}`;
+// Snippets are indexed on GSI1 by language (PK) with a sort key that
+// embeds difficulty so consumers can range-scan by language and filter
+// by difficulty in a single query (`begins_with(GSI1SK, "DIFF#3#")`).
+export const snippetDiffGSI1SK = (difficulty: number, snippetId: string) =>
+  `DIFF#${difficulty}#SNIPPET#${snippetId}`;
+export const snippetDiffPrefix = (difficulty: number) =>
+  `DIFF#${difficulty}#`;
 export const hostGSI1PK = (hostId: string) => `HOST#${hostId}`;
 export const finishedGSI1SK = (finishedAt: number) => `FINISHED#${finishedAt}`;
 

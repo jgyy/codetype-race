@@ -62,20 +62,47 @@ export const ConnectionSchema = z.object({
 });
 export type Connection = z.infer<typeof ConnectionSchema>;
 
+export const DifficultySchema = z.number().int().min(1).max(5);
+
 export const SnippetSchema = z.object({
   snippet_id: z.string(),
   language: z.string(),
   title: z.string(),
   code: z.string(),
   length: z.number(),
+  difficulty: DifficultySchema.optional(),
+  tags: z.array(z.string()).optional(),
 });
 export type Snippet = z.infer<typeof SnippetSchema>;
 
+export const SnippetFiltersSchema = z.object({
+  language: z.string().optional(),
+  difficulty: DifficultySchema.optional(),
+});
+export type SnippetFilters = z.infer<typeof SnippetFiltersSchema>;
+
 // ---------- HTTP request/response ----------
 
-export const CreateRoomRequestSchema = z.object({
-  snippet_id: z.string().min(1),
-});
+/**
+ * One of three is required for room creation:
+ *   - `snippet_id` to lock to a specific snippet,
+ *   - `filters` to pick a random snippet by language/difficulty,
+ *   - `previous_room_id` to rematch (copy snippet + roster from prior room).
+ *
+ * `new_snippet: true` with `previous_room_id` re-rolls a random snippet using
+ * `filters` (or any snippet if no filters) instead of reusing the prior one.
+ */
+export const CreateRoomRequestSchema = z
+  .object({
+    snippet_id: z.string().min(1).optional(),
+    filters: SnippetFiltersSchema.optional(),
+    previous_room_id: z.string().min(1).optional(),
+    new_snippet: z.boolean().optional(),
+  })
+  .refine(
+    (v) => v.snippet_id || v.filters || v.previous_room_id,
+    { message: "snippet_id, filters, or previous_room_id is required" },
+  );
 export type CreateRoomRequest = z.infer<typeof CreateRoomRequestSchema>;
 
 export const CreateRoomResponseSchema = z.object({

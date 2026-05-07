@@ -11,6 +11,7 @@ import { useRoomMachine } from "@/lib/machines/useRoomMachine";
 import snippets from "@/data/snippets.json";
 
 interface RoomBootstrap {
+  room_id: string;
   snippet_id: string;
   status: "lobby" | "countdown" | "running" | "finished";
   started_at: number | null;
@@ -37,6 +38,7 @@ export default function RoomClient() {
     getRoom(code).then((r) => {
       if (cancelled) return;
       setBootstrap({
+        room_id: r.room_id,
         snippet_id: r.snippet_id,
         status: r.status,
         started_at: r.started_at ?? null,
@@ -67,7 +69,9 @@ export default function RoomClient() {
       bootstrap={bootstrap}
       snippet={snippet}
       onRematch={async () => {
-        const r = await createRoom(snippet.snippet_id);
+        // Carry over snippet + roster from this room. Backend dedupes
+        // disconnected racers and reseeds counters.
+        const r = await createRoom({ previous_room_id: bootstrap.room_id });
         sessionStorage.setItem("is_host", "1");
         sessionStorage.setItem("display_name", "host");
         router.push(`/room/?code=${r.code}`);

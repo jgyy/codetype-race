@@ -39,7 +39,7 @@ export interface RecordFinishInput {
 export class RoomRepo {
   constructor(private readonly client: DynamoDBDocumentClient = ddb) {}
 
-  async create(room: Room): Promise<void> {
+  async create(room: Room, seedPlayers: Player[] = []): Promise<void> {
     try {
       await this.client.send(
         new PutCommand({
@@ -60,6 +60,26 @@ export class RoomRepo {
       }
       throw e;
     }
+    // Seed roster sequentially. At room-creation time the player count
+    // is bounded (≤ MAX_PLAYERS), so a serial loop is fine and avoids
+    // a TransactWrite limit on item count.
+    for (const p of seedPlayers) {
+      await this.addPlayer(room.room_id, p);
+    }
+  }
+
+  async listPlayers(roomId: string): Promise<Player[]> {
+    const r = await this.client.send(
+      new QueryCommand({
+        TableName: TABLE,
+        KeyConditionExpression: "PK = :pk AND begins_with(SK, :sk)",
+        ExpressionAttributeValues: {
+          ":pk": roomPK(roomId),
+          ":sk": "PLAYER#",
+        },
+      }),
+    );
+    return (r.Items as Player[] | undefined) ?? [];
   }
 
   async getMeta(roomId: string): Promise<Room | null> {

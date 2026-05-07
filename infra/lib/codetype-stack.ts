@@ -83,8 +83,9 @@ export class CodetypeStack extends Stack {
         const joinRoom = fn("JoinRoom", "http/joinRoom.ts");
         const getRoom = fn("GetRoom", "http/getRoom.ts");
         const listHistory = fn("ListHistory", "http/listHistory.ts");
-        [createRoom, joinRoom, getRoom, listHistory].forEach((f) =>
-            table.grantReadWriteData(f),
+        const randomSnippet = fn("RandomSnippet", "http/randomSnippet.ts");
+        [createRoom, joinRoom, getRoom, listHistory, randomSnippet].forEach(
+            (f) => table.grantReadWriteData(f),
         );
 
         const httpApi = new apigwv2.HttpApi(this, "HttpApi", {
@@ -123,6 +124,17 @@ export class CodetypeStack extends Stack {
             methods: [apigwv2.HttpMethod.GET],
             integration: new apigwv2Integ.HttpLambdaIntegration("History", listHistory),
             authorizer: jwtAuth,
+        });
+        // Snippets are queried via GSI1 (PK = LANG#<language>) with the
+        // sort key encoding difficulty (DIFF#<n>#SNIPPET#<id>) so a single
+        // index serves both language-only and language+difficulty filtering.
+        httpApi.addRoutes({
+            path: "/snippets/random",
+            methods: [apigwv2.HttpMethod.GET],
+            integration: new apigwv2Integ.HttpLambdaIntegration(
+                "RandomSnippet",
+                randomSnippet,
+            ),
         });
 
         const wsConnect = fn("WsConnect", "ws/connect.ts");

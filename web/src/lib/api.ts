@@ -35,14 +35,38 @@ async function failWith(r: Response): Promise<never> {
   throw new Error(`HTTP ${r.status}: ${detail}`);
 }
 
-export async function createRoom(snippet_id: string) {
+export interface CreateRoomOptions {
+  snippet_id?: string;
+  filters?: { language?: string; difficulty?: number };
+  previous_room_id?: string;
+  new_snippet?: boolean;
+}
+
+export async function createRoom(opts: string | CreateRoomOptions) {
+  const body = typeof opts === "string" ? { snippet_id: opts } : opts;
   const r = await req("/rooms", {
     method: "POST",
     auth: true,
-    body: JSON.stringify({ snippet_id }),
+    body: JSON.stringify(body),
   });
   if (!r.ok) await failWith(r);
   return r.json() as Promise<{ room_id: string; code: string }>;
+}
+
+export async function getRandomSnippet(filters: {
+  language?: string;
+  difficulty?: number;
+} = {}) {
+  const qs = new URLSearchParams();
+  if (filters.language) qs.set("language", filters.language);
+  if (filters.difficulty !== undefined)
+    qs.set("difficulty", String(filters.difficulty));
+  const path = qs.toString()
+    ? `/snippets/random?${qs.toString()}`
+    : "/snippets/random";
+  const r = await req(path);
+  if (!r.ok) await failWith(r);
+  return r.json();
 }
 
 export async function joinRoom(code: string, display_name: string) {

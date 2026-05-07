@@ -55,6 +55,7 @@ export interface HttpCtx {
   route: string;
   userId?: string;
   pathParameters: Record<string, string | undefined>;
+  queryStringParameters: Record<string, string | undefined>;
 }
 
 type HttpEvent =
@@ -80,6 +81,7 @@ export function withHttp<I, O>(
         route,
         userId,
         pathParameters: event.pathParameters ?? {},
+        queryStringParameters: event.queryStringParameters ?? {},
       });
       log({ requestId, route, status: 200, ms: Date.now() - start });
       return {
