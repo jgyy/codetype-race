@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getRoom, createRoom } from "@/lib/api";
@@ -9,6 +9,7 @@ import { Podium } from "@/components/race/Podium";
 import { Lobby } from "@/components/lobby/Lobby";
 import { ChatPanel } from "@/components/chat/ChatPanel";
 import { useRoomMachine } from "@/lib/machines/useRoomMachine";
+import { getReplayUploadUrl, uploadReplay } from "@/lib/api";
 import snippets from "@/data/snippets.json";
 
 interface RoomBootstrap {
@@ -116,6 +117,37 @@ function RoomShell({ code, identity, bootstrap, snippet, onRematch }: ShellProps
   );
   const finishers = players.filter((p) => p.finished_at);
 
+  const isFinished = state.matches("finished");
+  const replayUploadedRef = useRef(false);
+  useEffect(() => {
+    if (!isFinished || replayUploadedRef.current) return;
+    replayUploadedRef.current = true;
+    // Best-effort replay upload. Every finished client races to upload;
+    // S3 last-write-wins is acceptable for v1.
+    (async () => {
+      try {
+        const { upload_url } = await getReplayUploadUrl(bootstrap.room_id);
+        const startedAt = state.context.startedAt ?? Date.now();
+        const replay = {
+          version: 1 as const,
+          room_id: bootstrap.room_id,
+          snippet_id: snippet.snippet_id,
+          started_at: startedAt,
+          duration_ms: Math.max(1, Date.now() - startedAt),
+          participants: Object.entries(state.context.replayBuffer).map(
+            ([name, samples]) => ({
+              display_name: name,
+              samples: samples.slice(),
+            }),
+          ),
+        };
+        await uploadReplay(upload_url, replay);
+      } catch {
+        // ignore — another client may have uploaded successfully
+      }
+    })();
+  }, [isFinished, bootstrap.room_id, snippet.snippet_id, state.context.replayBuffer, state.context.startedAt]);
+
   return (
     <main className="mx-auto max-w-3xl px-6 py-10 space-y-6">
       <header className="flex items-center justify-between">
@@ -211,6 +243,12 @@ function RoomShell({ code, identity, bootstrap, snippet, onRematch }: ShellProps
                 Race again
               </button>
             )}
+            <Link
+              href={`/replay?roomId=${encodeURIComponent(bootstrap.room_id)}`}
+              className="rounded border border-emerald-700 px-4 py-2 text-emerald-300 hover:bg-neutral-800"
+            >
+              Watch replay
+            </Link>
             <Link
               href="/"
               className="rounded border border-neutral-700 px-4 py-2 hover:bg-neutral-800"

@@ -27,6 +27,8 @@ export interface ChatEntry {
   ts: number;
 }
 
+export type ReplaySample = [number, number]; // [t_relative_ms, progress 0..1]
+
 const CHAT_HISTORY_LIMIT = 50;
 
 export interface RoomContext {
@@ -41,6 +43,7 @@ export interface RoomContext {
   countdownValue: number;
   ratings: Record<string, RatingDelta>;
   chat: ChatEntry[];
+  replayBuffer: Record<string, ReplaySample[]>;
   error: { code: string; message: string } | null;
   retryCount: number;
 }
@@ -134,14 +137,28 @@ export const roomMachine = setup({
       const m = event.msg;
       if (m?.type === "cursor") {
         const name = m.display_name as string;
+        const progress = m.progress as number;
+        const bufferForName = context.replayBuffer[name] ?? [];
+        const last = bufferForName[bufferForName.length - 1];
+        const startedAt = context.startedAt ?? Date.now();
+        // Drop adjacent samples with identical pos to bound replay
+        // payload; keep raw timestamps relative to startedAt.
+        const nextBufferForName =
+          last && last[1] === progress
+            ? bufferForName
+            : [...bufferForName, [Date.now() - startedAt, progress] as ReplaySample];
         return {
           players: {
             ...context.players,
             [name]: {
               ...(context.players[name] ?? { display_name: name, progress: 0 }),
               display_name: name,
-              progress: m.progress as number,
+              progress,
             },
+          },
+          replayBuffer: {
+            ...context.replayBuffer,
+            [name]: nextBufferForName,
           },
         };
       }
@@ -235,6 +252,20 @@ export const roomMachine = setup({
         errors: event.errors,
       };
     }),
+    recordSelfSample: assign(({ context, event }) => {
+      if (event.type !== "TYPED") return {};
+      const name = context.displayName;
+      const buf = context.replayBuffer[name] ?? [];
+      const last = buf[buf.length - 1];
+      if (last && last[1] === event.progress) return {};
+      const startedAt = context.startedAt ?? Date.now();
+      return {
+        replayBuffer: {
+          ...context.replayBuffer,
+          [name]: [...buf, [Date.now() - startedAt, event.progress] as ReplaySample],
+        },
+      };
+    }),
     sendThrottledCursorToWs: sendTo("ws", ({ event }) => {
       if (event.type !== "CURSOR_FLUSH")
         return { type: "noop" } as AnyEventObject;
@@ -276,6 +307,7 @@ export const roomMachine = setup({
     countdownValue: 0,
     ratings: {},
     chat: [],
+    replayBuffer: {},
     error: null,
     retryCount: 0,
   }),
@@ -375,7 +407,7 @@ export const roomMachine = setup({
       ],
       always: { guard: "raceFinished", target: "finished" },
       on: {
-        TYPED: { actions: "forwardCursorToThrottle" },
+        TYPED: { actions: ["forwardCursorToThrottle", "recordSelfSample"] },
         CURSOR_FLUSH: { actions: "sendThrottledCursorToWs" },
         FINISH_LOCALLY: { actions: "sendFinishToWs" },
         WS_MSG: { actions: "applyMsg" },

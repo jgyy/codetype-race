@@ -164,6 +164,33 @@ export const HistoryEntrySchema = z.object({
     errors: z.number(),
 });
 
+export const ReplaySchema = z.object({
+  version: z.literal(1),
+  room_id: z.string(),
+  snippet_id: z.string(),
+  started_at: z.number(),
+  duration_ms: z.number(),
+  participants: z.array(
+    z.object({
+      display_name: z.string(),
+      user_id: z.string().optional(),
+      // Each sample is [t_relative_ms, progress 0..1].
+      samples: z.array(z.tuple([z.number(), z.number()])),
+    }),
+  ),
+});
+export type Replay = z.infer<typeof ReplaySchema>;
+
+export const ReplayUploadUrlResponseSchema = z.object({
+  upload_url: z.string().url(),
+  key: z.string(),
+});
+
+export const ReplayResponseSchema = z.object({
+  download_url: z.string().url(),
+  key: z.string(),
+});
+
 export const PracticeRunRequestSchema = z.object({
     snippet_id: z.string().min(1),
     chars_typed: z.number().int().min(1),

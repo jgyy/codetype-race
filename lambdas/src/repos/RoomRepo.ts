@@ -67,7 +67,18 @@ export class RoomRepo {
         }
     }
 
-    async listPlayers(roomId: string): Promise<Player[]> {
+    async recordReplay(roomId: string, replayKey: string): Promise<void> {
+    await this.client.send(
+      new UpdateCommand({
+        TableName: TABLE,
+        Key: { PK: roomPK(roomId), SK: roomMetaSK() },
+        UpdateExpression: "SET replay_key = :k",
+        ExpressionAttributeValues: { ":k": replayKey },
+      }),
+    );
+  }
+
+  async listPlayers(roomId: string): Promise<Player[]> {
         const r = await this.client.send(
             new QueryCommand({
                 TableName: TABLE,

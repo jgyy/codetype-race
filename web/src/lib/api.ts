@@ -238,6 +238,27 @@ export async function reviewSnippet(
   return r.json() as Promise<{ snippet_id: string; status: string }>;
 }
 
+export async function getReplayUploadUrl(roomId: string) {
+  const r = await req(`/rooms/${encodeURIComponent(roomId)}/replay/upload-url`);
+  if (!r.ok) await failWith(r);
+  return r.json() as Promise<{ upload_url: string; key: string }>;
+}
+
+export async function getReplay(roomId: string) {
+  const r = await req(`/rooms/${encodeURIComponent(roomId)}/replay`);
+  if (!r.ok) await failWith(r);
+  return r.json() as Promise<{ download_url: string; key: string }>;
+}
+
+export async function uploadReplay(uploadUrl: string, replay: unknown) {
+  const r = await fetch(uploadUrl, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(replay),
+  });
+  if (!r.ok) throw new Error(`replay upload failed: ${r.status}`);
+}
+
 export async function listHistory() {
   const r = await req("/history", { auth: true });
   if (!r.ok) await failWith(r);

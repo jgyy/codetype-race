@@ -112,6 +112,33 @@ export class CodetypeStack extends Stack {
             "http/listPendingSnippets.ts",
         );
         const reviewSnippet = fn("ReviewSnippet", "http/reviewSnippet.ts");
+        // Race replays bucket: append-only JSON keyed by roomId, deleted
+        // automatically after 90 days via lifecycle rule. CORS allows
+        // browser PUTs against presigned URLs.
+        const replayBucket = new s3.Bucket(this, "Replays", {
+            blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+            removalPolicy: RemovalPolicy.DESTROY,
+            autoDeleteObjects: true,
+            lifecycleRules: [{ expiration: Duration.days(90) }],
+            cors: [
+                {
+                    allowedMethods: [s3.HttpMethods.PUT, s3.HttpMethods.GET],
+                    allowedOrigins: ["*"],
+                    allowedHeaders: ["*"],
+                    maxAge: 300,
+                },
+            ],
+        });
+        const getReplayUploadUrl = fn(
+            "GetReplayUploadUrl",
+            "http/getReplayUploadUrl.ts",
+            { REPLAY_BUCKET: replayBucket.bucketName },
+        );
+        const getReplay = fn("GetReplay", "http/getReplay.ts", {
+            REPLAY_BUCKET: replayBucket.bucketName,
+        });
+        replayBucket.grantPut(getReplayUploadUrl);
+        replayBucket.grantRead(getReplay);
         [
             createRoom,
             joinRoom,
@@ -128,6 +155,8 @@ export class CodetypeStack extends Stack {
             submitSnippet,
             listPendingSnippets,
             reviewSnippet,
+            getReplayUploadUrl,
+            getReplay,
         ].forEach((f) => table.grantReadWriteData(f));
 
         const httpApi = new apigwv2.HttpApi(this, "HttpApi", {
@@ -270,6 +299,25 @@ export class CodetypeStack extends Stack {
                 reviewSnippet,
             ),
             authorizer: jwtAuth,
+        });
+
+        // Replay endpoints. Both unauthenticated for v1 to match the
+        // join flow; the room must exist for upload URL issuance.
+        httpApi.addRoutes({
+            path: "/rooms/{roomId}/replay/upload-url",
+            methods: [apigwv2.HttpMethod.GET],
+            integration: new apigwv2Integ.HttpLambdaIntegration(
+                "GetReplayUploadUrl",
+                getReplayUploadUrl,
+            ),
+        });
+        httpApi.addRoutes({
+            path: "/rooms/{roomId}/replay",
+            methods: [apigwv2.HttpMethod.GET],
+            integration: new apigwv2Integ.HttpLambdaIntegration(
+                "GetReplay",
+                getReplay,
+            ),
         });
 
         new events.Rule(this, "DailySnippetCron", {
