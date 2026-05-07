@@ -16,6 +16,8 @@ import * as iam from "aws-cdk-lib/aws-iam";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as nodejs from "aws-cdk-lib/aws-lambda-nodejs";
 import * as lambdaSources from "aws-cdk-lib/aws-lambda-event-sources";
+import * as events from "aws-cdk-lib/aws-events";
+import * as eventsTargets from "aws-cdk-lib/aws-events-targets";
 import * as s3 from "aws-cdk-lib/aws-s3";
 import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
 import * as origins from "aws-cdk-lib/aws-cloudfront-origins";
@@ -87,6 +89,16 @@ export class CodetypeStack extends Stack {
         const practiceRun = fn("PracticeRun", "http/practiceRun.ts");
         const getUser = fn("GetUser", "http/getUser.ts");
         const getLeaderboard = fn("GetLeaderboard", "http/getLeaderboard.ts");
+        const getDaily = fn("GetDaily", "http/getDaily.ts");
+        const dailySubmit = fn("DailySubmit", "http/dailySubmit.ts");
+        const getDailyLeaderboard = fn(
+            "GetDailyLeaderboard",
+            "http/getDailyLeaderboard.ts",
+        );
+        const selectDailySnippet = fn(
+            "SelectDailySnippet",
+            "cron/selectDailySnippet.ts",
+        );
         [
             createRoom,
             joinRoom,
@@ -96,6 +108,10 @@ export class CodetypeStack extends Stack {
             practiceRun,
             getUser,
             getLeaderboard,
+            getDaily,
+            dailySubmit,
+            getDailyLeaderboard,
+            selectDailySnippet,
         ].forEach((f) => table.grantReadWriteData(f));
 
         const httpApi = new apigwv2.HttpApi(this, "HttpApi", {
@@ -179,6 +195,40 @@ export class CodetypeStack extends Stack {
                 "GetLeaderboard",
                 getLeaderboard,
             ),
+        });
+        httpApi.addRoutes({
+            path: "/daily",
+            methods: [apigwv2.HttpMethod.GET],
+            integration: new apigwv2Integ.HttpLambdaIntegration(
+                "GetDaily",
+                getDaily,
+            ),
+        });
+        httpApi.addRoutes({
+            path: "/daily/submit",
+            methods: [apigwv2.HttpMethod.POST],
+            integration: new apigwv2Integ.HttpLambdaIntegration(
+                "DailySubmit",
+                dailySubmit,
+            ),
+            authorizer: jwtAuth,
+        });
+        httpApi.addRoutes({
+            path: "/daily/leaderboard",
+            methods: [apigwv2.HttpMethod.GET],
+            integration: new apigwv2Integ.HttpLambdaIntegration(
+                "GetDailyLeaderboard",
+                getDailyLeaderboard,
+            ),
+        });
+
+        // Daily snippet picker fires at 00:00 UTC. The cron Lambda is
+        // idempotent (attribute_not_exists on the daily META row) so a
+        // re-run within the same UTC day is a no-op. TODO: gate this to
+        // a prod stack envelope when stacks split.
+        new events.Rule(this, "DailySnippetCron", {
+            schedule: events.Schedule.cron({ minute: "0", hour: "0" }),
+            targets: [new eventsTargets.LambdaFunction(selectDailySnippet)],
         });
 
         const wsConnect = fn("WsConnect", "ws/connect.ts");

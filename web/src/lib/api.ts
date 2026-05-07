@@ -142,6 +142,63 @@ export async function getLeaderboard(opts: {
   return r.json();
 }
 
+export async function getDaily() {
+  const r = await req("/daily");
+  if (!r.ok) await failWith(r);
+  return r.json() as Promise<{
+    date: string;
+    snippet: {
+      snippet_id: string;
+      language: string;
+      title: string;
+      code: string;
+      length: number;
+      difficulty?: number;
+    };
+  }>;
+}
+
+export async function postDailySubmit(body: {
+  date: string;
+  snippet_id: string;
+  chars_typed: number;
+  errors: number;
+  duration_ms: number;
+}) {
+  const r = await req("/daily/submit", {
+    method: "POST",
+    auth: true,
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) await failWith(r);
+  return r.json() as Promise<{
+    improved: boolean;
+    best_wpm: number;
+    rank: number;
+  }>;
+}
+
+export async function getDailyLeaderboard(opts: {
+  date?: string;
+  limit?: number;
+} = {}) {
+  const qs = new URLSearchParams();
+  if (opts.date) qs.set("date", opts.date);
+  if (opts.limit !== undefined) qs.set("limit", String(opts.limit));
+  const path = qs.toString() ? `/daily/leaderboard?${qs}` : "/daily/leaderboard";
+  const r = await req(path);
+  if (!r.ok) await failWith(r);
+  return r.json() as Promise<{
+    date: string;
+    entries: Array<{
+      user_id: string;
+      display_name: string;
+      scaled_wpm: number;
+      finished_at: number;
+    }>;
+  }>;
+}
+
 export async function listHistory() {
   const r = await req("/history", { auth: true });
   if (!r.ok) await failWith(r);

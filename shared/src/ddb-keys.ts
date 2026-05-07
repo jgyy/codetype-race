@@ -24,6 +24,19 @@ export const ratingSortKey = (rating: number, userId: string) => {
     const inverted = Math.max(0, RATING_BIAS - Math.floor(rating));
     return `RATING#${String(inverted).padStart(RATING_PAD_WIDTH, "0")}#${userId}`;
 };
+
+// Daily challenge keys. Date is YYYY-MM-DD (UTC) so DDB lex order
+// matches calendar order. Runs use inverse-padded WPM so the
+// leaderboard scans highest-first.
+export const dailyPK = (date: string) => `DAILY#${date}`;
+export const dailyMetaSK = () => "META";
+export const dailyUserSK = (userId: string) => `USER#${userId}`;
+const WPM_PAD_WIDTH = 5;
+const WPM_BIAS = 99_999;
+export const dailyRunSK = (wpm: number, userId: string) => {
+    const inverted = Math.max(0, WPM_BIAS - Math.floor(wpm));
+    return `RUN#${String(inverted).padStart(WPM_PAD_WIDTH, "0")}#${userId}`;
+};
 export const leaderboardGlobalPK = () => "LEADERBOARD#GLOBAL";
 export const leaderboardLangPK = (language: string) =>
     `LEADERBOARD#LANG#${language}`;

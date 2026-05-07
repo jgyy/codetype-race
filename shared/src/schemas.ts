@@ -188,6 +188,45 @@ export const GetLeaderboardResponseSchema = z.object({
   entries: z.array(LeaderboardEntrySchema),
 });
 
+export const DailyMetaSchema = z.object({
+  date: z.string(),
+  snippet_id: z.string(),
+  selected_at: z.number(),
+});
+export type DailyMeta = z.infer<typeof DailyMetaSchema>;
+
+export const GetDailyResponseSchema = z.object({
+  date: z.string(),
+  snippet: SnippetSchema,
+});
+
+export const DailySubmitRequestSchema = z.object({
+  date: z.string(),
+  snippet_id: z.string(),
+  chars_typed: z.number().int().min(1),
+  errors: z.number().int().min(0),
+  duration_ms: z.number().int().min(1),
+});
+export type DailySubmitRequest = z.infer<typeof DailySubmitRequestSchema>;
+
+export const DailySubmitResponseSchema = z.object({
+  improved: z.boolean(),
+  best_wpm: z.number(),
+  rank: z.number().int().min(1),
+});
+export type DailySubmitResponse = z.infer<typeof DailySubmitResponseSchema>;
+
+export const DailyLeaderboardEntrySchema = z.object({
+  user_id: z.string(),
+  display_name: z.string(),
+  scaled_wpm: z.number(),
+  finished_at: z.number(),
+});
+export const GetDailyLeaderboardResponseSchema = z.object({
+  date: z.string(),
+  entries: z.array(DailyLeaderboardEntrySchema),
+});
+
 export const PracticeRunResponseSchema = z.object({
     finished_at: z.number(),
     gross_wpm: z.number(),
