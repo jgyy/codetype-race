@@ -2,38 +2,74 @@
 
 Real-time multiplayer typing race for code snippets. A host creates a room, shares a 6-character join code, 2–8 players join a lobby, everyone races the same snippet at the same time, and a podium shows the winner with WPM/accuracy.
 
-See `docs/01codetype-race-plan.md` for the full plan.
+See `docs/specs/00-overview.md` for the active per-phase roadmap and `docs/architecture.md` for the system shape.
 
 ## Repo layout
 
-Three independent packages — no Bun workspaces. `shared/src/*.ts` is copied into `lambdas/src/shared/` and `web/src/shared/` (run `bun run sync-shared` in either package after editing `shared/`).
+Bun workspaces: a single root `package.json` declares four packages, all linked at `node_modules/@codetype/*`.
 
 ```
-shared/    pure TS — wpm.ts, streak.ts, ddb-keys.ts, types.ts (+ tests)
-lambdas/   AWS Lambda handlers (http/, ws/, stream/)
-infra/     AWS CDK stack (DynamoDB, Cognito, API GW HTTP+WS, S3+CloudFront)
-web/       Next.js 16 app (static export → S3+CloudFront)
-data/      Seed snippet JSON
-scripts/   Bun scripts (seed)
+shared/    @codetype/shared — pure TS: wpm, streak, ddb-keys, schemas, elo, anticheat
+lambdas/   @codetype/lambdas — AWS Lambda handlers (http/, ws/, stream/, cron/)
+infra/     @codetype/infra — AWS CDK app (Codetype + monitoring stacks)
+web/       @codetype/web — Next.js 16 app (static export → S3 + CloudFront)
+data/      Seed snippet JSON (canonical)
+scripts/   Bun scripts (e.g. seed-snippets)
+```
+
+## Architecture
+
+```mermaid
+flowchart LR
+  Browser -->|HTTPS| CF[CloudFront]
+  CF -->|static| S3site[S3 site]
+  Browser -->|HTTP API| HttpAPI[API Gateway HTTP]
+  Browser <-->|WebSocket| WsAPI[API Gateway WS]
+  HttpAPI --> Lambdas
+  WsAPI --> Lambdas
+  Lambdas --> DDB[(DynamoDB single table)]
+  DDB -->|stream| Broadcast[broadcast Lambda]
+  Broadcast -.->|postToConnection| WsAPI
+  Lambdas --> S3replay[(S3 replays)]
+  Cognito[Cognito user pool] --- HttpAPI
+  EventBridge -->|cron 00:00 UTC| Daily[selectDailySnippet]
+  Daily --> DDB
 ```
 
 ## Local dev
 
 ```bash
-# Run shared tests
-cd shared && bun install && bun test
+# Install all workspace deps from the repo root
+bun install
 
-# Deploy infra (uses AWS_PROFILE=your_profile)
-cd infra && bun install && bunx cdk deploy --profile your_profile
+# Tests
+bun --filter '*' test          # all packages
+bun --filter @codetype/shared test
+bun --filter @codetype/lambdas test
+bun --filter @codetype/web test
+
+# Web dev server
+bun --filter @codetype/web dev
+
+# Web production build
+bun --filter @codetype/web build
+
+# CDK synth / deploy
+bun --filter @codetype/infra exec cdk synth
+bun --filter @codetype/infra exec cdk deploy CodetypeStack --profile your_profile
+bun --filter @codetype/infra exec cdk deploy CodetypeMonitoringStack --profile your_profile
 
 # Seed snippets after first deploy
 AWS_PROFILE=your_profile TABLE_NAME=codetype bun scripts/seed-snippets.ts
 
-# Run web app locally — set NEXT_PUBLIC_* from CDK outputs
-cd web && bun install && bun run dev
+# End-to-end (Playwright; runs against `bun dev` by default)
+bun --filter @codetype/web exec playwright install   # one-time
+bun --filter @codetype/web e2e
 ```
 
-## Environment variables (web)
+## Environment variables
+
+### Web (`web/.env.local`)
 
 | Var | Source |
 |---|---|
@@ -43,6 +79,16 @@ cd web && bun install && bun run dev
 | `NEXT_PUBLIC_COGNITO_USER_POOL_CLIENT_ID` | CDK output `UserPoolClientId` |
 | `NEXT_PUBLIC_COGNITO_REGION` | e.g. `ap-southeast-1` |
 
-## Deploy from CI
+### Monitoring stack
 
-`.github/workflows/deploy.yml` assumes a role via OIDC (`secrets.AWS_DEPLOY_ROLE_ARN`), runs `cdk deploy`, then syncs `web/out` to the S3 bucket.
+| Var | Effect |
+|---|---|
+| `ALARM_EMAIL` | Subscribes the SNS alarm topic to this address. AWS sends a confirmation email on first deploy. |
+
+## CI
+
+`.github/workflows/ci.yml` runs four parallel jobs (`shared`, `lambdas`, `web`, `infra`) plus a `merge-gate` job that requires all four. PR-preview stacks and Lighthouse CI are deferred — see `docs/specs/08-polish-and-ci.md`.
+
+## Specs
+
+The roadmap lives in [`docs/specs/`](./docs/specs/). Each spec is a phase-as-PR; the order is captured in `00-overview.md`.

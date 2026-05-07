@@ -13,6 +13,7 @@ import {
 } from "@codetype/shared/ddb-keys";
 import { ddb, TABLE } from "../ddb";
 import { Errors } from "../AppError";
+import { metrics } from "../metrics";
 
 const TTL_SECONDS = 30;
 const CHAT_WINDOW_MS = 10_000;
@@ -99,7 +100,10 @@ export class ConnectionRepo {
         const expired = now - windowStart > CHAT_WINDOW_MS;
         const nextStart = expired ? now : windowStart;
         const nextCount = expired ? 1 : count + 1;
-        if (nextCount > CHAT_MAX_PER_WINDOW) throw Errors.RateLimited();
+        if (nextCount > CHAT_MAX_PER_WINDOW) {
+      metrics.chatRateLimited();
+      throw Errors.RateLimited();
+    }
         try {
             await this.client.send(
                 new UpdateCommand({

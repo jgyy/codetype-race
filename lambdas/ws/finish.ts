@@ -3,6 +3,7 @@ import type { WsFinishSchema } from "@codetype/shared/schemas";
 import { accuracy, grossWpm, netWpm, scaledWpm } from "@codetype/shared/wpm";
 import { computeRatingDeltas, type RaceParticipant } from "@codetype/shared/elo";
 import { evaluateStats, isFlagged } from "@codetype/shared/anticheat";
+import { metrics } from "../src/metrics";
 import { Errors } from "../src/AppError";
 import { connections } from "../src/repos/ConnectionRepo";
 import { rooms } from "../src/repos/RoomRepo";
@@ -48,6 +49,8 @@ export async function applyFinish(
         charsTyped: input.chars_typed,
     });
     const flagged = isFlagged(flags);
+    for (const f of flags) metrics.antiCheatFlag(f.code);
+    metrics.raceFinished(elapsedMs);
 
     await rooms.recordFinish({
         roomId,
