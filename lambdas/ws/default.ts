@@ -1,26 +1,30 @@
-import type { APIGatewayProxyWebsocketHandlerV2 } from "aws-lambda";
-import { handler as cursor } from "./cursor";
-import { handler as heartbeat } from "./heartbeat";
-import { handler as start } from "./start";
-import { handler as finish } from "./finish";
+import { WsClientMsgSchema } from "@codetype/shared/schemas";
+import { withWs } from "../src/middleware";
+import { Errors } from "../src/AppError";
+import { applyCursor } from "./cursor";
+import { applyHeartbeat } from "./heartbeat";
+import { applyStart } from "./start";
+import { applyFinish } from "./finish";
 
-export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event, ctx) => {
-  let action: string | undefined;
-  try {
-    action = JSON.parse(event.body ?? "{}").action;
-  } catch {
-    return { statusCode: 400, body: "bad json" };
-  }
-  switch (action) {
+export const handler = withWs(WsClientMsgSchema, async (input, ctx) => {
+  switch (input.action) {
     case "cursor":
-      return cursor(event, ctx, () => {}) as any;
+      await applyCursor(input, ctx.connectionId);
+      return;
     case "ping":
-      return heartbeat(event, ctx, () => {}) as any;
+      await applyHeartbeat(ctx.connectionId);
+      return;
     case "start":
-      return start(event, ctx, () => {}) as any;
+      await applyStart(ctx.connectionId);
+      return;
     case "finish":
-      return finish(event, ctx, () => {}) as any;
-    default:
-      return { statusCode: 400, body: "unknown action" };
+      await applyFinish(input, ctx.connectionId);
+      return;
+    default: {
+      // Should be unreachable thanks to the discriminated union.
+      const _exhaustive: never = input;
+      void _exhaustive;
+      throw Errors.BadRequest("unknown action");
+    }
   }
-};
+});

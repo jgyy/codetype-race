@@ -1,30 +1,27 @@
-import type { APIGatewayProxyHandlerV2 } from "aws-lambda";
-import { QueryCommand } from "@aws-sdk/lib-dynamodb";
-import { ddb, TABLE } from "../src/ddb";
-import { error, json } from "../src/http-resp";
-import { codeGSI1PK } from "@codetype/shared/ddb-keys";
+import { z } from "zod";
+import {
+  GetRoomResponseSchema,
+  RoomCodeSchema,
+} from "@codetype/shared/schemas";
+import { withHttp } from "../src/middleware";
+import { Errors } from "../src/AppError";
+import { rooms } from "../src/repos/RoomRepo";
 
-export const handler: APIGatewayProxyHandlerV2 = async (event) => {
-  const code = event.pathParameters?.code?.toUpperCase();
-  if (!code) return error(400, "code required");
+// `getRoom` reads its argument from the path; withHttp validates the body,
+// but the route's body is empty. We accept an empty object body and pull
+// the path param from ctx.
+const EmptyBody = z.object({}).passthrough();
 
-  const r = await ddb.send(
-    new QueryCommand({
-      TableName: TABLE,
-      IndexName: "GSI1",
-      KeyConditionExpression: "GSI1PK = :pk",
-      ExpressionAttributeValues: { ":pk": codeGSI1PK(code) },
-      Limit: 1,
-    }),
-  );
-  const item = r.Items?.[0];
-  if (!item) return error(404, "room not found");
+export const handler = withHttp(EmptyBody, async (_input, ctx) => {
+  const code = RoomCodeSchema.parse(ctx.pathParameters.code ?? "");
+  const room = await rooms.getByCode(code);
+  if (!room) throw Errors.NotFound("room");
 
-  return json(200, {
-    room_id: item.room_id,
-    code: item.code,
-    snippet_id: item.snippet_id,
-    status: item.status,
-    started_at: item.started_at,
+  return GetRoomResponseSchema.parse({
+    room_id: room.room_id,
+    code: room.code,
+    snippet_id: room.snippet_id,
+    status: room.status,
+    started_at: room.started_at,
   });
-};
+});

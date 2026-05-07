@@ -1,13 +1,14 @@
 import type { DynamoDBStreamHandler } from "aws-lambda";
-import { listConnectionsInRoom } from "../src/ws-helpers";
+import { withStream } from "../src/middleware";
+import { connections } from "../src/repos/ConnectionRepo";
 import { postTo } from "../src/wsClient";
 
-interface Event {
+interface RoomEvent {
   roomId: string;
   payload: unknown;
 }
 
-function parseRecord(record: any): Event | null {
+function parseRecord(record: any): RoomEvent | null {
   const keys = record.dynamodb?.Keys;
   const newImg = record.dynamodb?.NewImage;
   const oldImg = record.dynamodb?.OldImage;
@@ -16,7 +17,6 @@ function parseRecord(record: any): Event | null {
   if (!pk?.startsWith("ROOM#")) return null;
   const roomId = pk.slice("ROOM#".length);
 
-  // Room status transition
   if (sk === "META" && newImg?.status?.S) {
     const oldStatus = oldImg?.status?.S;
     const newStatus = newImg.status.S;
@@ -37,7 +37,6 @@ function parseRecord(record: any): Event | null {
     }
   }
 
-  // Player join/leave
   if (sk?.startsWith("PLAYER#")) {
     if (record.eventName === "INSERT") {
       return {
@@ -78,9 +77,9 @@ function parseRecord(record: any): Event | null {
   return null;
 }
 
-export const handler: DynamoDBStreamHandler = async (event) => {
+export const handler: DynamoDBStreamHandler = withStream(async (event) => {
   const events = event.Records.map(parseRecord).filter(
-    (e): e is Event => e !== null,
+    (e): e is RoomEvent => e !== null,
   );
   if (events.length === 0) return;
 
@@ -92,7 +91,7 @@ export const handler: DynamoDBStreamHandler = async (event) => {
 
   await Promise.all(
     Array.from(byRoom.entries()).map(async ([roomId, payloads]) => {
-      const conns = await listConnectionsInRoom(roomId);
+      const conns = await connections.listByRoom(roomId);
       await Promise.all(
         conns.flatMap((id) =>
           payloads.map((p) => postTo(id, p).catch(() => false)),
@@ -100,4 +99,4 @@ export const handler: DynamoDBStreamHandler = async (event) => {
       );
     }),
   );
-};
+});
