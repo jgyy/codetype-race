@@ -7,6 +7,7 @@ import { TypingArea } from "@/components/typing/TypingArea";
 import { Leaderboard } from "@/components/race/Leaderboard";
 import { Podium } from "@/components/race/Podium";
 import { Lobby } from "@/components/lobby/Lobby";
+import { ChatPanel } from "@/components/chat/ChatPanel";
 import { useRoomMachine } from "@/lib/machines/useRoomMachine";
 import snippets from "@/data/snippets.json";
 
@@ -131,12 +132,18 @@ function RoomShell({ code, identity, bootstrap, snippet, onRematch }: ShellProps
       )}
 
       {state.matches("lobby") && (
-        <Lobby
-          code={code}
-          isHost={identity.isHost}
-          players={players}
-          onStart={() => send({ type: "HOST_START" })}
-        />
+        <div className="grid gap-4 md:grid-cols-[1fr_18rem]">
+          <Lobby
+            code={code}
+            isHost={identity.isHost}
+            players={players}
+            onStart={() => send({ type: "HOST_START" })}
+          />
+          <ChatPanel
+            messages={state.context.chat}
+            onSend={(text) => send({ type: "CHAT_SEND", text })}
+          />
+        </div>
       )}
 
       {state.matches("countdown") && (
@@ -219,6 +226,10 @@ function RoomShell({ code, identity, bootstrap, snippet, onRematch }: ShellProps
               </Link>
             )}
           </div>
+          <ChatPanel
+            messages={state.context.chat}
+            onSend={(text) => send({ type: "CHAT_SEND", text })}
+          />
         </section>
       )}
 

@@ -17,6 +17,7 @@ export type WsActorEvent =
   | { type: "SEND_CURSOR"; progress: number; chars_typed: number; errors: number }
   | { type: "SEND_START" }
   | { type: "SEND_FINISH"; chars_typed: number; errors: number }
+  | { type: "SEND_CHAT"; text: string }
   | { type: "CLOSE" };
 
 /**
@@ -89,6 +90,9 @@ export const wsActor = fromCallback<WsActorEvent, WsActorInput>(
               errors: event.errors,
             }),
           );
+          return;
+        case "SEND_CHAT":
+          ws.send(JSON.stringify({ action: "chat", text: event.text }));
           return;
         case "CLOSE":
           closed = true;

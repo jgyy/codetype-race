@@ -21,6 +21,14 @@ export interface RatingDelta {
   rating_after: number;
 }
 
+export interface ChatEntry {
+  display_name: string;
+  text: string;
+  ts: number;
+}
+
+const CHAT_HISTORY_LIMIT = 50;
+
 export interface RoomContext {
   code: string;
   displayName: string;
@@ -32,6 +40,7 @@ export interface RoomContext {
   players: Record<string, PlayerState>;
   countdownValue: number;
   ratings: Record<string, RatingDelta>;
+  chat: ChatEntry[];
   error: { code: string; message: string } | null;
   retryCount: number;
 }
@@ -64,7 +73,8 @@ export type RoomEvent =
   | { type: "HOST_START" }
   | { type: "REMATCH" }
   | { type: "LEAVE" }
-  | { type: "RETRY" };
+  | { type: "RETRY" }
+  | { type: "CHAT_SEND"; text: string };
 
 const RETRY_DELAYS = [1000, 2000, 4000, 8000, 16000];
 const MAX_RETRIES = RETRY_DELAYS.length;
@@ -161,6 +171,21 @@ export const roomMachine = setup({
         delete next[name];
         return { players: next };
       }
+      if (m?.type === "chat") {
+        const next = [
+          ...context.chat,
+          {
+            display_name: m.display_name as string,
+            text: m.text as string,
+            ts: m.ts as number,
+          },
+        ];
+        return {
+          chat: next.length > CHAT_HISTORY_LIMIT
+            ? next.slice(next.length - CHAT_HISTORY_LIMIT)
+            : next,
+        };
+      }
       if (m?.type === "ratings") {
         const next: Record<string, any> = { ...context.ratings };
         for (const e of m.entries ?? []) {
@@ -221,6 +246,11 @@ export const roomMachine = setup({
       };
     }),
     sendStartToWs: sendTo("ws", { type: "SEND_START" }),
+    sendChatToWs: sendTo("ws", ({ event }) => {
+      if (event.type !== "CHAT_SEND")
+        return { type: "noop" } as AnyEventObject;
+      return { type: "SEND_CHAT", text: event.text };
+    }),
     sendFinishToWs: sendTo("ws", ({ event }) => {
       if (event.type !== "FINISH_LOCALLY")
         return { type: "noop" } as AnyEventObject;
@@ -245,6 +275,7 @@ export const roomMachine = setup({
     players: {},
     countdownValue: 0,
     ratings: {},
+    chat: [],
     error: null,
     retryCount: 0,
   }),
@@ -299,6 +330,7 @@ export const roomMachine = setup({
           { actions: "applyMsg" },
         ],
         HOST_START: { actions: "sendStartToWs" },
+        CHAT_SEND: { actions: "sendChatToWs" },
         WS_CLOSE: { target: "reconnecting" },
         WS_ERROR: { target: "error", actions: "setError" },
       },
@@ -357,6 +389,8 @@ export const roomMachine = setup({
           target: "connecting",
           actions: ["clearError", "resetRetries"],
         },
+        CHAT_SEND: { actions: "sendChatToWs" },
+        WS_MSG: { actions: "applyMsg" },
       },
     },
     reconnecting: {

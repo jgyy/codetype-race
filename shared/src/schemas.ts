@@ -216,12 +216,17 @@ export const WsFinishSchema = z.object({
     chars_typed: z.number().int().min(0),
     errors: z.number().int().min(0),
 });
+export const WsChatSchema = z.object({
+    action: z.literal("chat"),
+    text: z.string().min(1).max(280),
+});
 
 export const WsClientMsgSchema = z.discriminatedUnion("action", [
     WsCursorSchema,
     WsPingSchema,
     WsStartSchema,
     WsFinishSchema,
+    WsChatSchema,
 ]);
 export type WsClientMsg = z.infer<typeof WsClientMsgSchema>;
 
@@ -254,6 +259,13 @@ export const WsServerRoomEventSchema = z.object({
     event: z.enum(["join", "leave", "status"]),
     payload: z.unknown(),
 });
+export const WsServerChatSchema = z.object({
+    type: z.literal("chat"),
+    display_name: z.string(),
+    text: z.string(),
+    ts: z.number(),
+});
+
 export const WsServerRatingsSchema = z.object({
   type: z.literal("ratings"),
   entries: z.array(
@@ -278,6 +290,7 @@ export const WsServerMsgSchema = z.discriminatedUnion("type", [
     WsServerStartSchema,
     WsServerFinishSchema,
     WsServerRoomEventSchema,
+    WsServerChatSchema,
     WsServerRatingsSchema,
     WsServerKickedSchema,
     WsServerErrorSchema,
