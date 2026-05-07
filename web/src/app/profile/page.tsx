@@ -2,7 +2,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { getUserProfile } from "@/lib/api";
+import { getUserProfile, friendlyMessage } from "@/lib/api";
 
 interface Profile {
   user_id: string;
@@ -42,7 +42,7 @@ function ProfileView() {
         setProfile(r.profile);
         setRecent(r.recent ?? []);
       })
-      .catch((e: Error) => setErr(e.message));
+      .catch((e) => setErr(friendlyMessage(e)));
   }, [userId]);
 
   if (!userId) {

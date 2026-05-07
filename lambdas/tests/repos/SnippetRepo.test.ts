@@ -3,6 +3,7 @@ import { mockClient } from "aws-sdk-client-mock";
 import {
   DynamoDBDocumentClient,
   QueryCommand,
+  ScanCommand,
 } from "@aws-sdk/lib-dynamodb";
 import { SnippetRepo } from "../../src/repos/SnippetRepo";
 
@@ -53,9 +54,20 @@ describe("SnippetRepo.random", () => {
     expect(observed.ExpressionAttributeValues[":diff"]).toBe("DIFF#3#");
   });
 
-  test("returns [] from list when no language filter", async () => {
+  test("falls back to Scan when no language filter is provided", async () => {
+    let observed: any;
+    ddbMock.on(ScanCommand).callsFake((input) => {
+      observed = input;
+      return Promise.resolve({
+        Items: [
+          { snippet_id: "z", language: "py", title: "Z", code: "z", length: 1 },
+        ],
+      });
+    });
     const repo = new SnippetRepo(ddbMock as unknown as DynamoDBDocumentClient);
     const items = await repo.list({});
-    expect(items).toEqual([]);
+    expect(items).toHaveLength(1);
+    expect(observed.FilterExpression).toContain("begins_with(PK, :p)");
+    expect(observed.ExpressionAttributeValues[":approved"]).toBe("approved");
   });
 });

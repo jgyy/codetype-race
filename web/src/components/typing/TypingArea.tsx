@@ -23,6 +23,16 @@ export function TypingArea({ snippet, disabled, onProgress, onFinish }: Props) {
   const finishedRef = useRef(false);
   const boxRef = useRef<HTMLDivElement>(null);
 
+  // Capture callbacks in refs so identity churn from inline arrow props in
+  // the parent doesn't retrigger the progress effect (was producing an
+  // infinite render loop with the XState parent).
+  const onProgressRef = useRef(onProgress);
+  const onFinishRef = useRef(onFinish);
+  useEffect(() => {
+    onProgressRef.current = onProgress;
+    onFinishRef.current = onFinish;
+  }, [onProgress, onFinish]);
+
   useEffect(() => {
     if (!disabled) boxRef.current?.focus();
   }, [disabled]);
@@ -39,15 +49,15 @@ export function TypingArea({ snippet, disabled, onProgress, onFinish }: Props) {
   const progress = Math.min(1, charsTyped / snippet.length);
 
   useEffect(() => {
-    onProgress?.({ progress, chars_typed: charsTyped, errors });
+    onProgressRef.current?.({ progress, chars_typed: charsTyped, errors });
     if (
       !finishedRef.current &&
       charsTyped >= snippet.length
     ) {
       finishedRef.current = true;
-      onFinish?.({ chars_typed: charsTyped, errors });
+      onFinishRef.current?.({ chars_typed: charsTyped, errors });
     }
-  }, [progress, charsTyped, errors, snippet.length, onProgress, onFinish]);
+  }, [progress, charsTyped, errors, snippet.length]);
 
   const onKey = useCallback(
     (e: React.KeyboardEvent<HTMLDivElement>) => {

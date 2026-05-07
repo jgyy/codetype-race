@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { listHistory } from "@/lib/api";
+import { listHistory, friendlyMessage } from "@/lib/api";
 import { configureAuth, getCurrentUser } from "@/lib/aws/cognito";
 
 interface HistoryItem {
@@ -30,7 +30,7 @@ export default function HistoryPage() {
     if (!signedIn) return;
     listHistory()
       .then((r) => setItems(r.results ?? []))
-      .catch((e) => setErr(e.message));
+      .catch((e) => setErr(friendlyMessage(e)));
   }, [signedIn]);
 
   return (

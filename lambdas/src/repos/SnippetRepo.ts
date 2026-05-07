@@ -2,6 +2,7 @@ import {
     DynamoDBDocumentClient,
     GetCommand,
     QueryCommand,
+    ScanCommand,
     TransactWriteCommand,
     UpdateCommand,
 } from "@aws-sdk/lib-dynamodb";
@@ -42,7 +43,21 @@ export class SnippetRepo {
 
     async list(filters: SnippetFilters = {}, limit = 100): Promise<Snippet[]> {
         if (!filters.language) {
-            return [];
+            const r = await this.client.send(
+                new ScanCommand({
+                    TableName: TABLE,
+                    FilterExpression:
+                        "begins_with(PK, :p) AND SK = :sk AND (attribute_not_exists(#status) OR #status = :approved)",
+                    ExpressionAttributeNames: { "#status": "status" },
+                    ExpressionAttributeValues: {
+                        ":p": "SNIPPET#",
+                        ":sk": "META",
+                        ":approved": "approved",
+                    },
+                    Limit: limit,
+                }),
+            );
+            return (r.Items as Snippet[] | undefined) ?? [];
         }
         const exprValues: Record<string, unknown> = {
             ":pk": langGSI1PK(filters.language),

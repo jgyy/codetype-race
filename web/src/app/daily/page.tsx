@@ -6,6 +6,7 @@ import {
   getDaily,
   getDailyLeaderboard,
   postDailySubmit,
+  friendlyMessage,
 } from "@/lib/api";
 import { getCurrentUser } from "@/lib/aws/cognito";
 
@@ -47,7 +48,7 @@ export default function DailyPage() {
       .catch(() => {});
     getDaily()
       .then(setDailyState)
-      .catch((e: Error) => setErr(e.message));
+      .catch((e) => setErr(friendlyMessage(e)));
     getDailyLeaderboard({ limit: 100 })
       .then((r) => setLeaderboard(r.entries))
       .catch(() => {});
@@ -80,8 +81,8 @@ export default function DailyPage() {
       });
       setResult(r);
       await refreshLeaderboard(daily.date);
-    } catch (e: any) {
-      setErr(e.message);
+    } catch (e) {
+      setErr(friendlyMessage(e));
     }
   }
 

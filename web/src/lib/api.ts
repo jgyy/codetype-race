@@ -1,6 +1,42 @@
 import { HTTP_API } from "./config";
 import { getIdToken } from "./aws/cognito";
 
+export class ApiError extends Error {
+  constructor(
+    public readonly status: number,
+    public readonly code: string,
+    message: string,
+    public readonly details?: unknown,
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
+const FRIENDLY: Record<string, (status: number) => string> = {
+  UNAUTHORIZED: () => "You need to sign in to do that.",
+  FORBIDDEN: () => "You don’t have permission for that action.",
+  NOT_FOUND: () => "We couldn’t find what you were looking for.",
+  CONFLICT: () => "That action conflicts with the current state — try again.",
+  RATE_LIMITED: () => "You’re going too fast. Please slow down.",
+  BAD_REQUEST: () => "The request was invalid.",
+  INTERNAL: () => "Something went wrong on our end. Please try again.",
+};
+
+export function friendlyMessage(err: unknown): string {
+  if (err instanceof ApiError) {
+    const f = FRIENDLY[err.code];
+    if (f) return f(err.status);
+    return err.message || `Request failed (${err.status})`;
+  }
+  if (err instanceof TypeError) {
+    // fetch throws TypeError on network failure / CORS / offline.
+    return "Network error — check your connection and try again.";
+  }
+  if (err instanceof Error) return err.message;
+  return "Unexpected error.";
+}
+
 async function req(
   path: string,
   init: RequestInit & { auth?: boolean } = {},
@@ -22,17 +58,29 @@ async function req(
 
 async function failWith(r: Response): Promise<never> {
   const ct = r.headers.get("content-type") ?? "";
-  let detail = "";
+  let code = "HTTP_ERROR";
+  let message = r.statusText || "Request failed";
+  let details: unknown;
   if (ct.includes("application/json")) {
     try {
       const body = await r.json();
-      detail = body?.message ?? body?.error ?? JSON.stringify(body);
+      // Server contract: { error: { code, message, details? } }.
+      // Fall back to flat shapes for resilience.
+      const e = body?.error;
+      if (e && typeof e === "object") {
+        if (typeof e.code === "string") code = e.code;
+        if (typeof e.message === "string") message = e.message;
+        details = (e as { details?: unknown }).details;
+      } else if (typeof body?.message === "string") {
+        message = body.message;
+      } else if (typeof body?.error === "string") {
+        message = body.error;
+      }
     } catch {
-      // fall through
+      // non-JSON body — keep statusText fallback
     }
   }
-  if (!detail) detail = r.statusText || "Request failed";
-  throw new Error(`HTTP ${r.status}: ${detail}`);
+  throw new ApiError(r.status, code, message, details);
 }
 
 export interface CreateRoomOptions {

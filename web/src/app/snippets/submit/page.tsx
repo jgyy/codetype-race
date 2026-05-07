@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { submitSnippet } from "@/lib/api";
+import { submitSnippet, friendlyMessage } from "@/lib/api";
 import { getCurrentUser } from "@/lib/aws/cognito";
 
 export default function SubmitSnippetPage() {
@@ -36,9 +36,9 @@ export default function SubmitSnippetPage() {
       setTitle("");
       setText("");
       setSource("");
-    } catch (e: any) {
+    } catch (e) {
       setStatus("err");
-      setErr(e.message);
+      setErr(friendlyMessage(e));
     }
   }
 

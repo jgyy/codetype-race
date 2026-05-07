@@ -153,8 +153,10 @@ export const GetRoomResponseSchema = z.object({
 export type GetRoomResponse = z.infer<typeof GetRoomResponseSchema>;
 
 export const HistoryEntrySchema = z.object({
-    room_id: z.string(),
-    display_name: z.string(),
+    room_id: z.string().optional(),
+    display_name: z.string().optional(),
+    snippet_id: z.string().optional(),
+    mode: z.enum(["race", "practice"]).optional(),
     finished_at: z.number(),
     gross_wpm: z.number(),
     net_wpm: z.number(),

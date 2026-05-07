@@ -16,8 +16,18 @@ export const handler = withHttp(EmptyBody, async (_input, ctx) => {
         target = param;
     }
 
-    const profile = await users.getProfile(target);
-    if (!profile) throw Errors.NotFound("user");
+    let profile = await users.getProfile(target);
+    if (!profile) {
+        if (target !== ctx.userId) throw Errors.NotFound("user");
+        const c = ctx.claims;
+        const displayName =
+            (c["preferred_username"] as string | undefined) ||
+            (c["cognito:username"] as string | undefined) ||
+            (c["name"] as string | undefined) ||
+            ((c["email"] as string | undefined)?.split("@")[0]) ||
+            target.slice(0, 8);
+        profile = await users.getOrCreate(target, displayName);
+    }
 
     const recent = await users.listRecentRaces(target, 20);
     // Only surface group claims when the caller is asking about themselves.

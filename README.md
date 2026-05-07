@@ -55,9 +55,9 @@ bun --filter @codetype/web dev
 bun --filter @codetype/web build
 
 # CDK synth / deploy
-bun --filter @codetype/infra exec cdk synth
-bun --filter @codetype/infra exec cdk deploy CodetypeStack --profile your_profile
-bun --filter @codetype/infra exec cdk deploy CodetypeMonitoringStack --profile your_profile
+bun run cdk synth
+bun run cdk deploy CodetypeStack --profile your_profile
+bun run cdk deploy CodetypeMonitoringStack --profile your_profile
 
 # Seed snippets after first deploy
 AWS_PROFILE=your_profile TABLE_NAME=codetype bun scripts/seed-snippets.ts

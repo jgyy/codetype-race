@@ -104,11 +104,21 @@ export const wsActor = fromCallback<WsActorEvent, WsActorInput>(
     return () => {
       closed = true;
       if (heartbeat) clearInterval(heartbeat);
-      try {
-        ws.close();
-      } catch {
-        // ignore
+      // Closing a socket that is still in CONNECTING aborts the
+      // handshake, which Firefox surfaces as "connection interrupted
+      // while loading". React StrictMode's mount→cleanup→mount cycle
+      // hits exactly this case in dev. Defer the close until the
+      // socket finishes opening so the handshake completes cleanly.
+      if (ws.readyState === WebSocket.CONNECTING) {
+        ws.onopen = () => {
+          try { ws.close(); } catch { /* ignore */ }
+        };
+        ws.onmessage = null;
+        ws.onerror = null;
+        ws.onclose = null;
+        return;
       }
+      try { ws.close(); } catch { /* ignore */ }
     };
   },
 );

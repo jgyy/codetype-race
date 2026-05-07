@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useState } from "react";
-import { joinRoom } from "@/lib/api";
+import { joinRoom, friendlyMessage } from "@/lib/api";
 import { useRouter } from "next/navigation";
 
 export default function Home() {
@@ -19,8 +19,8 @@ export default function Home() {
       sessionStorage.setItem("display_name", name);
       sessionStorage.setItem("role", asSpectator ? "spectator" : "racer");
       router.push(`/room/?code=${code.toUpperCase()}`);
-    } catch (e: any) {
-      setErr(e.message);
+    } catch (e) {
+      setErr(friendlyMessage(e));
     }
   }
 

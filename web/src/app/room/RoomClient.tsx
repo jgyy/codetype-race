@@ -72,6 +72,19 @@ export default function RoomClient() {
     );
   }
 
+  if (!identity.displayName) {
+    return (
+      <NamePrompt
+        code={code}
+        onSubmit={(name, role) => {
+          sessionStorage.setItem("display_name", name);
+          sessionStorage.setItem("role", role);
+          setIdentity({ displayName: name, isHost: false, role });
+        }}
+      />
+    );
+  }
+
   return (
     <RoomShell
       code={code}
@@ -87,6 +100,63 @@ export default function RoomClient() {
         router.push(`/room/?code=${r.code}`);
       }}
     />
+  );
+}
+
+function NamePrompt({
+  code,
+  onSubmit,
+}: {
+  code: string;
+  onSubmit: (name: string, role: "racer" | "spectator") => void;
+}) {
+  const [name, setName] = useState("");
+  const [role, setRole] = useState<"racer" | "spectator">("racer");
+  const [err, setErr] = useState<string | null>(null);
+  return (
+    <main className="mx-auto max-w-md px-6 py-16 space-y-4">
+      <h1 className="text-2xl font-semibold">
+        Join room <span className="font-mono text-emerald-400">{code}</span>
+      </h1>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          const trimmed = name.trim();
+          if (!/^[A-Za-z0-9 _-]{1,24}$/.test(trimmed)) {
+            setErr("1–24 chars; letters, numbers, space, _ or - only");
+            return;
+          }
+          onSubmit(trimmed, role);
+        }}
+        className="space-y-3"
+      >
+        <input
+          autoFocus
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="display name"
+          className="w-full rounded border border-neutral-700 bg-neutral-950 px-3 py-2"
+          required
+        />
+        <label className="flex items-center gap-2 text-sm text-neutral-300">
+          <input
+            type="checkbox"
+            checked={role === "spectator"}
+            onChange={(e) =>
+              setRole(e.target.checked ? "spectator" : "racer")
+            }
+          />
+          Watch as spectator
+        </label>
+        <button
+          type="submit"
+          className="rounded bg-emerald-500 px-4 py-2 font-semibold text-black"
+        >
+          Enter room
+        </button>
+        {err && <p className="text-sm text-red-400">{err}</p>}
+      </form>
+    </main>
   );
 }
 

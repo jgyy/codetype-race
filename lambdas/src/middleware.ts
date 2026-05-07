@@ -55,6 +55,7 @@ export interface HttpCtx {
   route: string;
   userId?: string;
   groups: string[];
+  claims: Record<string, unknown>;
   pathParameters: Record<string, string | undefined>;
   queryStringParameters: Record<string, string | undefined>;
 }
@@ -95,6 +96,7 @@ export function withHttp<I, O>(
         route,
         userId,
         groups,
+        claims: claims ?? {},
         pathParameters: event.pathParameters ?? {},
         queryStringParameters: event.queryStringParameters ?? {},
       });

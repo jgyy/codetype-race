@@ -2,11 +2,11 @@
 import { Amplify } from "aws-amplify";
 import {
   fetchAuthSession,
-  signIn,
-  signOut,
-  signUp,
-  confirmSignUp,
-  getCurrentUser,
+  signIn as amplifySignIn,
+  signOut as amplifySignOut,
+  signUp as amplifySignUp,
+  confirmSignUp as amplifyConfirmSignUp,
+  getCurrentUser as amplifyGetCurrentUser,
 } from "aws-amplify/auth";
 import {
   COGNITO_REGION,
@@ -28,6 +28,10 @@ export function configureAuth() {
   configured = true;
 }
 
+if (typeof window !== "undefined") {
+  configureAuth();
+}
+
 export async function getIdToken(): Promise<string | null> {
   configureAuth();
   try {
@@ -38,5 +42,24 @@ export async function getIdToken(): Promise<string | null> {
   }
 }
 
-export { signIn, signOut, signUp, confirmSignUp, getCurrentUser };
+export const signIn: typeof amplifySignIn = (...args) => {
+  configureAuth();
+  return amplifySignIn(...args);
+};
+export const signOut: typeof amplifySignOut = (...args) => {
+  configureAuth();
+  return amplifySignOut(...args);
+};
+export const signUp: typeof amplifySignUp = (...args) => {
+  configureAuth();
+  return amplifySignUp(...args);
+};
+export const confirmSignUp: typeof amplifyConfirmSignUp = (...args) => {
+  configureAuth();
+  return amplifyConfirmSignUp(...args);
+};
+export const getCurrentUser: typeof amplifyGetCurrentUser = (...args) => {
+  configureAuth();
+  return amplifyGetCurrentUser(...args);
+};
 export { COGNITO_REGION };

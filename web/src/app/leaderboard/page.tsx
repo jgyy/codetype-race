@@ -2,7 +2,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { getLeaderboard } from "@/lib/api";
+import { getLeaderboard, friendlyMessage } from "@/lib/api";
 
 interface Entry {
   user_id: string;
@@ -21,7 +21,7 @@ function LeaderboardView() {
     setErr(null);
     getLeaderboard({ lang: lang || undefined, limit: 100 })
       .then((r) => setEntries(r.entries ?? []))
-      .catch((e: Error) => setErr(e.message));
+      .catch((e) => setErr(friendlyMessage(e)));
   }, [lang]);
 
   return (

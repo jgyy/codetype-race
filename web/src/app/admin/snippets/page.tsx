@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { listPendingSnippets, reviewSnippet } from "@/lib/api";
+import { listPendingSnippets, reviewSnippet, friendlyMessage } from "@/lib/api";
 
 interface Pending {
   snippet_id: string;
@@ -22,8 +22,8 @@ export default function AdminSnippetsPage() {
     try {
       const r = await listPendingSnippets();
       setItems((r.items as Pending[]) ?? []);
-    } catch (e: any) {
-      setErr(e.message);
+    } catch (e) {
+      setErr(friendlyMessage(e));
     }
   }
   useEffect(() => {
@@ -39,8 +39,8 @@ export default function AdminSnippetsPage() {
     try {
       await reviewSnippet(id, decision, reason);
       setItems((prev) => (prev ?? []).filter((s) => s.snippet_id !== id));
-    } catch (e: any) {
-      setErr(e.message);
+    } catch (e) {
+      setErr(friendlyMessage(e));
     } finally {
       setBusy(null);
     }

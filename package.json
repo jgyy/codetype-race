@@ -8,7 +8,7 @@
     "start": "bun --filter @codetype/web start",
     "lint": "bun --filter @codetype/web lint",
     "test": "bun --filter '*' test",
-    "cdk": "bun --filter @codetype/infra exec cdk",
+    "cdk": "cd infra && bunx cdk",
     "seed": "bun scripts/seed-snippets.ts"
   },
   "dependencies": {

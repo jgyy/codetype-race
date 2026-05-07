@@ -2,7 +2,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { getReplay } from "@/lib/api";
+import { getReplay, friendlyMessage } from "@/lib/api";
 import { ReplayPlayer } from "@/components/replay/ReplayPlayer";
 import snippets from "@/data/snippets.json";
 
@@ -35,8 +35,8 @@ function ReplayView() {
         if (!r.ok) throw new Error(`replay download ${r.status}`);
         const json = (await r.json()) as ReplayPayload;
         setReplay(json);
-      } catch (e: any) {
-        setErr(e.message);
+      } catch (e) {
+        setErr(friendlyMessage(e));
       }
     })();
   }, [roomId]);

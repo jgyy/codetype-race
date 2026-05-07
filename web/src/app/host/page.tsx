@@ -7,7 +7,7 @@ import {
   signIn,
   signUp,
 } from "@/lib/aws/cognito";
-import { createRoom } from "@/lib/api";
+import { createRoom, friendlyMessage } from "@/lib/api";
 import { useRouter } from "next/navigation";
 import snippets from "@/data/snippets.json";
 
@@ -93,8 +93,8 @@ export default function HostPage() {
         await confirmSignUp({ username: email, confirmationCode: code });
         setMode("signin");
       }
-    } catch (e: any) {
-      setErr(e.message ?? String(e));
+    } catch (e) {
+      setErr(friendlyMessage(e));
     }
   }
 
@@ -113,8 +113,8 @@ export default function HostPage() {
       sessionStorage.setItem("is_host", "1");
       sessionStorage.setItem("display_name", "host");
       router.push(`/room/?code=${r.code}`);
-    } catch (e: any) {
-      setErr(e.message);
+    } catch (e) {
+      setErr(friendlyMessage(e));
     }
   }
 
