@@ -2,6 +2,7 @@ import type { z } from "zod";
 import type { WsFinishSchema } from "@codetype/shared/schemas";
 import { accuracy, grossWpm, netWpm, scaledWpm } from "@codetype/shared/wpm";
 import { computeRatingDeltas, type RaceParticipant } from "@codetype/shared/elo";
+import { evaluateStats, isFlagged } from "@codetype/shared/anticheat";
 import { Errors } from "../src/AppError";
 import { connections } from "../src/repos/ConnectionRepo";
 import { rooms } from "../src/repos/RoomRepo";
@@ -39,6 +40,15 @@ export async function applyFinish(
     const acc = accuracy(input.chars_typed, input.errors);
     const scaled = scaledWpm(input.chars_typed, input.errors, elapsedMs);
 
+    // Anti-cheat lite: only duration + char count are on the wire today;
+    // variance/paste signals fire when B5 wires keystroke samples.
+    const flags = evaluateStats({
+        snippetLength: snippet.length,
+        durationMs: elapsedMs,
+        charsTyped: input.chars_typed,
+    });
+    const flagged = isFlagged(flags);
+
     await rooms.recordFinish({
         roomId,
         hostId: room.host_id,
@@ -50,9 +60,15 @@ export async function applyFinish(
         netWpm: net,
         accuracy: acc,
         scaledWpm: scaled,
+        flagged,
+        flags,
     });
 
-    await maybeApplyRatings(roomId, snippet.language);
+    // Flagged runs don't trigger rating updates so a cheating racer
+    // can't move the leaderboard.
+    if (!flagged) {
+        await maybeApplyRatings(roomId, snippet.language);
+    }
 }
 
 /**

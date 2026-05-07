@@ -34,6 +34,8 @@ export interface RecordFinishInput {
   netWpm: number;
   accuracy: number;
   scaledWpm: number;
+  flagged?: boolean;
+  flags?: Array<{ code: string; severity: string; detail: string }>;
 }
 
 export class RoomRepo {
@@ -236,6 +238,8 @@ export class RoomRepo {
       netWpm,
       accuracy,
       scaledWpm,
+      flagged,
+      flags,
     } = input;
 
     try {
@@ -278,6 +282,7 @@ export class RoomRepo {
           scaled_wpm: scaledWpm,
           chars_typed: charsTyped,
           errors,
+          ...(flagged ? { flagged: true, flags: flags ?? [] } : {}),
         },
       }),
     );

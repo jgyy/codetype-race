@@ -250,11 +250,20 @@ export class UserRepo {
     pk: string,
     limit = 100,
   ): Promise<Array<{ user_id: string; display_name: string; rating: number }>> {
+    // Filter at read time so flagged runs leave their leaderboard row
+    // intact (preserves the rating they were ranked at) but disappear
+    // from listings. No write amplification needed.
     const r = await this.client.send(
       new QueryCommand({
         TableName: TABLE,
         KeyConditionExpression: "PK = :pk AND begins_with(SK, :sk)",
-        ExpressionAttributeValues: { ":pk": pk, ":sk": "RATING#" },
+        FilterExpression:
+          "attribute_not_exists(flagged) OR flagged = :falseVal",
+        ExpressionAttributeValues: {
+          ":pk": pk,
+          ":sk": "RATING#",
+          ":falseVal": false,
+        },
         Limit: limit,
       }),
     );
