@@ -4,8 +4,15 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 mapfile -t files < <(git ls-files --cached --others --exclude-standard \
-    '*.ts' '*.tsx' '*.js' '*.cjs' '*.yaml' '*.yml' '*.toml' '*.css' '*.sh' \
-    ':!:bun.lock' ':!:**/package-lock.json')
+    '*.ts' '*.tsx' '*.js' '*.cjs' '*.mjs' \
+    '*.css' '*.html' \
+    '*.yaml' '*.yml' '*.toml' '*.json' '*.sh' \
+    ':!:bun.lock' ':!:**/package-lock.json' \
+    ':!:cdk.out/**' ':!:**/cdk.out/**' \
+    ':!:**/dist/**' ':!:**/build/**' ':!:**/.next/**' ':!:**/coverage/**' \
+    ':!:**/*.min.*' ':!:**/*.d.ts' \
+    ':!:**/*.generated.*' ':!:**/*.gen.*' ':!:**/__generated__/**' \
+    ':!:**/*-lock.json' ':!:**/*.lockb')
 
 total=0
 declare -a rows=()
