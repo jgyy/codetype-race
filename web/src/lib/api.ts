@@ -199,6 +199,45 @@ export async function getDailyLeaderboard(opts: {
   }>;
 }
 
+export async function submitSnippet(body: {
+  language: string;
+  difficulty: number;
+  title: string;
+  text: string;
+  source?: string;
+}) {
+  const r = await req("/snippets", {
+    method: "POST",
+    auth: true,
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) await failWith(r);
+  return r.json() as Promise<{ snippet_id: string; status: "pending" }>;
+}
+
+export async function listPendingSnippets() {
+  const r = await req("/admin/snippets/pending", { auth: true });
+  if (!r.ok) await failWith(r);
+  return r.json() as Promise<{ items: any[] }>;
+}
+
+export async function reviewSnippet(
+  snippetId: string,
+  decision: "approve" | "reject",
+  reason?: string,
+) {
+  const r = await req(
+    `/admin/snippets/${encodeURIComponent(snippetId)}/${decision}`,
+    {
+      method: "POST",
+      auth: true,
+      body: JSON.stringify(reason ? { reason } : {}),
+    },
+  );
+  if (!r.ok) await failWith(r);
+  return r.json() as Promise<{ snippet_id: string; status: string }>;
+}
+
 export async function listHistory() {
   const r = await req("/history", { auth: true });
   if (!r.ok) await failWith(r);

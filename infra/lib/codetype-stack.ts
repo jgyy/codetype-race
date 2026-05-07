@@ -56,6 +56,13 @@ export class CodetypeStack extends Stack {
         const userPoolClient = userPool.addClient("WebClient", {
             authFlows: { userPassword: true, userSrp: true },
         });
+        // Group membership surfaces in the JWT as `cognito:groups`.
+        // Members of this group can review community snippet submissions.
+        new cognito.CfnUserPoolGroup(this, "AdminGroup", {
+            userPoolId: userPool.userPoolId,
+            groupName: "admin",
+            description: "Snippet moderation",
+        });
 
         const fn = (
             id: string,
@@ -99,6 +106,12 @@ export class CodetypeStack extends Stack {
             "SelectDailySnippet",
             "cron/selectDailySnippet.ts",
         );
+        const submitSnippet = fn("SubmitSnippet", "http/submitSnippet.ts");
+        const listPendingSnippets = fn(
+            "ListPendingSnippets",
+            "http/listPendingSnippets.ts",
+        );
+        const reviewSnippet = fn("ReviewSnippet", "http/reviewSnippet.ts");
         [
             createRoom,
             joinRoom,
@@ -112,6 +125,9 @@ export class CodetypeStack extends Stack {
             dailySubmit,
             getDailyLeaderboard,
             selectDailySnippet,
+            submitSnippet,
+            listPendingSnippets,
+            reviewSnippet,
         ].forEach((f) => table.grantReadWriteData(f));
 
         const httpApi = new apigwv2.HttpApi(this, "HttpApi", {
@@ -151,9 +167,6 @@ export class CodetypeStack extends Stack {
             integration: new apigwv2Integ.HttpLambdaIntegration("History", listHistory),
             authorizer: jwtAuth,
         });
-        // Snippets are queried via GSI1 (PK = LANG#<language>) with the
-        // sort key encoding difficulty (DIFF#<n>#SNIPPET#<id>) so a single
-        // index serves both language-only and language+difficulty filtering.
         httpApi.addRoutes({
             path: "/snippets/random",
             methods: [apigwv2.HttpMethod.GET],
@@ -222,10 +235,43 @@ export class CodetypeStack extends Stack {
             ),
         });
 
-        // Daily snippet picker fires at 00:00 UTC. The cron Lambda is
-        // idempotent (attribute_not_exists on the daily META row) so a
-        // re-run within the same UTC day is a no-op. TODO: gate this to
-        // a prod stack envelope when stacks split.
+        httpApi.addRoutes({
+            path: "/snippets",
+            methods: [apigwv2.HttpMethod.POST],
+            integration: new apigwv2Integ.HttpLambdaIntegration(
+                "SubmitSnippet",
+                submitSnippet,
+            ),
+            authorizer: jwtAuth,
+        });
+        httpApi.addRoutes({
+            path: "/admin/snippets/pending",
+            methods: [apigwv2.HttpMethod.GET],
+            integration: new apigwv2Integ.HttpLambdaIntegration(
+                "ListPendingSnippets",
+                listPendingSnippets,
+            ),
+            authorizer: jwtAuth,
+        });
+        httpApi.addRoutes({
+            path: "/admin/snippets/{snippetId}/approve",
+            methods: [apigwv2.HttpMethod.POST],
+            integration: new apigwv2Integ.HttpLambdaIntegration(
+                "ApproveSnippet",
+                reviewSnippet,
+            ),
+            authorizer: jwtAuth,
+        });
+        httpApi.addRoutes({
+            path: "/admin/snippets/{snippetId}/reject",
+            methods: [apigwv2.HttpMethod.POST],
+            integration: new apigwv2Integ.HttpLambdaIntegration(
+                "RejectSnippet",
+                reviewSnippet,
+            ),
+            authorizer: jwtAuth,
+        });
+
         new events.Rule(this, "DailySnippetCron", {
             schedule: events.Schedule.cron({ minute: "0", hour: "0" }),
             targets: [new eventsTargets.LambdaFunction(selectDailySnippet)],

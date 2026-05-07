@@ -10,6 +10,11 @@ export class AppError extends Error {
   }
 }
 
+export function requireAdmin(ctx: { userId?: string; groups: string[] }): void {
+  if (!ctx.userId) throw Errors.Unauthorized();
+  if (!ctx.groups.includes("admin")) throw Errors.Forbidden();
+}
+
 export const Errors = {
   Unauthorized: () => new AppError("UNAUTHORIZED", 401, "unauthorized"),
   NotFound: (what: string) =>

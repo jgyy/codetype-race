@@ -54,8 +54,21 @@ export interface HttpCtx {
   requestId: string;
   route: string;
   userId?: string;
+  groups: string[];
   pathParameters: Record<string, string | undefined>;
   queryStringParameters: Record<string, string | undefined>;
+}
+
+/**
+ * Cognito surfaces group membership in the JWT as `cognito:groups`, but
+ * the claim type varies (string array, comma-separated string, or
+ * absent). Normalize to a plain string[].
+ */
+function extractGroups(claims: Record<string, unknown> | undefined): string[] {
+  const raw = claims?.["cognito:groups"];
+  if (Array.isArray(raw)) return raw.map(String);
+  if (typeof raw === "string") return raw.split(",").map((s) => s.trim()).filter(Boolean);
+  return [];
 }
 
 type HttpEvent =
@@ -76,10 +89,12 @@ export function withHttp<I, O>(
       const claims = (event as APIGatewayProxyEventV2WithJWTAuthorizer<Record<string, unknown>>)
         .requestContext?.authorizer?.jwt?.claims as Record<string, unknown> | undefined;
       const userId = claims?.sub as string | undefined;
+      const groups = extractGroups(claims);
       const out = await handler(input, {
         requestId,
         route,
         userId,
+        groups,
         pathParameters: event.pathParameters ?? {},
         queryStringParameters: event.queryStringParameters ?? {},
       });

@@ -19,6 +19,7 @@ export function Nav() {
   const [me, setMe] = useState<{
     user_id: string;
     rating: number;
+    isAdmin: boolean;
   } | null>(null);
 
   useEffect(() => {
@@ -31,6 +32,7 @@ export function Nav() {
           setMe({
             user_id: r.profile.user_id,
             rating: r.profile.rating,
+            isAdmin: (r.groups ?? []).includes("admin"),
           });
         }
       } catch {
@@ -67,6 +69,16 @@ export function Nav() {
               </li>
             );
           })}
+          {me?.isAdmin && (
+            <li>
+              <Link
+                href="/admin/snippets"
+                className="rounded px-3 py-1.5 text-amber-400 hover:bg-neutral-800"
+              >
+                Admin
+              </Link>
+            </li>
+          )}
           {me && (
             <li>
               <Link

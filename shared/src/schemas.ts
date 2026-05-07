@@ -62,6 +62,9 @@ export type Connection = z.infer<typeof ConnectionSchema>;
 
 export const DifficultySchema = z.number().int().min(1).max(5);
 
+export const SnippetStatusSchema = z.enum(["pending", "approved", "rejected"]);
+export type SnippetStatus = z.infer<typeof SnippetStatusSchema>;
+
 export const SnippetSchema = z.object({
     snippet_id: z.string(),
     language: z.string(),
@@ -70,6 +73,29 @@ export const SnippetSchema = z.object({
     length: z.number(),
     difficulty: DifficultySchema.optional(),
     tags: z.array(z.string()).optional(),
+    status: SnippetStatusSchema.optional(),
+    submitted_by: z.string().optional(),
+    reviewed_by: z.string().optional(),
+    reviewed_at: z.number().optional(),
+    reject_reason: z.string().optional(),
+});
+
+export const SnippetSubmissionSchema = z.object({
+    language: z.string().min(1).max(40),
+    difficulty: DifficultySchema,
+    title: z.string().min(3).max(80),
+    text: z.string().min(20).max(2000),
+    source: z.string().url().optional(),
+});
+export type SnippetSubmission = z.infer<typeof SnippetSubmissionSchema>;
+
+export const SnippetActionSchema = z.object({
+    snippet_id: z.string().min(1),
+    reason: z.string().max(280).optional(),
+});
+
+export const ListPendingResponseSchema = z.object({
+    items: z.array(SnippetSchema.passthrough()),
 });
 export type Snippet = z.infer<typeof SnippetSchema>;
 
@@ -175,6 +201,7 @@ export type RaceHistoryEntry = z.infer<typeof RaceHistoryEntrySchema>;
 export const GetUserResponseSchema = z.object({
   profile: UserProfileSchema,
   recent: z.array(RaceHistoryEntrySchema.passthrough()),
+  groups: z.array(z.string()).optional(),
 });
 
 export const LeaderboardEntrySchema = z.object({

@@ -7,17 +7,17 @@ export const resultSK = (finishedAt: number, displayName: string) =>
 
 export const snippetPK = (snippetId: string) => `SNIPPET#${snippetId}`;
 
-// User profile + race history live under USER#<sub>. Profile uses
-// SK="PROFILE"; per-race rows use SK="RACE#<finishedAt>#<roomId>" so a
-// reverse-sort query returns most recent first.
+export const pendingQueuePK = () => "QUEUE#SNIPPETS#PENDING";
+export const pendingQueueSK = (submittedAt: number, snippetId: string) =>
+    `SUBMITTED#${submittedAt}#${snippetId}`;
+
+export const submitCounterSK = (date: string) => `SUBMIT_DAY#${date}`;
+
 export const userPK = (userId: string) => `USER#${userId}`;
 export const userProfileSK = () => "PROFILE";
 export const userRaceSK = (finishedAt: number, roomId: string) =>
     `RACE#${finishedAt}#${roomId}`;
 
-// Leaderboards use inverse-padded ratings as the SK so DDB's lex sort
-// puts the highest rating first when scanning forward. PAD_WIDTH=6 gives
-// us headroom for ratings up to 999_999.
 const RATING_PAD_WIDTH = 6;
 const RATING_BIAS = 999_999;
 export const ratingSortKey = (rating: number, userId: string) => {
@@ -25,9 +25,6 @@ export const ratingSortKey = (rating: number, userId: string) => {
     return `RATING#${String(inverted).padStart(RATING_PAD_WIDTH, "0")}#${userId}`;
 };
 
-// Daily challenge keys. Date is YYYY-MM-DD (UTC) so DDB lex order
-// matches calendar order. Runs use inverse-padded WPM so the
-// leaderboard scans highest-first.
 export const dailyPK = (date: string) => `DAILY#${date}`;
 export const dailyMetaSK = () => "META";
 export const dailyUserSK = (userId: string) => `USER#${userId}`;

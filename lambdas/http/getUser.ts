@@ -20,5 +20,7 @@ export const handler = withHttp(EmptyBody, async (_input, ctx) => {
     if (!profile) throw Errors.NotFound("user");
 
     const recent = await users.listRecentRaces(target, 20);
-    return GetUserResponseSchema.parse({ profile, recent });
+    // Only surface group claims when the caller is asking about themselves.
+    const groups = target === ctx.userId ? ctx.groups : undefined;
+    return GetUserResponseSchema.parse({ profile, recent, groups });
 });
