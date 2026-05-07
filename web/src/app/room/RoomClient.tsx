@@ -1,121 +1,105 @@
 "use client";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { getRoom } from "@/lib/api";
-import { RoomSocket } from "@/lib/realtime/socket";
+import { getRoom, createRoom } from "@/lib/api";
 import { TypingArea } from "@/components/typing/TypingArea";
 import { Leaderboard } from "@/components/race/Leaderboard";
 import { Podium } from "@/components/race/Podium";
+import { Lobby } from "@/components/lobby/Lobby";
+import { useRoomMachine } from "@/lib/machines/useRoomMachine";
 import snippets from "@/data/snippets.json";
 
-interface PlayerState {
-  display_name: string;
-  progress: number;
-  finished_at?: number;
-  scaled_wpm?: number;
-  net_wpm?: number;
-  gross_wpm?: number;
-  accuracy?: number;
+interface RoomBootstrap {
+  snippet_id: string;
+  status: "lobby" | "countdown" | "running" | "finished";
+  started_at: number | null;
 }
 
-export default function RoomPage() {
+export default function RoomClient() {
   const searchParams = useSearchParams();
   const code = (searchParams.get("code") ?? "").toUpperCase();
-  const [snippetId, setSnippetId] = useState<string | null>(null);
-  const [status, setStatus] = useState<string>("lobby");
-  const [startedAt, setStartedAt] = useState<number | null>(null);
-  const [now, setNow] = useState(Date.now());
-  const [players, setPlayers] = useState<Record<string, PlayerState>>({});
-  const socketRef = useRef<RoomSocket | null>(null);
-  const [isHost, setIsHost] = useState(false);
-  const [displayName, setDisplayName] = useState("");
+  const router = useRouter();
+
+  const [bootstrap, setBootstrap] = useState<RoomBootstrap | null>(null);
+  const [identity, setIdentity] = useState<{ displayName: string; isHost: boolean } | null>(null);
+
   useEffect(() => {
-    setIsHost(sessionStorage.getItem("is_host") === "1");
-    setDisplayName(sessionStorage.getItem("display_name") ?? "");
+    setIdentity({
+      displayName: sessionStorage.getItem("display_name") ?? "",
+      isHost: sessionStorage.getItem("is_host") === "1",
+    });
   }, []);
 
-  const snippet = useMemo(
-    () => snippets.find((s) => s.snippet_id === snippetId)?.code ?? "",
-    [snippetId],
-  );
-
   useEffect(() => {
+    if (!code) return;
+    let cancelled = false;
     getRoom(code).then((r) => {
-      setSnippetId(r.snippet_id);
-      setStatus(r.status);
-      if (r.started_at) setStartedAt(r.started_at);
+      if (cancelled) return;
+      setBootstrap({
+        snippet_id: r.snippet_id,
+        status: r.status,
+        started_at: r.started_at ?? null,
+      });
     });
+    return () => {
+      cancelled = true;
+    };
   }, [code]);
 
-  useEffect(() => {
-    if (!displayName) return;
-    const sock = new RoomSocket(code, displayName, (msg) => {
-      if (msg.type === "cursor") {
-        setPlayers((p) => ({
-          ...p,
-          [msg.display_name]: {
-            ...(p[msg.display_name] ?? { display_name: msg.display_name, progress: 0 }),
-            display_name: msg.display_name,
-            progress: msg.progress,
-          },
-        }));
-      } else if (msg.type === "room-event" && msg.event === "status") {
-        setStatus(msg.payload.status);
-        if (msg.payload.started_at) setStartedAt(msg.payload.started_at);
-      } else if (msg.type === "room-event" && msg.event === "join") {
-        setPlayers((p) => ({
-          ...p,
-          [msg.payload.display_name]: p[msg.payload.display_name] ?? {
-            display_name: msg.payload.display_name,
-            progress: 0,
-          },
-        }));
-      } else if (msg.type === "finish") {
-        setPlayers((p) => ({
-          ...p,
-          [msg.display_name]: {
-            ...(p[msg.display_name] ?? { display_name: msg.display_name, progress: 1 }),
-            display_name: msg.display_name,
-            progress: 1,
-            finished_at: msg.finished_at,
-            scaled_wpm: msg.scaled_wpm,
-            net_wpm: msg.net_wpm,
-            gross_wpm: msg.gross_wpm,
-            accuracy: msg.accuracy,
-          },
-        }));
-      }
-    });
-    sock.connect();
-    socketRef.current = sock;
-    setPlayers((p) => ({
-      ...p,
-      [displayName]: p[displayName] ?? { display_name: displayName, progress: 0 },
-    }));
-    return () => sock.close();
-  }, [code, displayName]);
+  const snippet = useMemo(() => {
+    if (!bootstrap) return null;
+    return snippets.find((s) => s.snippet_id === bootstrap.snippet_id) ?? null;
+  }, [bootstrap]);
 
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 200);
-    return () => clearInterval(id);
-  }, []);
+  if (!code || !identity || !bootstrap || !snippet) {
+    return (
+      <main className="mx-auto max-w-3xl px-6 py-10">
+        <p className="text-sm text-neutral-400">Loading room…</p>
+      </main>
+    );
+  }
 
-  const playerList = useMemo(
-    () => Object.entries(players).map(([id, p]) => ({ ...p, id })),
-    [players],
+  return (
+    <RoomShell
+      code={code}
+      identity={identity}
+      bootstrap={bootstrap}
+      snippet={snippet}
+      onRematch={async () => {
+        const r = await createRoom(snippet.snippet_id);
+        sessionStorage.setItem("is_host", "1");
+        sessionStorage.setItem("display_name", "host");
+        router.push(`/room/?code=${r.code}`);
+      }}
+    />
   );
-  const inCountdown =
-    status === "countdown" && startedAt && now < startedAt;
-  const isRacing = status === "running" || (startedAt && now >= startedAt && status !== "finished");
-  const router = useRouter();
-  const finishers = playerList.filter((p) => p.finished_at);
-  const stillRacing = playerList.some(
-    (p) => !p.finished_at && p.progress > 0 && p.progress < 1,
+}
+
+interface ShellProps {
+  code: string;
+  identity: { displayName: string; isHost: boolean };
+  bootstrap: RoomBootstrap;
+  snippet: { snippet_id: string; code: string };
+  onRematch: () => Promise<void>;
+}
+
+function RoomShell({ code, identity, bootstrap, snippet, onRematch }: ShellProps) {
+  const { state, send } = useRoomMachine({
+    code,
+    displayName: identity.displayName,
+    isHost: identity.isHost,
+    snippetCode: snippet.code,
+    status: bootstrap.status,
+    startedAt: bootstrap.started_at,
+  });
+
+  const players = useMemo(
+    () =>
+      Object.entries(state.context.players).map(([id, p]) => ({ ...p, id })),
+    [state.context.players],
   );
-  const raceOver =
-    status === "finished" ||
-    (!!startedAt && finishers.length > 0 && !stillRacing);
+  const finishers = players.filter((p) => p.finished_at);
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-10 space-y-6">
@@ -123,50 +107,57 @@ export default function RoomPage() {
         <h1 className="text-2xl font-semibold">
           Room <span className="font-mono text-emerald-400">{code}</span>
         </h1>
-        <span className="text-sm text-neutral-400">{displayName || "spectator"}</span>
+        <span className="text-sm text-neutral-400">
+          {identity.displayName || "spectator"}
+        </span>
       </header>
 
-      {status === "lobby" && (
-        <section>
-          <h2 className="text-lg font-medium">Lobby</h2>
-          <p className="text-sm text-neutral-400">
-            Share code <span className="font-mono">{code}</span>. Players: {Object.keys(players).length}
-          </p>
-          <Leaderboard players={playerList} />
-          {isHost && (
-            <button
-              onClick={() => socketRef.current?.start()}
-              disabled={Object.keys(players).length < 1}
-              className="mt-4 rounded bg-emerald-500 px-4 py-2 font-semibold text-black disabled:opacity-50"
-            >
-              Start race
-            </button>
-          )}
-        </section>
+      {(state.matches("idle") || state.matches("connecting")) && (
+        <p className="text-sm text-neutral-400">Connecting…</p>
       )}
 
-      {inCountdown && startedAt && (
+      {state.matches("lobby") && (
+        <Lobby
+          code={code}
+          isHost={identity.isHost}
+          players={players}
+          onStart={() => send({ type: "HOST_START" })}
+        />
+      )}
+
+      {state.matches("countdown") && (
         <section className="text-center">
           <p className="text-sm text-neutral-400">Starting in</p>
-          <p className="text-6xl font-bold">
-            {Math.max(0, Math.ceil((startedAt - now) / 1000))}
-          </p>
+          <p className="text-6xl font-bold">{state.context.countdownValue}</p>
         </section>
       )}
 
-      {!!startedAt && now >= startedAt && !raceOver && (
+      {state.matches("racing") && (
         <section className="space-y-4">
-          <Leaderboard players={playerList} />
+          <Leaderboard players={players} />
           <TypingArea
-            snippet={snippet}
-            disabled={!displayName}
-            onProgress={(s) => socketRef.current?.cursor(s.progress, s.chars_typed, s.errors)}
-            onFinish={(s) => socketRef.current?.finish(s.chars_typed, s.errors)}
+            snippet={snippet.code}
+            disabled={!identity.displayName}
+            onProgress={(s) =>
+              send({
+                type: "TYPED",
+                progress: s.progress,
+                chars_typed: s.chars_typed,
+                errors: s.errors,
+              })
+            }
+            onFinish={(s) =>
+              send({
+                type: "FINISH_LOCALLY",
+                chars_typed: s.chars_typed,
+                errors: s.errors,
+              })
+            }
           />
         </section>
       )}
 
-      {raceOver && (
+      {state.matches("finished") && (
         <section className="space-y-6">
           <Podium
             results={finishers.map((p) => ({
@@ -180,15 +171,10 @@ export default function RoomPage() {
             }))}
           />
           <div className="flex flex-wrap gap-3">
-            {isHost && (
+            {identity.isHost && (
               <button
-                onClick={async () => {
-                  const { createRoom } = await import("@/lib/api");
-                  const r = await createRoom(snippetId ?? snippets[0].snippet_id);
-                  sessionStorage.setItem("is_host", "1");
-                  sessionStorage.setItem("display_name", "host");
-                  router.push(`/room/?code=${r.code}`);
-                }}
+                type="button"
+                onClick={onRematch}
                 className="rounded bg-emerald-500 px-4 py-2 font-semibold text-black hover:bg-emerald-400"
               >
                 Race again
@@ -200,7 +186,7 @@ export default function RoomPage() {
             >
               Back home
             </Link>
-            {isHost && (
+            {identity.isHost && (
               <Link
                 href="/history"
                 className="rounded border border-neutral-700 px-4 py-2 hover:bg-neutral-800"
@@ -209,6 +195,27 @@ export default function RoomPage() {
               </Link>
             )}
           </div>
+        </section>
+      )}
+
+      {state.matches("reconnecting") && (
+        <p className="text-sm text-amber-400">
+          Reconnecting (attempt {state.context.retryCount}/5)…
+        </p>
+      )}
+
+      {state.matches("error") && (
+        <section className="space-y-3">
+          <p className="text-sm text-red-400">
+            {state.context.error?.message ?? "Connection error"}
+          </p>
+          <button
+            type="button"
+            onClick={() => send({ type: "RETRY" })}
+            className="rounded border border-neutral-700 px-4 py-2 text-sm hover:bg-neutral-800"
+          >
+            Retry
+          </button>
         </section>
       )}
     </main>
