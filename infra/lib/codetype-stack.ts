@@ -85,9 +85,18 @@ export class CodetypeStack extends Stack {
         const listHistory = fn("ListHistory", "http/listHistory.ts");
         const randomSnippet = fn("RandomSnippet", "http/randomSnippet.ts");
         const practiceRun = fn("PracticeRun", "http/practiceRun.ts");
-        [createRoom, joinRoom, getRoom, listHistory, randomSnippet, practiceRun].forEach(
-            (f) => table.grantReadWriteData(f),
-        );
+        const getUser = fn("GetUser", "http/getUser.ts");
+        const getLeaderboard = fn("GetLeaderboard", "http/getLeaderboard.ts");
+        [
+            createRoom,
+            joinRoom,
+            getRoom,
+            listHistory,
+            randomSnippet,
+            practiceRun,
+            getUser,
+            getLeaderboard,
+        ].forEach((f) => table.grantReadWriteData(f));
 
         const httpApi = new apigwv2.HttpApi(this, "HttpApi", {
             corsPreflight: {
@@ -145,6 +154,31 @@ export class CodetypeStack extends Stack {
                 practiceRun,
             ),
             authorizer: jwtAuth,
+        });
+        httpApi.addRoutes({
+            path: "/users/me",
+            methods: [apigwv2.HttpMethod.GET],
+            integration: new apigwv2Integ.HttpLambdaIntegration(
+                "GetUserMe",
+                getUser,
+            ),
+            authorizer: jwtAuth,
+        });
+        httpApi.addRoutes({
+            path: "/users/{userId}",
+            methods: [apigwv2.HttpMethod.GET],
+            integration: new apigwv2Integ.HttpLambdaIntegration(
+                "GetUser",
+                getUser,
+            ),
+        });
+        httpApi.addRoutes({
+            path: "/leaderboard",
+            methods: [apigwv2.HttpMethod.GET],
+            integration: new apigwv2Integ.HttpLambdaIntegration(
+                "GetLeaderboard",
+                getLeaderboard,
+            ),
         });
 
         const wsConnect = fn("WsConnect", "ws/connect.ts");

@@ -180,6 +180,7 @@ function RoomShell({ code, identity, bootstrap, snippet, onRematch }: ShellProps
       {state.matches("finished") && (
         <section className="space-y-6">
           <Podium
+            ratings={state.context.ratings}
             results={finishers
               .filter((p) => (p.role ?? "racer") === "racer")
               .map((p) => ({

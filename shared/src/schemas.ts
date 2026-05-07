@@ -147,6 +147,47 @@ export const PracticeRunRequestSchema = z.object({
 });
 export type PracticeRunRequest = z.infer<typeof PracticeRunRequestSchema>;
 
+export const UserProfileSchema = z.object({
+  user_id: z.string(),
+  display_name: z.string(),
+  rating: z.number().int(),
+  races_completed: z.number().int(),
+  races_won: z.number().int(),
+  best_wpm: z.record(z.string(), z.number()),
+  created_at: z.number(),
+});
+export type UserProfile = z.infer<typeof UserProfileSchema>;
+
+export const RaceHistoryEntrySchema = z.object({
+  room_id: z.string(),
+  finished_at: z.number(),
+  display_name: z.string(),
+  language: z.string().optional(),
+  scaled_wpm: z.number(),
+  net_wpm: z.number(),
+  gross_wpm: z.number(),
+  accuracy: z.number(),
+  rating_delta: z.number(),
+  rating_after: z.number(),
+});
+export type RaceHistoryEntry = z.infer<typeof RaceHistoryEntrySchema>;
+
+export const GetUserResponseSchema = z.object({
+  profile: UserProfileSchema,
+  recent: z.array(RaceHistoryEntrySchema.passthrough()),
+});
+
+export const LeaderboardEntrySchema = z.object({
+  user_id: z.string(),
+  display_name: z.string(),
+  rating: z.number(),
+});
+export type LeaderboardEntry = z.infer<typeof LeaderboardEntrySchema>;
+
+export const GetLeaderboardResponseSchema = z.object({
+  entries: z.array(LeaderboardEntrySchema),
+});
+
 export const PracticeRunResponseSchema = z.object({
     finished_at: z.number(),
     gross_wpm: z.number(),
@@ -213,6 +254,18 @@ export const WsServerRoomEventSchema = z.object({
     event: z.enum(["join", "leave", "status"]),
     payload: z.unknown(),
 });
+export const WsServerRatingsSchema = z.object({
+  type: z.literal("ratings"),
+  entries: z.array(
+    z.object({
+      user_id: z.string(),
+      display_name: z.string(),
+      delta: z.number().int(),
+      rating_after: z.number().int(),
+    }),
+  ),
+});
+
 export const WsServerKickedSchema = z.object({ type: z.literal("kicked") });
 export const WsServerErrorSchema = z.object({
     type: z.literal("error"),
@@ -225,6 +278,7 @@ export const WsServerMsgSchema = z.discriminatedUnion("type", [
     WsServerStartSchema,
     WsServerFinishSchema,
     WsServerRoomEventSchema,
+    WsServerRatingsSchema,
     WsServerKickedSchema,
     WsServerErrorSchema,
 ]);

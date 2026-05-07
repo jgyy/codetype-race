@@ -117,6 +117,31 @@ export async function postPracticeRun(body: PracticeRunBody) {
   }>;
 }
 
+export async function getMe() {
+  const r = await req("/users/me", { auth: true });
+  if (!r.ok) await failWith(r);
+  return r.json();
+}
+
+export async function getUserProfile(userId: string) {
+  const r = await req(`/users/${encodeURIComponent(userId)}`);
+  if (!r.ok) await failWith(r);
+  return r.json();
+}
+
+export async function getLeaderboard(opts: {
+  lang?: string;
+  limit?: number;
+} = {}) {
+  const qs = new URLSearchParams();
+  if (opts.lang) qs.set("lang", opts.lang);
+  if (opts.limit !== undefined) qs.set("limit", String(opts.limit));
+  const path = qs.toString() ? `/leaderboard?${qs.toString()}` : "/leaderboard";
+  const r = await req(path);
+  if (!r.ok) await failWith(r);
+  return r.json();
+}
+
 export async function listHistory() {
   const r = await req("/history", { auth: true });
   if (!r.ok) await failWith(r);

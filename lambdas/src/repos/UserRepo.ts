@@ -1,25 +1,44 @@
-// User profile + Elo rating storage. Wired in Phase 06; the repo is
-// scaffolded now so handlers (when they need it) won't talk to DDB
-// directly. No handler currently consumes this — it's intentionally
-// minimal and untested at the integration level.
-
 import {
   DynamoDBDocumentClient,
   GetCommand,
   PutCommand,
-  UpdateCommand,
+  QueryCommand,
+  TransactWriteCommand,
 } from "@aws-sdk/lib-dynamodb";
+import { ConditionalCheckFailedException } from "@aws-sdk/client-dynamodb";
+import {
+  leaderboardGlobalPK,
+  leaderboardLangPK,
+  ratingSortKey,
+  userPK,
+  userProfileSK,
+  userRaceSK,
+} from "@codetype/shared/ddb-keys";
+import type {
+  RaceHistoryEntry,
+  UserProfile,
+} from "@codetype/shared/schemas";
 import { ddb, TABLE } from "../ddb";
 
-const userPK = (userId: string) => `USER#${userId}`;
-const userMetaSK = () => "META";
+export const STARTING_RATING = 1000;
 
-export interface UserProfile {
-  user_id: string;
-  display_name: string;
-  rating: number;
-  races: number;
-  created_at: number;
+export interface RaceResultInput {
+  userId: string;
+  displayName: string;
+  language: string;
+  finishOrder: number;
+  scaledWpm: number;
+  netWpm: number;
+  grossWpm: number;
+  accuracy: number;
+}
+
+export interface AppliedDelta {
+  userId: string;
+  displayName: string;
+  oldRating: number;
+  newRating: number;
+  delta: number;
 }
 
 export class UserRepo {
@@ -29,7 +48,7 @@ export class UserRepo {
     const r = await this.client.send(
       new GetCommand({
         TableName: TABLE,
-        Key: { PK: userPK(userId), SK: userMetaSK() },
+        Key: { PK: userPK(userId), SK: userProfileSK() },
       }),
     );
     return (r.Item as UserProfile | undefined) ?? null;
@@ -41,43 +60,205 @@ export class UserRepo {
     const profile: UserProfile = {
       user_id: userId,
       display_name: displayName,
-      rating: 1000,
-      races: 0,
+      rating: STARTING_RATING,
+      races_completed: 0,
+      races_won: 0,
+      best_wpm: {},
       created_at: Date.now(),
     };
-    await this.client.send(
-      new PutCommand({
-        TableName: TABLE,
-        Item: { PK: userPK(userId), SK: userMetaSK(), ...profile },
-        ConditionExpression: "attribute_not_exists(PK)",
-      }),
-    );
+    try {
+      await this.client.send(
+        new PutCommand({
+          TableName: TABLE,
+          Item: { PK: userPK(userId), SK: userProfileSK(), ...profile },
+          ConditionExpression: "attribute_not_exists(PK)",
+        }),
+      );
+      // Seed the global leaderboard for this user so the first race
+      // doesn't have to special-case "no prior leaderboard row to delete".
+      await this.client.send(
+        new PutCommand({
+          TableName: TABLE,
+          Item: {
+            PK: leaderboardGlobalPK(),
+            SK: ratingSortKey(profile.rating, userId),
+            user_id: userId,
+            display_name: displayName,
+            rating: profile.rating,
+          },
+        }),
+      );
+    } catch (e) {
+      if (e instanceof ConditionalCheckFailedException) {
+        const again = await this.getProfile(userId);
+        if (again) return again;
+      }
+      throw e;
+    }
     return profile;
   }
 
-  async updateRating(userId: string, rating: number): Promise<void> {
-    await this.client.send(
-      new UpdateCommand({
+  async listRecentRaces(
+    userId: string,
+    limit = 20,
+  ): Promise<RaceHistoryEntry[]> {
+    const r = await this.client.send(
+      new QueryCommand({
         TableName: TABLE,
-        Key: { PK: userPK(userId), SK: userMetaSK() },
-        UpdateExpression: "SET rating = :r ADD races :one",
-        ExpressionAttributeValues: { ":r": rating, ":one": 1 },
+        KeyConditionExpression: "PK = :pk AND begins_with(SK, :sk)",
+        ExpressionAttributeValues: {
+          ":pk": userPK(userId),
+          ":sk": "RACE#",
+        },
+        ScanIndexForward: false,
+        Limit: limit,
       }),
     );
+    return (r.Items as RaceHistoryEntry[] | undefined) ?? [];
   }
 
-  async recordRace(userId: string, finishedAt: number, scaledWpm: number): Promise<void> {
-    await this.client.send(
-      new PutCommand({
-        TableName: TABLE,
-        Item: {
-          PK: userPK(userId),
-          SK: `RACE#${finishedAt}`,
-          finished_at: finishedAt,
-          scaled_wpm: scaledWpm,
+  /**
+   * Apply rating deltas, race history, and leaderboard updates for the
+   * supplied participants in a single TransactWrite. The room's META
+   * row gets `elo_applied=true` set with `attribute_not_exists` so a
+   * concurrent finish handler (e.g. ties) can't double-apply.
+   */
+  async applyRaceResults(
+    roomId: string,
+    language: string,
+    participants: Array<RaceResultInput & { profile: UserProfile; delta: number }>,
+  ): Promise<AppliedDelta[]> {
+    const now = Date.now();
+    const items: any[] = [];
+    const applied: AppliedDelta[] = [];
+
+    for (const p of participants) {
+      const newRating = p.profile.rating + p.delta;
+      const isWin = p.finishOrder === 1;
+      const bestForLang = p.profile.best_wpm?.[language] ?? 0;
+      const newBest = Math.max(bestForLang, p.scaledWpm);
+
+      // Update profile row
+      items.push({
+        Update: {
+          TableName: TABLE,
+          Key: { PK: userPK(p.userId), SK: userProfileSK() },
+          UpdateExpression:
+            "SET rating = :r, races_completed = races_completed + :one, races_won = races_won + :w, best_wpm.#lang = :best",
+          ExpressionAttributeNames: { "#lang": language },
+          ExpressionAttributeValues: {
+            ":r": newRating,
+            ":one": 1,
+            ":w": isWin ? 1 : 0,
+            ":best": newBest,
+          },
         },
+      });
+      // Race history row
+      items.push({
+        Put: {
+          TableName: TABLE,
+          Item: {
+            PK: userPK(p.userId),
+            SK: userRaceSK(p.finishOrder === 0 ? now : now, roomId),
+            room_id: roomId,
+            finished_at: now,
+            display_name: p.displayName,
+            language,
+            scaled_wpm: p.scaledWpm,
+            net_wpm: p.netWpm,
+            gross_wpm: p.grossWpm,
+            accuracy: p.accuracy,
+            rating_delta: p.delta,
+            rating_after: newRating,
+          },
+        },
+      });
+      // Old leaderboard row (delete) and new (put). Skip delete if old
+      // rating equals new (no movement) — but DDB Delete is idempotent
+      // so it's fine to always issue.
+      items.push({
+        Delete: {
+          TableName: TABLE,
+          Key: {
+            PK: leaderboardGlobalPK(),
+            SK: ratingSortKey(p.profile.rating, p.userId),
+          },
+        },
+      });
+      items.push({
+        Put: {
+          TableName: TABLE,
+          Item: {
+            PK: leaderboardGlobalPK(),
+            SK: ratingSortKey(newRating, p.userId),
+            user_id: p.userId,
+            display_name: p.displayName,
+            rating: newRating,
+          },
+        },
+      });
+      // Per-language leaderboard
+      items.push({
+        Delete: {
+          TableName: TABLE,
+          Key: {
+            PK: leaderboardLangPK(language),
+            SK: ratingSortKey(p.profile.rating, p.userId),
+          },
+        },
+      });
+      items.push({
+        Put: {
+          TableName: TABLE,
+          Item: {
+            PK: leaderboardLangPK(language),
+            SK: ratingSortKey(newRating, p.userId),
+            user_id: p.userId,
+            display_name: p.displayName,
+            rating: newRating,
+          },
+        },
+      });
+
+      applied.push({
+        userId: p.userId,
+        displayName: p.displayName,
+        oldRating: p.profile.rating,
+        newRating,
+        delta: p.delta,
+      });
+    }
+
+    // Once-only flag on the room. If another finisher already ran the
+    // ranking the conditional fails and we surface that to the caller.
+    items.push({
+      Update: {
+        TableName: TABLE,
+        Key: { PK: `ROOM#${roomId}`, SK: "META" },
+        UpdateExpression: "SET elo_applied = :t",
+        ConditionExpression: "attribute_not_exists(elo_applied)",
+        ExpressionAttributeValues: { ":t": true },
+      },
+    });
+
+    await this.client.send(new TransactWriteCommand({ TransactItems: items }));
+    return applied;
+  }
+
+  async listLeaderboard(
+    pk: string,
+    limit = 100,
+  ): Promise<Array<{ user_id: string; display_name: string; rating: number }>> {
+    const r = await this.client.send(
+      new QueryCommand({
+        TableName: TABLE,
+        KeyConditionExpression: "PK = :pk AND begins_with(SK, :sk)",
+        ExpressionAttributeValues: { ":pk": pk, ":sk": "RATING#" },
+        Limit: limit,
       }),
     );
+    return (r.Items as any[] | undefined) ?? [];
   }
 }
 

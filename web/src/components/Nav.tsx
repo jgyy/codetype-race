@@ -1,15 +1,46 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
+import { getMe } from "@/lib/api";
+import { getCurrentUser } from "@/lib/aws/cognito";
 
 const links = [
   { href: "/", label: "Join" },
   { href: "/host", label: "Host" },
+  { href: "/practice", label: "Practice" },
+  { href: "/leaderboard", label: "Leaderboard" },
   { href: "/history", label: "History" },
 ];
 
 export function Nav() {
   const pathname = usePathname();
+  const [me, setMe] = useState<{
+    user_id: string;
+    rating: number;
+  } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        await getCurrentUser();
+        const r = await getMe();
+        if (!cancelled) {
+          setMe({
+            user_id: r.profile.user_id,
+            rating: r.profile.rating,
+          });
+        }
+      } catch {
+        // anonymous; no rating to show
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [pathname]);
+
   return (
     <nav className="border-b border-neutral-800 bg-neutral-950/80 backdrop-blur">
       <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-3">
@@ -35,6 +66,17 @@ export function Nav() {
               </li>
             );
           })}
+          {me && (
+            <li>
+              <Link
+                href={`/profile?id=${encodeURIComponent(me.user_id)}`}
+                className="rounded px-3 py-1.5 font-mono text-emerald-400 hover:bg-neutral-800"
+                title="your rating"
+              >
+                {me.rating}
+              </Link>
+            </li>
+          )}
         </ul>
       </div>
     </nav>

@@ -14,6 +14,13 @@ export interface PlayerState {
   role?: "racer" | "spectator";
 }
 
+export interface RatingDelta {
+  user_id: string;
+  display_name: string;
+  delta: number;
+  rating_after: number;
+}
+
 export interface RoomContext {
   code: string;
   displayName: string;
@@ -24,6 +31,7 @@ export interface RoomContext {
   startedAt: number | null;
   players: Record<string, PlayerState>;
   countdownValue: number;
+  ratings: Record<string, RatingDelta>;
   error: { code: string; message: string } | null;
   retryCount: number;
 }
@@ -153,6 +161,13 @@ export const roomMachine = setup({
         delete next[name];
         return { players: next };
       }
+      if (m?.type === "ratings") {
+        const next: Record<string, any> = { ...context.ratings };
+        for (const e of m.entries ?? []) {
+          next[e.display_name] = e;
+        }
+        return { ratings: next };
+      }
       if (m?.type === "finish") {
         const name = m.display_name as string;
         return {
@@ -229,6 +244,7 @@ export const roomMachine = setup({
     startedAt: input.startedAt ?? null,
     players: {},
     countdownValue: 0,
+    ratings: {},
     error: null,
     retryCount: 0,
   }),
