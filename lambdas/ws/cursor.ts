@@ -1,7 +1,7 @@
 import type { APIGatewayProxyWebsocketHandlerV2 } from "aws-lambda";
 import { UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import { ddb, TABLE } from "../src/ddb";
-import { playerSK, roomPK } from "../src/shared/ddb-keys";
+import { playerSK, roomPK } from "@codetype/shared/ddb-keys";
 import { listConnectionsInRoom, resolveConnection } from "../src/ws-helpers";
 import { postTo } from "../src/wsClient";
 

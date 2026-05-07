@@ -6,7 +6,7 @@ import {
   codeGSI1PK,
   playerSK,
   roomPK,
-} from "../src/shared/ddb-keys";
+} from "@codetype/shared/ddb-keys";
 
 const NAME_RE = /^[A-Za-z0-9 _-]{1,24}$/;
 const MAX_PLAYERS = 8;

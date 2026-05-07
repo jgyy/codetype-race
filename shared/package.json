@@ -1,7 +1,14 @@
 {
-  "name": "codetype-shared",
+  "name": "@codetype/shared",
+  "version": "0.0.0",
   "private": true,
   "type": "module",
+  "exports": {
+    "./wpm": "./src/wpm.ts",
+    "./streak": "./src/streak.ts",
+    "./ddb-keys": "./src/ddb-keys.ts",
+    "./types": "./src/types.ts"
+  },
   "scripts": {
     "test": "bun test"
   },

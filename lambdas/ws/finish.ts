@@ -12,8 +12,8 @@ import {
   roomMetaSK,
   roomPK,
   snippetPK,
-} from "../src/shared/ddb-keys";
-import { accuracy, grossWpm, netWpm, scaledWpm } from "../src/shared/wpm";
+} from "@codetype/shared/ddb-keys";
+import { accuracy, grossWpm, netWpm, scaledWpm } from "@codetype/shared/wpm";
 import { resolveConnection } from "../src/ws-helpers";
 
 export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {

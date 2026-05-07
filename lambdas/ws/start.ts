@@ -1,7 +1,7 @@
 import type { APIGatewayProxyWebsocketHandlerV2 } from "aws-lambda";
 import { GetCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import { ddb, TABLE } from "../src/ddb";
-import { roomMetaSK, roomPK } from "../src/shared/ddb-keys";
+import { roomMetaSK, roomPK } from "@codetype/shared/ddb-keys";
 import { resolveConnection } from "../src/ws-helpers";
 
 const COUNTDOWN_MS = 3000;

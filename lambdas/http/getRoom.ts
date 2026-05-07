@@ -2,7 +2,7 @@ import type { APIGatewayProxyHandlerV2 } from "aws-lambda";
 import { QueryCommand } from "@aws-sdk/lib-dynamodb";
 import { ddb, TABLE } from "../src/ddb";
 import { error, json } from "../src/http-resp";
-import { codeGSI1PK } from "../src/shared/ddb-keys";
+import { codeGSI1PK } from "@codetype/shared/ddb-keys";
 
 export const handler: APIGatewayProxyHandlerV2 = async (event) => {
   const code = event.pathParameters?.code?.toUpperCase();

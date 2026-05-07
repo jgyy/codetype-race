@@ -4,6 +4,7 @@ const config: NextConfig = {
   output: "export",
   images: { unoptimized: true },
   trailingSlash: true,
+  transpilePackages: ["@codetype/shared"],
 };
 
 export default config;

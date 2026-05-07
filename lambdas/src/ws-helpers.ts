@@ -1,6 +1,6 @@
 import { QueryCommand } from "@aws-sdk/lib-dynamodb";
 import { ddb, TABLE } from "./ddb";
-import { connGSI1PK, roomPK } from "./shared/ddb-keys";
+import { connGSI1PK, roomPK } from "@codetype/shared/ddb-keys";
 
 export async function resolveConnection(connectionId: string) {
   const r = await ddb.send(

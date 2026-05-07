@@ -2,7 +2,7 @@ import type { APIGatewayProxyHandlerV2WithJWTAuthorizer } from "aws-lambda";
 import { QueryCommand } from "@aws-sdk/lib-dynamodb";
 import { ddb, TABLE } from "../src/ddb";
 import { error, json } from "../src/http-resp";
-import { hostGSI1PK } from "../src/shared/ddb-keys";
+import { hostGSI1PK } from "@codetype/shared/ddb-keys";
 
 export const handler: APIGatewayProxyHandlerV2WithJWTAuthorizer<any> = async (
   event,

@@ -6,7 +6,7 @@ import {
   connGSI1PK,
   connSK,
   roomPK,
-} from "../src/shared/ddb-keys";
+} from "@codetype/shared/ddb-keys";
 
 const TTL_SECONDS = 30;
 

@@ -1,7 +1,7 @@
 import type { APIGatewayProxyWebsocketHandlerV2 } from "aws-lambda";
 import { DeleteCommand, QueryCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import { ddb, TABLE } from "../src/ddb";
-import { connGSI1PK, playerSK } from "../src/shared/ddb-keys";
+import { connGSI1PK, playerSK } from "@codetype/shared/ddb-keys";
 
 export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   const connectionId = event.requestContext.connectionId!;

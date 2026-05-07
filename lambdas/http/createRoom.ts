@@ -9,8 +9,8 @@ import {
   roomMetaSK,
   roomPK,
   snippetPK,
-} from "../src/shared/ddb-keys";
-import type { Room } from "../src/shared/types";
+} from "@codetype/shared/ddb-keys";
+import type { Room } from "@codetype/shared/types";
 
 const MAX_CODE_TRIES = 5;
 

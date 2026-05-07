@@ -1,7 +1,7 @@
 import type { APIGatewayProxyWebsocketHandlerV2 } from "aws-lambda";
 import { UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import { ddb, TABLE } from "../src/ddb";
-import { connSK } from "../src/shared/ddb-keys";
+import { connSK } from "@codetype/shared/ddb-keys";
 import { resolveConnection } from "../src/ws-helpers";
 
 const TTL_SECONDS = 30;

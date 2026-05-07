@@ -1,5 +1,5 @@
 {
-  "name": "codetype-web",
+  "name": "@codetype/web",
   "private": true,
   "type": "module",
   "scripts": {
@@ -7,15 +7,17 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "bun test",
-    "sync-shared": "rm -rf src/shared && mkdir -p src/shared src/data && cp ../shared/src/*.ts src/shared/ && cp ../data/snippets.json src/data/snippets.json"
+    "test": "bun test"
   },
   "dependencies": {
     "@aws-amplify/auth": "^6.5.0",
+    "@codetype/shared": "workspace:*",
+    "@xstate/react": "^5.0.0",
     "aws-amplify": "^6.6.0",
     "next": "^15.0.0",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "xstate": "^5.0.0"
   },
   "devDependencies": {
     "@types/bun": "latest",

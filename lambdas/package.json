@@ -1,15 +1,15 @@
 {
-  "name": "codetype-lambdas",
+  "name": "@codetype/lambdas",
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "bun test",
-    "sync-shared": "rm -rf src/shared && mkdir -p src/shared && cp ../shared/src/*.ts src/shared/"
+    "test": "bun test"
   },
   "dependencies": {
     "@aws-sdk/client-apigatewaymanagementapi": "^3.658.0",
     "@aws-sdk/client-dynamodb": "^3.658.0",
     "@aws-sdk/lib-dynamodb": "^3.658.0",
+    "@codetype/shared": "workspace:*",
     "uuid": "^10.0.0"
   },
   "devDependencies": {
