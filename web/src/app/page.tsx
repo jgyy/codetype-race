@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 export default function Home() {
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
+  const [asSpectator, setAsSpectator] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const router = useRouter();
 
@@ -14,8 +15,9 @@ export default function Home() {
     e.preventDefault();
     setErr(null);
     try {
-      await joinRoom(code, name);
+      await joinRoom(code, name, asSpectator ? "spectator" : "racer");
       sessionStorage.setItem("display_name", name);
+      sessionStorage.setItem("role", asSpectator ? "spectator" : "racer");
       router.push(`/room/?code=${code.toUpperCase()}`);
     } catch (e: any) {
       setErr(e.message);
@@ -48,6 +50,14 @@ export default function Home() {
             maxLength={24}
             required
           />
+          <label className="flex items-center gap-2 text-sm text-neutral-300">
+            <input
+              type="checkbox"
+              checked={asSpectator}
+              onChange={(e) => setAsSpectator(e.target.checked)}
+            />
+            Join as spectator
+          </label>
           <button
             type="submit"
             className="rounded bg-emerald-500 px-4 py-2 font-semibold text-black hover:bg-emerald-400"
@@ -68,6 +78,19 @@ export default function Home() {
           className="mt-4 inline-block rounded border border-neutral-700 px-4 py-2 hover:bg-neutral-800"
         >
           Sign in →
+        </Link>
+      </section>
+
+      <section className="mt-6 rounded-lg border border-neutral-800 bg-neutral-900 p-6">
+        <h2 className="text-xl font-semibold">Practice solo</h2>
+        <p className="mt-2 text-sm text-neutral-400">
+          Type a random snippet without joining a room.
+        </p>
+        <Link
+          href="/practice"
+          className="mt-4 inline-block rounded border border-neutral-700 px-4 py-2 hover:bg-neutral-800"
+        >
+          Start practice →
         </Link>
       </section>
     </main>

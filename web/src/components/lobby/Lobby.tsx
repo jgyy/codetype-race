@@ -12,14 +12,24 @@ interface Props {
 }
 
 export function Lobby({ code, isHost, players, onStart }: Props) {
+  const racers = players.filter((p) => (p.role ?? "racer") === "racer");
+  const spectators = players.filter((p) => p.role === "spectator");
+
   return (
     <section className="space-y-4">
       <h2 className="text-lg font-medium">Lobby</h2>
       <p className="text-sm text-neutral-400">
-        Share code <JoinCodeBadge code={code} />. Players: {players.length}
+        Share code <JoinCodeBadge code={code} />. Racers: {racers.length}
+        {spectators.length > 0 && ` · Spectators: ${spectators.length}`}
       </p>
-      <PlayerList players={players} />
-      {isHost && <StartButton disabled={players.length < 1} onClick={onStart} />}
+      <PlayerList players={racers} />
+      {spectators.length > 0 && (
+        <div className="opacity-60">
+          <p className="text-xs uppercase text-neutral-500">Spectators</p>
+          <PlayerList players={spectators} />
+        </div>
+      )}
+      {isHost && <StartButton disabled={racers.length < 1} onClick={onStart} />}
     </section>
   );
 }

@@ -12,6 +12,11 @@ export const handler = withWsLifecycle(async (event, ctx) => {
   const room = await rooms.getByCode(parsed.code);
   if (!room) throw Errors.NotFound("room");
 
-  await connections.put(room.room_id, ctx.connectionId, parsed.display_name);
+  await connections.put(
+    room.room_id,
+    ctx.connectionId,
+    parsed.display_name,
+    parsed.role,
+  );
   return { statusCode: 200, body: "connected" };
 });

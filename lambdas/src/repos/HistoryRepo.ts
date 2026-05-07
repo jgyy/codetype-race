@@ -1,9 +1,26 @@
 import {
   DynamoDBDocumentClient,
+  PutCommand,
   QueryCommand,
 } from "@aws-sdk/lib-dynamodb";
-import { hostGSI1PK } from "@codetype/shared/ddb-keys";
+import { finishedGSI1SK, hostGSI1PK } from "@codetype/shared/ddb-keys";
 import { ddb, TABLE } from "../ddb";
+
+export interface PracticeEntry {
+  user_id: string;
+  snippet_id: string;
+  finished_at: number;
+  chars_typed: number;
+  errors: number;
+  duration_ms: number;
+  gross_wpm: number;
+  net_wpm: number;
+  accuracy: number;
+  scaled_wpm: number;
+}
+
+const userPracticePK = (userId: string) => `USER#${userId}`;
+const practiceSK = (finishedAt: number) => `PRACTICE#${finishedAt}`;
 
 export class HistoryRepo {
   constructor(private readonly client: DynamoDBDocumentClient = ddb) {}
@@ -20,6 +37,27 @@ export class HistoryRepo {
       }),
     );
     return (r.Items as Record<string, unknown>[] | undefined) ?? [];
+  }
+
+  /**
+   * Append a practice run under USER#<id> / PRACTICE#<finishedAt>. Mirrors
+   * via GSI1 onto HOST#<id> so the existing /history endpoint surfaces
+   * practice runs alongside multi-room results.
+   */
+  async appendPractice(entry: PracticeEntry): Promise<void> {
+    await this.client.send(
+      new PutCommand({
+        TableName: TABLE,
+        Item: {
+          PK: userPracticePK(entry.user_id),
+          SK: practiceSK(entry.finished_at),
+          GSI1PK: hostGSI1PK(entry.user_id),
+          GSI1SK: finishedGSI1SK(entry.finished_at),
+          mode: "practice",
+          ...entry,
+        },
+      }),
+    );
   }
 }
 

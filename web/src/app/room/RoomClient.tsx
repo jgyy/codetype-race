@@ -23,12 +23,20 @@ export default function RoomClient() {
   const router = useRouter();
 
   const [bootstrap, setBootstrap] = useState<RoomBootstrap | null>(null);
-  const [identity, setIdentity] = useState<{ displayName: string; isHost: boolean } | null>(null);
+  const [identity, setIdentity] = useState<{
+    displayName: string;
+    isHost: boolean;
+    role: "racer" | "spectator";
+  } | null>(null);
 
   useEffect(() => {
     setIdentity({
       displayName: sessionStorage.getItem("display_name") ?? "",
       isHost: sessionStorage.getItem("is_host") === "1",
+      role:
+        sessionStorage.getItem("role") === "spectator"
+          ? "spectator"
+          : "racer",
     });
   }, []);
 
@@ -82,7 +90,7 @@ export default function RoomClient() {
 
 interface ShellProps {
   code: string;
-  identity: { displayName: string; isHost: boolean };
+  identity: { displayName: string; isHost: boolean; role: "racer" | "spectator" };
   bootstrap: RoomBootstrap;
   snippet: { snippet_id: string; code: string };
   onRematch: () => Promise<void>;
@@ -93,10 +101,12 @@ function RoomShell({ code, identity, bootstrap, snippet, onRematch }: ShellProps
     code,
     displayName: identity.displayName,
     isHost: identity.isHost,
+    role: identity.role,
     snippetCode: snippet.code,
     status: bootstrap.status,
     startedAt: bootstrap.started_at,
   });
+  const isSpectator = identity.role === "spectator";
 
   const players = useMemo(
     () =>
@@ -138,33 +148,41 @@ function RoomShell({ code, identity, bootstrap, snippet, onRematch }: ShellProps
 
       {state.matches("racing") && (
         <section className="space-y-4">
-          <Leaderboard players={players} />
-          <TypingArea
-            snippet={snippet.code}
-            disabled={!identity.displayName}
-            onProgress={(s) =>
-              send({
-                type: "TYPED",
-                progress: s.progress,
-                chars_typed: s.chars_typed,
-                errors: s.errors,
-              })
-            }
-            onFinish={(s) =>
-              send({
-                type: "FINISH_LOCALLY",
-                chars_typed: s.chars_typed,
-                errors: s.errors,
-              })
-            }
-          />
+          <Leaderboard players={players.filter((p) => (p.role ?? "racer") === "racer")} />
+          {isSpectator ? (
+            <p className="text-sm text-neutral-400">
+              Watching as spectator. Live cursors update above.
+            </p>
+          ) : (
+            <TypingArea
+              snippet={snippet.code}
+              disabled={!identity.displayName}
+              onProgress={(s) =>
+                send({
+                  type: "TYPED",
+                  progress: s.progress,
+                  chars_typed: s.chars_typed,
+                  errors: s.errors,
+                })
+              }
+              onFinish={(s) =>
+                send({
+                  type: "FINISH_LOCALLY",
+                  chars_typed: s.chars_typed,
+                  errors: s.errors,
+                })
+              }
+            />
+          )}
         </section>
       )}
 
       {state.matches("finished") && (
         <section className="space-y-6">
           <Podium
-            results={finishers.map((p) => ({
+            results={finishers
+              .filter((p) => (p.role ?? "racer") === "racer")
+              .map((p) => ({
               id: p.id,
               display_name: p.display_name,
               finished_at: p.finished_at!,
@@ -175,6 +193,7 @@ function RoomShell({ code, identity, bootstrap, snippet, onRematch }: ShellProps
             }))}
           />
           <div className="flex flex-wrap gap-3">
+
             {identity.isHost && (
               <button
                 type="button"

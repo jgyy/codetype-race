@@ -69,10 +69,14 @@ export async function getRandomSnippet(filters: {
   return r.json();
 }
 
-export async function joinRoom(code: string, display_name: string) {
+export async function joinRoom(
+  code: string,
+  display_name: string,
+  role: "racer" | "spectator" = "racer",
+) {
   const r = await req("/rooms/join", {
     method: "POST",
-    body: JSON.stringify({ code, display_name }),
+    body: JSON.stringify({ code, display_name, role }),
   });
   if (!r.ok) await failWith(r);
   return r.json() as Promise<{
@@ -86,6 +90,31 @@ export async function getRoom(code: string) {
   const r = await req(`/rooms/${code}`);
   if (!r.ok) await failWith(r);
   return r.json();
+}
+
+export interface PracticeRunBody {
+  snippet_id: string;
+  chars_typed: number;
+  errors: number;
+  duration_ms: number;
+  save: boolean;
+}
+
+export async function postPracticeRun(body: PracticeRunBody) {
+  const r = await req("/history/practice", {
+    method: "POST",
+    auth: body.save,
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) await failWith(r);
+  return r.json() as Promise<{
+    finished_at: number;
+    gross_wpm: number;
+    net_wpm: number;
+    accuracy: number;
+    scaled_wpm: number;
+    saved: boolean;
+  }>;
 }
 
 export async function listHistory() {

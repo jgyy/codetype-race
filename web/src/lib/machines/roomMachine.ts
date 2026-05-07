@@ -11,12 +11,14 @@ export interface PlayerState {
   net_wpm?: number;
   gross_wpm?: number;
   accuracy?: number;
+  role?: "racer" | "spectator";
 }
 
 export interface RoomContext {
   code: string;
   displayName: string;
   isHost: boolean;
+  role: "racer" | "spectator";
   snippetCode: string;
   status: "lobby" | "countdown" | "running" | "finished";
   startedAt: number | null;
@@ -30,6 +32,7 @@ export interface RoomInput {
   code: string;
   displayName: string;
   isHost: boolean;
+  role?: "racer" | "spectator";
   snippetCode: string;
   status?: "lobby" | "countdown" | "running" | "finished";
   startedAt?: number | null;
@@ -79,9 +82,13 @@ export const roomMachine = setup({
     msgIsStatusGo: ({ event }) =>
       event.type === "WS_MSG" && isStatusCountdownOrRunning(event.msg),
     raceFinished: ({ context }) => {
-      const list = Object.values(context.players);
-      if (list.length === 0) return false;
-      return list.every((p) => p.finished_at !== undefined);
+      // Spectators don't have a finished_at; only racers gate the
+      // transition to `finished`.
+      const racers = Object.values(context.players).filter(
+        (p) => (p.role ?? "racer") === "racer",
+      );
+      if (racers.length === 0) return false;
+      return racers.every((p) => p.finished_at !== undefined);
     },
   },
   delays: {
@@ -96,6 +103,7 @@ export const roomMachine = setup({
           context.players[context.displayName] ?? {
             display_name: context.displayName,
             progress: 0,
+            role: context.role,
           },
       },
     })),
@@ -215,6 +223,7 @@ export const roomMachine = setup({
     code: input.code,
     displayName: input.displayName,
     isHost: input.isHost,
+    role: input.role ?? "racer",
     snippetCode: input.snippetCode,
     status: input.status ?? "lobby",
     startedAt: input.startedAt ?? null,
@@ -236,6 +245,7 @@ export const roomMachine = setup({
         input: ({ context }) => ({
           code: context.code,
           displayName: context.displayName,
+          role: context.role,
         }),
       },
       on: {
@@ -260,6 +270,7 @@ export const roomMachine = setup({
         input: ({ context }) => ({
           code: context.code,
           displayName: context.displayName,
+          role: context.role,
         }),
       },
       on: {

@@ -14,6 +14,9 @@ export async function applyFinish(
 ): Promise<void> {
   const conn = await connections.byConnectionId(connectionId);
   if (!conn) throw Errors.NotFound("connection");
+  if ((conn.role ?? "racer") === "spectator") {
+    throw Errors.Forbidden();
+  }
   const roomId = conn.PK.slice("ROOM#".length);
   const displayName = conn.display_name;
 

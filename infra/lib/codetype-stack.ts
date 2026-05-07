@@ -84,7 +84,8 @@ export class CodetypeStack extends Stack {
         const getRoom = fn("GetRoom", "http/getRoom.ts");
         const listHistory = fn("ListHistory", "http/listHistory.ts");
         const randomSnippet = fn("RandomSnippet", "http/randomSnippet.ts");
-        [createRoom, joinRoom, getRoom, listHistory, randomSnippet].forEach(
+        const practiceRun = fn("PracticeRun", "http/practiceRun.ts");
+        [createRoom, joinRoom, getRoom, listHistory, randomSnippet, practiceRun].forEach(
             (f) => table.grantReadWriteData(f),
         );
 
@@ -135,6 +136,15 @@ export class CodetypeStack extends Stack {
                 "RandomSnippet",
                 randomSnippet,
             ),
+        });
+        httpApi.addRoutes({
+            path: "/history/practice",
+            methods: [apigwv2.HttpMethod.POST],
+            integration: new apigwv2Integ.HttpLambdaIntegration(
+                "PracticeRun",
+                practiceRun,
+            ),
+            authorizer: jwtAuth,
         });
 
         const wsConnect = fn("WsConnect", "ws/connect.ts");

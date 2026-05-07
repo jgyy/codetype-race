@@ -4,6 +4,7 @@ import { WS_API } from "../config";
 export interface WsActorInput {
   code: string;
   displayName: string;
+  role?: "racer" | "spectator";
 }
 
 export type WsParentEvent =
@@ -30,9 +31,12 @@ export const wsActor = fromCallback<WsActorEvent, WsActorInput>(
       sendBack({ type: "WS_ERROR", message: "WS_API not configured" });
       return () => {};
     }
+    const role = input.role ?? "racer";
     const url = `${WS_API}?code=${encodeURIComponent(
       input.code,
-    )}&display_name=${encodeURIComponent(input.displayName)}`;
+    )}&display_name=${encodeURIComponent(
+      input.displayName,
+    )}&role=${encodeURIComponent(role)}`;
     const ws = new WebSocket(url);
     let heartbeat: ReturnType<typeof setInterval> | null = null;
     let closed = false;

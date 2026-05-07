@@ -19,6 +19,7 @@ export interface ConnRow {
   display_name: string;
   joined_at: number;
   ttl: number;
+  role?: "racer" | "spectator";
   PK: string;
   SK: string;
 }
@@ -26,7 +27,12 @@ export interface ConnRow {
 export class ConnectionRepo {
   constructor(private readonly client: DynamoDBDocumentClient = ddb) {}
 
-  async put(roomId: string, connectionId: string, displayName: string): Promise<void> {
+  async put(
+    roomId: string,
+    connectionId: string,
+    displayName: string,
+    role: "racer" | "spectator" = "racer",
+  ): Promise<void> {
     const now = Date.now();
     await this.client.send(
       new PutCommand({
@@ -40,6 +46,7 @@ export class ConnectionRepo {
           display_name: displayName,
           joined_at: now,
           ttl: Math.floor(now / 1000) + TTL_SECONDS,
+          role,
         },
       }),
     );
