@@ -1,9 +1,9 @@
 import { z } from "zod";
 import { RedeemInviteResponseSchema } from "@codetype/shared/social";
+import { DomainError } from "@codetype/domain";
 import { withHttp } from "../../../src/middleware";
-import { Errors, requireGuildsEnabled } from "../../../src/AppError";
-import { guilds } from "../../../src/repos/GuildRepo";
-import { feed } from "../../../src/repos/FeedRepo";
+import { AppError, Errors, requireGuildsEnabled } from "../../../src/AppError";
+import { commandBus, RedeemGuildInviteCommand } from "../../_container";
 
 const EmptyBody = z.object({}).passthrough();
 
@@ -12,24 +12,19 @@ export const handler = withHttp(EmptyBody, async (_input, ctx) => {
     if (!ctx.userId) throw Errors.Unauthorized();
     const code = ctx.pathParameters.code;
     if (!code) throw Errors.BadRequest("code required");
-    const invite = await guilds.findInviteByCode(code);
-    if (!invite) throw Errors.NotFound("invite");
-    const existing = await guilds.getMember(invite.guildId, ctx.userId);
-    if (existing) {
-        return RedeemInviteResponseSchema.parse({
-            guild_id: invite.guildId,
-            role: existing.role,
-        });
+    try {
+        const result = await commandBus.dispatch(
+            new RedeemGuildInviteCommand({
+                actorId: ctx.userId,
+                code,
+                nowIso: new Date().toISOString(),
+            }),
+        );
+        return RedeemInviteResponseSchema.parse(result);
+    } catch (e) {
+        if (e instanceof DomainError) {
+            throw new AppError(e.code, e.status, e.message, e.details);
+        }
+        throw e;
     }
-    await guilds.addMember(
-        invite.guildId,
-        ctx.userId,
-        "member",
-        new Date().toISOString(),
-    );
-    await feed.append(ctx.userId, "joined_guild", { guild_id: invite.guildId });
-    return RedeemInviteResponseSchema.parse({
-        guild_id: invite.guildId,
-        role: "member",
-    });
 });

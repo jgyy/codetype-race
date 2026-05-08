@@ -11,8 +11,6 @@ export const handler = withHttp(EmptyBody, async (_input, ctx) => {
     const q = (ctx.queryStringParameters.q ?? "").trim();
     const visibility = ctx.queryStringParameters.visibility ?? "public";
     if (visibility !== "public") {
-        // Private discovery is not a thing; explicitly refuse so callers
-        // don't receive empty silently.
         throw Errors.BadRequest("only visibility=public is searchable");
     }
     if (q.length < 3) {

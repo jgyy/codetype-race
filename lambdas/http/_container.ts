@@ -38,7 +38,20 @@ import {
     SendFriendRequestHandler,
     SubmitSnippetCommand,
     SubmitSnippetHandler,
+    CreateGuildCommand,
+    CreateGuildHandler,
+    UpdateGuildCommand,
+    UpdateGuildHandler,
+    TransferGuildOwnershipCommand,
+    TransferGuildOwnershipHandler,
+    LeaveOrKickGuildMemberCommand,
+    LeaveOrKickGuildMemberHandler,
+    CreateGuildInviteCommand,
+    CreateGuildInviteHandler,
+    RedeemGuildInviteCommand,
+    RedeemGuildInviteHandler,
     telemetryMiddleware,
+    type GuildsSink,
     type TeamRoomSink,
 } from "@codetype/app";
 import {
@@ -56,6 +69,8 @@ import { daily } from "../src/repos/DailyRepo";
 import { history } from "../src/repos/HistoryRepo";
 import { users } from "../src/repos/UserRepo";
 import { friends } from "../src/repos/FriendsRepo";
+import { guilds as guildsRepo } from "../src/repos/GuildRepo";
+import { feed } from "../src/repos/FeedRepo";
 
 const clock = new SystemClock();
 const random = new CryptoRandom();
@@ -74,6 +89,30 @@ const friendsSink = {
     accept: (a: string, b: string) => friends.accept(a, b),
     block: (a: string, b: string) => friends.block(a, b),
     remove: (a: string, b: string) => friends.remove(a, b),
+};
+
+const guildsSink: GuildsSink = {
+    create: (g) => guildsRepo.create(g),
+    get: (id) => guildsRepo.get(id) as ReturnType<GuildsSink["get"]>,
+    update: (id, input, prev) =>
+        guildsRepo.update(id, input, prev) as ReturnType<GuildsSink["update"]>,
+    getMember: (id, uid) =>
+        guildsRepo.getMember(id, uid) as ReturnType<GuildsSink["getMember"]>,
+    removeMember: (id, uid) => guildsRepo.removeMember(id, uid),
+    transferOwnership: (id, from, to) =>
+        guildsRepo.transferOwnership(id, from, to),
+    addMember: (id, uid, role, ts) =>
+        guildsRepo.addMember(id, uid, role, ts),
+    createInvite: (id, code, by) => guildsRepo.createInvite(id, code, by),
+    findInviteByCode: (code) =>
+        guildsRepo.findInviteByCode(code) as ReturnType<
+            GuildsSink["findInviteByCode"]
+        >,
+};
+
+const feedSink = {
+    append: (userId: string, type: string, payload: Record<string, unknown>) =>
+        feed.append(userId, type as Parameters<typeof feed.append>[1], payload),
 };
 
 export const commandBus = new CommandBus()
@@ -145,7 +184,25 @@ export const commandBus = new CommandBus()
         new AcceptFriendRequestHandler(friendsSink),
     )
     .register(BlockUserCommand, new BlockUserHandler(friendsSink))
-    .register(RemoveFriendCommand, new RemoveFriendHandler(friendsSink));
+    .register(RemoveFriendCommand, new RemoveFriendHandler(friendsSink))
+    .register(CreateGuildCommand, new CreateGuildHandler(guildsSink, random))
+    .register(UpdateGuildCommand, new UpdateGuildHandler(guildsSink))
+    .register(
+        TransferGuildOwnershipCommand,
+        new TransferGuildOwnershipHandler(guildsSink),
+    )
+    .register(
+        LeaveOrKickGuildMemberCommand,
+        new LeaveOrKickGuildMemberHandler(guildsSink, feedSink),
+    )
+    .register(
+        CreateGuildInviteCommand,
+        new CreateGuildInviteHandler(guildsSink),
+    )
+    .register(
+        RedeemGuildInviteCommand,
+        new RedeemGuildInviteHandler(guildsSink, feedSink),
+    );
 
 export const queryBus = new QueryBus()
     .use(telemetryMiddleware)
@@ -155,14 +212,20 @@ export {
     AcceptFriendRequestCommand,
     BlockUserCommand,
     ClaimQuestCommand,
+    CreateGuildCommand,
+    CreateGuildInviteCommand,
     CreateRoomCommand,
     DailySubmitCommand,
     GetRoomQuery,
     JoinRoomCommand,
+    LeaveOrKickGuildMemberCommand,
     PinAchievementsCommand,
     PracticeRunCommand,
+    RedeemGuildInviteCommand,
     RemoveFriendCommand,
     ReviewSnippetCommand,
     SendFriendRequestCommand,
     SubmitSnippetCommand,
+    TransferGuildOwnershipCommand,
+    UpdateGuildCommand,
 };

@@ -1,8 +1,8 @@
-import { z } from "zod";
 import { TransferGuildRequestSchema } from "@codetype/shared/social";
+import { DomainError } from "@codetype/domain";
 import { withHttp } from "../../src/middleware";
-import { Errors, requireGuildsEnabled } from "../../src/AppError";
-import { guilds } from "../../src/repos/GuildRepo";
+import { AppError, Errors, requireGuildsEnabled } from "../../src/AppError";
+import { commandBus, TransferGuildOwnershipCommand } from "../_container";
 
 export const handler = withHttp(
     TransferGuildRequestSchema,
@@ -11,12 +11,19 @@ export const handler = withHttp(
         if (!ctx.userId) throw Errors.Unauthorized();
         const id = ctx.pathParameters.id;
         if (!id) throw Errors.BadRequest("id required");
-        const guild = await guilds.get(id);
-        if (!guild) throw Errors.NotFound("guild");
-        if (guild.ownerId !== ctx.userId) throw Errors.Forbidden();
-        const member = await guilds.getMember(id, input.new_owner_id);
-        if (!member) throw Errors.BadRequest("new owner is not a member");
-        await guilds.transferOwnership(id, ctx.userId, input.new_owner_id);
-        return { status: "transferred" } as const;
+        try {
+            return await commandBus.dispatch(
+                new TransferGuildOwnershipCommand({
+                    actorId: ctx.userId,
+                    guildId: id,
+                    newOwnerId: input.new_owner_id,
+                }),
+            );
+        } catch (e) {
+            if (e instanceof DomainError) {
+                throw new AppError(e.code, e.status, e.message, e.details);
+            }
+            throw e;
+        }
     },
 );

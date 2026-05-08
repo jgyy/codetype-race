@@ -7,8 +7,6 @@ import { users } from "../../src/repos/UserRepo";
 
 const EmptyBody = z.object({}).passthrough();
 
-// Guild leaderboard is a small set (≤50 members), so we materialise it
-// per-request rather than maintaining a separate ranked partition.
 export const handler = withHttp(EmptyBody, async (_input, ctx) => {
     requireGuildsEnabled();
     const id = ctx.pathParameters.id;
