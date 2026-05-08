@@ -63,6 +63,13 @@ export class CodetypeStack extends Stack {
             groupName: "admin",
             description: "Snippet moderation",
         });
+        // Tournament moderators: can create/seed/cancel tournaments. Admins
+        // are implicitly mods (checked by requireMod in lambdas/AppError.ts).
+        new cognito.CfnUserPoolGroup(this, "ModGroup", {
+            userPoolId: userPool.userPoolId,
+            groupName: "mod",
+            description: "Tournament moderation",
+        });
 
         const fn = (
             id: string,
@@ -378,6 +385,245 @@ export class CodetypeStack extends Stack {
                 retryAttempts: 2,
             }),
         );
+
+        // ─── Phase 09: Tournaments & Seasons ──────────────────────────────
+        // Single feature flag plumbed into every tournament-aware Lambda so
+        // a stuck rollout can be killed by flipping ENABLE_TOURNAMENTS=false
+        // in the CDK env without code changes.
+        const tournEnv = { ENABLE_TOURNAMENTS: "true" };
+
+        const tournCreate = fn(
+            "TournCreate",
+            "http/tournaments/create.ts",
+            tournEnv,
+        );
+        const tournList = fn(
+            "TournList",
+            "http/tournaments/list.ts",
+            tournEnv,
+        );
+        const tournGet = fn("TournGet", "http/tournaments/get.ts", tournEnv);
+        const tournBracket = fn(
+            "TournBracket",
+            "http/tournaments/bracket.ts",
+            tournEnv,
+        );
+        const tournRegister = fn(
+            "TournRegister",
+            "http/tournaments/register.ts",
+            tournEnv,
+        );
+        const tournWithdraw = fn(
+            "TournWithdraw",
+            "http/tournaments/withdraw.ts",
+            tournEnv,
+        );
+        const tournSeed = fn(
+            "TournSeed",
+            "http/tournaments/seed.ts",
+            tournEnv,
+        );
+        const tournCancel = fn(
+            "TournCancel",
+            "http/tournaments/cancel.ts",
+            tournEnv,
+        );
+        const seasonCurrent = fn(
+            "SeasonCurrent",
+            "http/seasons/current.ts",
+            tournEnv,
+        );
+        const seasonLeaderboard = fn(
+            "SeasonLeaderboard",
+            "http/seasons/leaderboard.ts",
+            tournEnv,
+        );
+        const rolloverSeasons = fn(
+            "RolloverSeasons",
+            "cron/rolloverSeasons.ts",
+            tournEnv,
+        );
+        // Decay sweep can be slow on cold pools; bump timeout/memory.
+        rolloverSeasons.addEnvironment("AWS_NODEJS_CONNECTION_REUSE_ENABLED", "1");
+        const advanceTourn = fn(
+            "AdvanceTournaments",
+            "cron/advanceTournaments.ts",
+            tournEnv,
+        );
+        const tournWsConnect = fn(
+            "TournWsConnect",
+            "ws/tourn/connect.ts",
+            tournEnv,
+        );
+        const tournWsDisconnect = fn(
+            "TournWsDisconnect",
+            "ws/tourn/disconnect.ts",
+            tournEnv,
+        );
+        const tournWsHeartbeat = fn(
+            "TournWsHeartbeat",
+            "ws/tourn/heartbeat.ts",
+            tournEnv,
+        );
+        const onRaceFinished = fn(
+            "OnRaceFinished",
+            "stream/onRaceFinished.ts",
+            tournEnv,
+        );
+
+        const tournLambdas = [
+            tournCreate,
+            tournList,
+            tournGet,
+            tournBracket,
+            tournRegister,
+            tournWithdraw,
+            tournSeed,
+            tournCancel,
+            seasonCurrent,
+            seasonLeaderboard,
+            rolloverSeasons,
+            advanceTourn,
+            tournWsConnect,
+            tournWsDisconnect,
+            tournWsHeartbeat,
+            onRaceFinished,
+        ];
+        tournLambdas.forEach((f) => table.grantReadWriteData(f));
+
+        const integ = (id: string, f: lambda.IFunction) =>
+            new apigwv2Integ.HttpLambdaIntegration(id, f);
+
+        // Public reads (CloudFront-cacheable).
+        httpApi.addRoutes({
+            path: "/tournaments",
+            methods: [apigwv2.HttpMethod.GET],
+            integration: integ("TournList", tournList),
+        });
+        httpApi.addRoutes({
+            path: "/tournaments/{id}",
+            methods: [apigwv2.HttpMethod.GET],
+            integration: integ("TournGet", tournGet),
+        });
+        httpApi.addRoutes({
+            path: "/tournaments/{id}/bracket",
+            methods: [apigwv2.HttpMethod.GET],
+            integration: integ("TournBracket", tournBracket),
+        });
+        httpApi.addRoutes({
+            path: "/seasons/current",
+            methods: [apigwv2.HttpMethod.GET],
+            integration: integ("SeasonCurrent", seasonCurrent),
+        });
+        httpApi.addRoutes({
+            path: "/seasons/{id}/leaderboard",
+            methods: [apigwv2.HttpMethod.GET],
+            integration: integ("SeasonLeaderboard", seasonLeaderboard),
+        });
+
+        // Mutating endpoints (Cognito JWT). Mod-group enforcement is in
+        // the handlers themselves via requireMod.
+        httpApi.addRoutes({
+            path: "/tournaments",
+            methods: [apigwv2.HttpMethod.POST],
+            integration: integ("TournCreate", tournCreate),
+            authorizer: jwtAuth,
+        });
+        httpApi.addRoutes({
+            path: "/tournaments/{id}/register",
+            methods: [apigwv2.HttpMethod.POST, apigwv2.HttpMethod.DELETE],
+            integration: integ("TournRegister", tournRegister),
+            authorizer: jwtAuth,
+        });
+        httpApi.addRoutes({
+            path: "/tournaments/{id}/seed",
+            methods: [apigwv2.HttpMethod.POST],
+            integration: integ("TournSeed", tournSeed),
+            authorizer: jwtAuth,
+        });
+        httpApi.addRoutes({
+            path: "/tournaments/{id}/cancel",
+            methods: [apigwv2.HttpMethod.POST],
+            integration: integ("TournCancel", tournCancel),
+            authorizer: jwtAuth,
+        });
+        // The withdraw lambda shares the /register path with method=DELETE
+        // above; expose it here as a fallback for clients that prefer
+        // separate routes (no schema diff).
+        // Note: above route handles DELETE; this dummy block is intentionally
+        // omitted to avoid a duplicate-route synth error.
+
+        // Dedicated tournament WebSocket API. The viewer fan-out is
+        // independent of the casual-room WS, so a separate API ID makes
+        // throttling and auth policy independently tunable later.
+        const tournWsApi = new apigwv2.WebSocketApi(this, "TournWsApi", {
+            connectRouteOptions: {
+                integration: new apigwv2Integ.WebSocketLambdaIntegration(
+                    "TournConnect",
+                    tournWsConnect,
+                ),
+            },
+            disconnectRouteOptions: {
+                integration: new apigwv2Integ.WebSocketLambdaIntegration(
+                    "TournDisconnect",
+                    tournWsDisconnect,
+                ),
+            },
+            defaultRouteOptions: {
+                integration: new apigwv2Integ.WebSocketLambdaIntegration(
+                    "TournHeartbeat",
+                    tournWsHeartbeat,
+                ),
+            },
+        });
+        const tournWsStage = new apigwv2.WebSocketStage(this, "TournWsStage", {
+            webSocketApi: tournWsApi,
+            stageName: "prod",
+            autoDeploy: true,
+        });
+        const tournWsEndpoint = `https://${tournWsApi.apiId}.execute-api.${this.region}.amazonaws.com/${tournWsStage.stageName}`;
+        const tournManageArn = `arn:aws:execute-api:${this.region}:${this.account}:${tournWsApi.apiId}/*/*/@connections/*`;
+        // Anything that needs to push WS messages on the /tourn API.
+        [
+            tournWsConnect,
+            tournWsHeartbeat,
+            onRaceFinished,
+        ].forEach((f) => {
+            f.addEnvironment("WS_ENDPOINT", tournWsEndpoint);
+            f.addToRolePolicy(
+                new iam.PolicyStatement({
+                    actions: ["execute-api:ManageConnections"],
+                    resources: [tournManageArn],
+                }),
+            );
+        });
+
+        // Stream consumer for bracket advancement on race finishes. Sits
+        // alongside the existing chat broadcaster on the same table stream.
+        onRaceFinished.addEventSource(
+            new lambdaSources.DynamoEventSource(table, {
+                startingPosition: lambda.StartingPosition.LATEST,
+                batchSize: 50,
+                maxBatchingWindow: Duration.seconds(1),
+                retryAttempts: 2,
+            }),
+        );
+
+        // Crons.
+        new events.Rule(this, "RolloverSeasonsCron", {
+            // Daily 00:00 UTC.
+            schedule: events.Schedule.cron({ minute: "0", hour: "0" }),
+            targets: [new eventsTargets.LambdaFunction(rolloverSeasons)],
+        });
+        new events.Rule(this, "AdvanceTournamentsCron", {
+            // Every minute.
+            schedule: events.Schedule.rate(Duration.minutes(1)),
+            targets: [new eventsTargets.LambdaFunction(advanceTourn)],
+        });
+
+        new CfnOutput(this, "TournWsApiUrl", {
+            value: `wss://${tournWsApi.apiId}.execute-api.${this.region}.amazonaws.com/${tournWsStage.stageName}`,
+        });
 
         const siteBucket = new s3.Bucket(this, "Site", {
             blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,

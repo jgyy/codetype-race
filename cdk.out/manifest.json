@@ -11,21 +11,21 @@
     },
     "CodetypeStack": {
       "type": "aws:cloudformation:stack",
-      "environment": "aws://473359703960/ap-southeast-1",
+      "environment": "aws://223516915733/ap-southeast-1",
       "properties": {
         "templateFile": "CodetypeStack.template.json",
         "terminationProtection": false,
         "validateOnSynth": false,
-        "assumeRoleArn": "arn:${AWS::Partition}:iam::473359703960:role/cdk-hnb659fds-deploy-role-473359703960-ap-southeast-1",
-        "cloudFormationExecutionRoleArn": "arn:${AWS::Partition}:iam::473359703960:role/cdk-hnb659fds-cfn-exec-role-473359703960-ap-southeast-1",
-        "stackTemplateAssetObjectUrl": "s3://cdk-hnb659fds-assets-473359703960-ap-southeast-1/0f73f20a6bd5a9a045a6e74c29deae8fc34287796f8d93c47e39974bab662b69.json",
+        "assumeRoleArn": "arn:${AWS::Partition}:iam::223516915733:role/cdk-hnb659fds-deploy-role-223516915733-ap-southeast-1",
+        "cloudFormationExecutionRoleArn": "arn:${AWS::Partition}:iam::223516915733:role/cdk-hnb659fds-cfn-exec-role-223516915733-ap-southeast-1",
+        "stackTemplateAssetObjectUrl": "s3://cdk-hnb659fds-assets-223516915733-ap-southeast-1/b69e954852a93e6f5ce231ca55ccdab40f56295270eba300f64ca3b434ffcb71.json",
         "requiresBootstrapStackVersion": 6,
         "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version",
         "additionalDependencies": [
           "CodetypeStack.assets"
         ],
         "lookupRole": {
-          "arn": "arn:${AWS::Partition}:iam::473359703960:role/cdk-hnb659fds-lookup-role-473359703960-ap-southeast-1",
+          "arn": "arn:${AWS::Partition}:iam::223516915733:role/cdk-hnb659fds-lookup-role-223516915733-ap-southeast-1",
           "requiresBootstrapStackVersion": 8,
           "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version"
         }
@@ -35,6 +35,41 @@
       ],
       "additionalMetadataFile": "CodetypeStack.metadata.json",
       "displayName": "CodetypeStack"
+    },
+    "CodetypeMonitoringStack.assets": {
+      "type": "cdk:asset-manifest",
+      "properties": {
+        "file": "CodetypeMonitoringStack.assets.json",
+        "requiresBootstrapStackVersion": 6,
+        "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version"
+      }
+    },
+    "CodetypeMonitoringStack": {
+      "type": "aws:cloudformation:stack",
+      "environment": "aws://223516915733/ap-southeast-1",
+      "properties": {
+        "templateFile": "CodetypeMonitoringStack.template.json",
+        "terminationProtection": false,
+        "validateOnSynth": false,
+        "assumeRoleArn": "arn:${AWS::Partition}:iam::223516915733:role/cdk-hnb659fds-deploy-role-223516915733-ap-southeast-1",
+        "cloudFormationExecutionRoleArn": "arn:${AWS::Partition}:iam::223516915733:role/cdk-hnb659fds-cfn-exec-role-223516915733-ap-southeast-1",
+        "stackTemplateAssetObjectUrl": "s3://cdk-hnb659fds-assets-223516915733-ap-southeast-1/137dfedb7a35bfc8c380e536ce546d958d21c1f34cf1ef89c619ff9f1dcbf44e.json",
+        "requiresBootstrapStackVersion": 6,
+        "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version",
+        "additionalDependencies": [
+          "CodetypeMonitoringStack.assets"
+        ],
+        "lookupRole": {
+          "arn": "arn:${AWS::Partition}:iam::223516915733:role/cdk-hnb659fds-lookup-role-223516915733-ap-southeast-1",
+          "requiresBootstrapStackVersion": 8,
+          "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version"
+        }
+      },
+      "dependencies": [
+        "CodetypeMonitoringStack.assets"
+      ],
+      "additionalMetadataFile": "CodetypeMonitoringStack.metadata.json",
+      "displayName": "CodetypeMonitoringStack"
     },
     "Tree": {
       "type": "cdk:tree",
@@ -477,10 +512,14 @@
           "@aws-cdk/aws-batch:defaultToAL2023": {
             "recommendedValue": true,
             "explanation": "Use AL2023 as the default imageType for EC2 Batch compute environments instead of the deprecated AL2"
+          },
+          "@aws-cdk/core:annotationsInValidationReport": {
+            "recommendedValue": true,
+            "explanation": "Include construct annotations (warnings and errors) in the policy validation report"
           }
         }
       }
     }
   },
-  "minimumCliVersion": "2.1120.0"
+  "minimumCliVersion": "2.1121.0"
 }

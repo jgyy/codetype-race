@@ -1,0 +1,21 @@
+{
+  "version": "53.0.0",
+  "files": {
+    "137dfedb7a35bfc8c380e536ce546d958d21c1f34cf1ef89c619ff9f1dcbf44e": {
+      "displayName": "CodetypeMonitoringStack Template",
+      "source": {
+        "path": "CodetypeMonitoringStack.template.json",
+        "packaging": "file"
+      },
+      "destinations": {
+        "223516915733-ap-southeast-1-a2ad235c": {
+          "bucketName": "cdk-hnb659fds-assets-223516915733-ap-southeast-1",
+          "objectKey": "137dfedb7a35bfc8c380e536ce546d958d21c1f34cf1ef89c619ff9f1dcbf44e.json",
+          "region": "ap-southeast-1",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::223516915733:role/cdk-hnb659fds-file-publishing-role-223516915733-ap-southeast-1"
+        }
+      }
+    }
+  },
+  "dockerImages": {}
+}
