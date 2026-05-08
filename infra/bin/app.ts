@@ -6,7 +6,7 @@ import { MonitoringStack } from "../lib/monitoring-stack.js";
 import { CertificateStack } from "../lib/certificate-stack.js";
 
 const app = new cdk.App();
-const account = process.env.CDK_DEFAULT_ACCOUNT;
+const account = process.env.CDK_DEFAULT_ACCOUNT ?? "473359703960";
 const region = process.env.CDK_DEFAULT_REGION ?? "ap-southeast-1";
 const env = { account, region };
 
