@@ -903,6 +903,10 @@ export class CodetypeStack extends Stack {
             removalPolicy: RemovalPolicy.DESTROY,
             autoDeleteObjects: true,
         });
+        // Phase 12 (PWA): when a CD path is wired up, invalidate
+        //   /sw.js, /manifest.webmanifest, /index.html
+        // on every deploy. Everything under /_next/static/* is content-hashed
+        // and must NOT be invalidated (CacheFirst SW relies on immutability).
         const distribution = new cloudfront.Distribution(this, "Cdn", {
             defaultBehavior: {
                 origin: origins.S3BucketOrigin.withOriginAccessControl(siteBucket),
