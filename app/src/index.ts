@@ -3,6 +3,8 @@
 export const APP_PACKAGE = "@codetype/app" as const;
 export { DOMAIN_PACKAGE } from "@codetype/domain";
 
+export { InMemoryUnitOfWork } from "./uow/InMemoryUnitOfWork";
+
 export {
     Command,
     Query,
@@ -175,6 +177,15 @@ export {
     SendChatHandler,
     type SendChatInput,
 } from "./commands/ws/SendChat";
+export {
+    PersistCursorBatchCommand,
+    PersistCursorBatchHandler,
+    shouldDeliverToPeer,
+    type PersistCursorBatchInput,
+    type CursorUpdate,
+    type CursorPersistSink,
+    type CursorPeerListSink,
+} from "./commands/ws/PersistCursorBatch";
 export {
     FinishRaceCommand,
     FinishRaceHandler,

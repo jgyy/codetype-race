@@ -30,14 +30,6 @@ export interface DdbRoomRepoConfig {
     client: DynamoDBDocumentClient;
 }
 
-/**
- * Phase-13 slice-13.3 surface: only the methods CreateRoom + GetRoom
- * use. Other room access patterns continue through the legacy
- * lambdas/src/repos/RoomRepo until their handlers are migrated.
- *
- * The persisted shape is identical to the legacy repo so behavior is
- * fully compatible — this is a structural refactor only.
- */
 export class DdbRoomRepo implements RoomRepo {
     constructor(private readonly cfg: DdbRoomRepoConfig) { }
 

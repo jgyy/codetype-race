@@ -24,11 +24,6 @@ export interface DdbSnippetRepoConfig {
     rng?: () => number;
 }
 
-/**
- * Phase-13 slice-13.3: only the methods CreateRoom uses (`getById`,
- * `random`). Pending-queue, list, approval, etc. stay on the legacy
- * SnippetRepo for now.
- */
 export class DdbSnippetRepo implements SnippetRepo {
     private readonly rng: () => number;
     constructor(private readonly cfg: DdbSnippetRepoConfig) {

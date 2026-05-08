@@ -7,6 +7,7 @@ import {
     type SeedPlayer,
     type SnippetRepo,
 } from "@codetype/domain";
+import { InMemoryUnitOfWork } from "../../uow/InMemoryUnitOfWork";
 import { accuracy, grossWpm, netWpm, scaledWpm } from "@codetype/domain/wpm";
 import {
     computeRatingDeltas,
@@ -340,14 +341,20 @@ export class FinishRaceHandler implements CommandHandler<FinishRaceCommand> {
         const winnerId = ranking[0]!.teamId;
 
         const now = this.clock.epochMs();
-        let txItems: unknown[] = this.buildTeamHistoryItems({
+        // UnitOfWork collects every transactional item the team-mode
+        // path emits (idempotency Update, history Puts, rating
+        // Updates) and flushes them as a single TransactWriteItems.
+        const uow = new InMemoryUnitOfWork();
+        for (const item of this.buildTeamHistoryItems({
             roomId,
             language,
             now,
             rated,
             teamOf,
             winnerId,
-        });
+        })) {
+            uow.enqueue(item);
+        }
 
         let appliedDeltas: AppliedDelta[] = [];
 
@@ -393,7 +400,7 @@ export class FinishRaceHandler implements CommandHandler<FinishRaceCommand> {
                         oldRating: oldRatingFor(d.userId),
                     })),
                 );
-                txItems = [...txItems, ...ratingItems.slice(1)];
+                for (const item of ratingItems.slice(1)) uow.enqueue(item);
                 appliedDeltas = teamDeltas.map((d) => ({
                     userId: d.userId,
                     displayName: rated.find((r) => r.user_id === d.userId)!
@@ -405,7 +412,7 @@ export class FinishRaceHandler implements CommandHandler<FinishRaceCommand> {
         }
 
         try {
-            await this.teamRatings.sendTransaction(txItems);
+            await uow.flush((items) => this.teamRatings.sendTransaction(items));
         } catch (e: unknown) {
             if ((e as { name?: string })?.name === "TransactionCanceledException") return;
             throw e;

@@ -25,4 +25,5 @@ export type {
     Broadcaster,
     LeaderboardProjection,
     LeaderboardEntry,
+    UnitOfWork,
 } from "./ports";

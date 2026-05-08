@@ -16,23 +16,6 @@ export interface DdbLeaderboardProjectionConfig {
     client: DynamoDBDocumentClient;
 }
 
-/**
- * DDB-backed read of the leaderboard projection.
- *
- * Persistence shape: items keyed by either LEADERBOARD#GLOBAL or
- * LEADERBOARD#LANG#<lang>, with sort key RATING#<padded>#<userId>.
- * Flagged entries are filtered server-side so a banned account never
- * surfaces.
- *
- * Write path note: as of slice 13.5a the projection is *still*
- * maintained inline by UserRepo.applyRaceResults (transactional with
- * the rating update). Phase 14 will move write responsibility to a
- * ratings DDB-stream consumer; the read contract here doesn't change.
- *
- * Rebuild procedure: see scripts/rebuild-leaderboard.ts. Scans all
- * user profiles, re-derives sort keys, re-emits Put/Delete batches.
- * Run after schema migrations or to recover from drift.
- */
 export class DdbLeaderboardProjection implements LeaderboardProjection {
     constructor(private readonly cfg: DdbLeaderboardProjectionConfig) { }
 

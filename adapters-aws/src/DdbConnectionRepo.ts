@@ -26,13 +26,6 @@ const TTL_SECONDS = 30;
 const CHAT_WINDOW_MS = 10_000;
 const CHAT_MAX_PER_WINDOW = 5;
 
-/**
- * Phase-13 slice 13.4a — DDB-backed ConnectionRepo. Persisted shape is
- * byte-identical to lambdas/src/repos/ConnectionRepo. The chat-rate
- * `metrics.chatRateLimited()` side-effect emitted by the legacy repo
- * is intentionally not reproduced here; observability is normalised
- * via the Metrics port introduced in phase 15.
- */
 export class DdbConnectionRepo implements ConnectionRepo {
     constructor(private readonly cfg: DdbConnectionRepoConfig) { }
 

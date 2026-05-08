@@ -1,8 +1,7 @@
 import type { z } from "zod";
 import type { WsCursorSchema } from "@codetype/shared/schemas";
-import { rooms } from "../src/repos/RoomRepo";
-import { connections } from "../src/repos/ConnectionRepo";
-import { postTo } from "../src/wsClient";
+import { commandBus, PersistCursorBatchCommand } from "./_container";
+export { shouldDeliverToPeer } from "@codetype/app";
 
 type CursorMsg = z.infer<typeof WsCursorSchema>;
 
@@ -16,6 +15,17 @@ const pending = new Map<string, PendingState>();
 const COALESCE_MS = 100;
 let flushScheduled = false;
 
+/**
+ * Phase 12 reduced-cursor-stream policy. The flush interval stays at
+ * COALESCE_MS for everyone (the *coalescing* cadence). Lite peers
+ * receive every other emission, halving wire-message rate without
+ * special-casing the producer side. `flushTick` is the global counter.
+ *
+ * Phase 13 slice 13.6a: the persist + broadcast logic moved into
+ * PersistCursorBatchCommand. The setTimeout/coalesce loop stays here
+ * because it's a runtime concern, not a domain rule. On flush the
+ * accumulated batch is dispatched as a single command.
+ */
 let flushTick = 0;
 
 export function __resetCursorState() {
@@ -24,51 +34,21 @@ export function __resetCursorState() {
     flushTick = 0;
 }
 
-export function shouldDeliverToPeer(opts: {
-    cursorLite: boolean;
-    tick: number;
-}): boolean {
-    if (!opts.cursorLite) return true;
-    return opts.tick % 2 === 0;
-}
-
 async function flush() {
     flushScheduled = false;
     flushTick += 1;
     const tick = flushTick;
-    const snapshot = new Map(pending);
+    const snapshot = Array.from(pending.entries()).map(([connectionId, s]) => ({
+        connectionId,
+        progress: s.progress,
+        chars_typed: s.chars_typed,
+        errors: s.errors,
+    }));
     pending.clear();
+    if (snapshot.length === 0) return;
 
-    await Promise.all(
-        Array.from(snapshot.entries()).map(async ([connectionId, state]) => {
-            const conn = await connections.byConnectionId(connectionId);
-            if (!conn) return;
-            const roomId = conn.PK.slice("ROOM#".length);
-            const displayName = conn.display_name;
-
-            await rooms.updateProgress(
-                roomId,
-                displayName,
-                state.progress,
-                state.chars_typed,
-                state.errors,
-            );
-
-            const peers = await connections.listRowsByRoom(roomId);
-            const payload = {
-                type: "cursor" as const,
-                display_name: displayName,
-                progress: state.progress,
-            };
-            await Promise.all(
-                peers
-                    .filter((p) => p.connection_id !== connectionId)
-                    .filter((p) =>
-                        shouldDeliverToPeer({ cursorLite: p.cursor_lite, tick }),
-                    )
-                    .map((p) => postTo(p.connection_id, payload).catch(() => false)),
-            );
-        }),
+    await commandBus.dispatch(
+        new PersistCursorBatchCommand({ updates: snapshot, tick }),
     );
 }
 

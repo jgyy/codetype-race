@@ -12,6 +12,8 @@ import {
     SendChatHandler,
     StartCountdownCommand,
     StartCountdownHandler,
+    PersistCursorBatchCommand,
+    PersistCursorBatchHandler,
     telemetryMiddleware,
 } from "@codetype/app";
 import {
@@ -28,6 +30,8 @@ import { users } from "../src/repos/UserRepo";
 import { teamRatings } from "../src/repos/TeamRatingRepo";
 import { teamRooms } from "../src/repos/TeamRoomRepo";
 import { feed } from "../src/repos/FeedRepo";
+import { rooms as roomsLegacy } from "../src/repos/RoomRepo";
+import { connections as connectionsLegacy } from "../src/repos/ConnectionRepo";
 
 const clock = new SystemClock();
 const rooms = new DdbRoomRepo({ table: TABLE, client: ddb });
@@ -115,6 +119,20 @@ export const commandBus = new CommandBus()
             finishMetrics,
             buildTeamHistoryItems,
         ),
+    )
+    .register(
+        PersistCursorBatchCommand,
+        new PersistCursorBatchHandler(
+            connections,
+            {
+                updateProgress: (rid, name, p, c, e) =>
+                    roomsLegacy.updateProgress(rid, name, p, c, e),
+            },
+            {
+                listRowsByRoom: (rid) => connectionsLegacy.listRowsByRoom(rid),
+            },
+            broadcaster,
+        ),
     );
 
 export {
@@ -122,6 +140,7 @@ export {
     DisconnectFromRoomCommand,
     FinishRaceCommand,
     HeartbeatCommand,
+    PersistCursorBatchCommand,
     SendChatCommand,
     StartCountdownCommand,
 };

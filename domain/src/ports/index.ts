@@ -17,3 +17,4 @@ export type {
     LeaderboardProjection,
     LeaderboardEntry,
 } from "./LeaderboardProjection";
+export type { UnitOfWork } from "./UnitOfWork";
