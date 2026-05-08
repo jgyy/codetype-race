@@ -11,3 +11,7 @@ export {
     type DdbConnectionRepoConfig,
 } from "./DdbConnectionRepo";
 export { ApiGwBroadcaster, type ApiGwBroadcasterConfig } from "./ApiGwBroadcaster";
+export {
+    DdbLeaderboardProjection,
+    type DdbLeaderboardProjectionConfig,
+} from "./DdbLeaderboardProjection";

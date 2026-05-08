@@ -1,14 +1,3 @@
-/**
- * Per-Lambda container — wires ports → adapters and registers
- * commands/queries on the in-process buses.
- *
- * Module-scope: initialised exactly once per cold start, then reused
- * across warm invocations. Cold-start budget impact target: <30 ms.
- *
- * Slice 13.3 wires only the room-create / room-get pilot. Future
- * slices append more registrations to the same buses.
- */
-
 import {
     AcceptFriendRequestCommand,
     AcceptFriendRequestHandler,
@@ -21,6 +10,8 @@ import {
     CreateRoomHandler,
     DailySubmitCommand,
     DailySubmitHandler,
+    GetLeaderboardQuery,
+    GetLeaderboardHandler,
     GetRoomQuery,
     GetRoomHandler,
     JoinRoomCommand,
@@ -69,6 +60,7 @@ import {
 } from "@codetype/app";
 import {
     CryptoRandom,
+    DdbLeaderboardProjection,
     DdbRoomRepo,
     DdbSnippetRepo,
     SystemClock,
@@ -92,10 +84,8 @@ const clock = new SystemClock();
 const random = new CryptoRandom();
 const rooms = new DdbRoomRepo({ table: TABLE, client: ddb });
 const snippets = new DdbSnippetRepo({ table: TABLE, client: ddb });
+const leaderboard = new DdbLeaderboardProjection({ table: TABLE, client: ddb });
 
-// TeamRoomSink is implemented by the legacy TeamRoomRepo until slice
-// 13.4 migrates the team domain. The sink shape is intentionally
-// narrow so the legacy repo satisfies it as-is.
 const teamRoomSink: TeamRoomSink = {
     putTeams: (roomId, teams) => teamRooms.putTeams(roomId, teams),
 };
@@ -271,7 +261,11 @@ export const commandBus = new CommandBus()
 
 export const queryBus = new QueryBus()
     .use(telemetryMiddleware)
-    .register(GetRoomQuery, new GetRoomHandler(rooms));
+    .register(GetRoomQuery, new GetRoomHandler(rooms))
+    .register(
+        GetLeaderboardQuery,
+        new GetLeaderboardHandler(leaderboard),
+    );
 
 export {
     AcceptFriendRequestCommand,
@@ -281,6 +275,7 @@ export {
     CreateGuildInviteCommand,
     CreateRoomCommand,
     DailySubmitCommand,
+    GetLeaderboardQuery,
     GetRoomQuery,
     JoinRoomCommand,
     LeaveOrKickGuildMemberCommand,

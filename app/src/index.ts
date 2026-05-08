@@ -34,6 +34,13 @@ export {
 } from "./queries/GetRoom";
 
 export {
+    GetLeaderboardQuery,
+    GetLeaderboardHandler,
+    type GetLeaderboardInput,
+    type GetLeaderboardResult,
+} from "./queries/GetLeaderboard";
+
+export {
     JoinRoomCommand,
     JoinRoomHandler,
     type JoinRoomInput,

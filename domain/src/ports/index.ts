@@ -13,3 +13,7 @@ export type {
 } from "./RoomRepo";
 export type { ConnectionRepo, ConnectionRecord } from "./ConnectionRepo";
 export type { Broadcaster } from "./Broadcaster";
+export type {
+    LeaderboardProjection,
+    LeaderboardEntry,
+} from "./LeaderboardProjection";

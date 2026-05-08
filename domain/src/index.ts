@@ -23,4 +23,6 @@ export type {
     ConnectionRepo,
     ConnectionRecord,
     Broadcaster,
+    LeaderboardProjection,
+    LeaderboardEntry,
 } from "./ports";
