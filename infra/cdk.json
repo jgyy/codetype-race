@@ -1,5 +1,5 @@
 {
-  "app": "bunx tsx bin/app.ts",
+  "app": "JSII_DEPRECATED=quiet bunx tsx bin/app.ts",
   "watch": {
     "include": ["lib/**", "bin/**"],
     "exclude": ["**/*.d.ts", "node_modules", "cdk.out"]
