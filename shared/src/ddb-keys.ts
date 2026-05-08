@@ -48,6 +48,31 @@ export const snippetDiffPrefix = (difficulty: number) =>
 export const hostGSI1PK = (hostId: string) => `HOST#${hostId}`;
 export const finishedGSI1SK = (finishedAt: number) => `FINISHED#${finishedAt}`;
 
+// Phase 09 — Tournaments & Seasons
+export const seasonPK = (id: string) => `SEASON#${id}`;
+export const seasonMetaSK = () => "META";
+export const seasonStatusGSI1PK = (status: string) => `SEASON#STATUS#${status}`;
+export const seasonLbPK = (id: string, lang: string) =>
+    `SEASON#${id}#LB#${lang}`;
+const SEASON_RANK_PAD = 6;
+export const seasonLbSK = (rank: number) =>
+    `RANK#${String(rank).padStart(SEASON_RANK_PAD, "0")}`;
+
+export const tournPK = (id: string) => `TOURN#${id}`;
+export const tournMetaSK = () => "META";
+export const tournStatusGSI1PK = (status: string) =>
+    `TOURN#STATUS#${status}`;
+export const tournEntrantSK = (userId: string) => `ENTRANT#${userId}`;
+export const tournUserGSI1SK = (startsAt: string) => `TOURN#${startsAt}`;
+export const tournMatchSK = (round: number, slot: number) =>
+    `MATCH#${round}#${slot}`;
+export const tournMatchStatusGSI1PK = (tournId: string, status: string) =>
+    `TOURN#${tournId}#MATCH#STATUS#${status}`;
+export const tournMatchStatusGSI1SK = (round: number, slot: number) =>
+    `${round}#${slot}`;
+export const tournConnSK = (connectionId: string) =>
+    `CONN#${connectionId}`;
+
 const CODE_ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
 
 export function generateRoomCode(rand: () => number = Math.random): string {

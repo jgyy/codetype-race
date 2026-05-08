@@ -10,7 +10,10 @@
     "./types": "./src/types.ts",
     "./schemas": "./src/schemas.ts",
     "./elo": "./src/elo.ts",
-    "./anticheat": "./src/anticheat.ts"
+    "./anticheat": "./src/anticheat.ts",
+    "./seeding": "./src/seeding.ts",
+    "./decay": "./src/decay.ts",
+    "./tournaments": "./src/tournaments.ts"
   },
   "scripts": {
     "test": "bun test"
