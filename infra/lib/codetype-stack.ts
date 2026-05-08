@@ -19,6 +19,7 @@ import * as lambdaSources from "aws-cdk-lib/aws-lambda-event-sources";
 import * as events from "aws-cdk-lib/aws-events";
 import * as eventsTargets from "aws-cdk-lib/aws-events-targets";
 import * as s3 from "aws-cdk-lib/aws-s3";
+import * as s3deploy from "aws-cdk-lib/aws-s3-deployment";
 import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
 import * as origins from "aws-cdk-lib/aws-cloudfront-origins";
 import * as acm from "aws-cdk-lib/aws-certificatemanager";
@@ -35,6 +36,7 @@ export interface CodetypeStackProps extends StackProps {
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const LAMBDA_DIR = path.resolve(__dirname, "../../lambdas");
+const WEB_OUT_DIR = path.resolve(__dirname, "../../web/out");
 
 export class CodetypeStack extends Stack {
     constructor(scope: Construct, id: string, props?: CodetypeStackProps) {
@@ -938,6 +940,14 @@ export class CodetypeStack extends Stack {
             ...customDomain,
         });
 
+        new s3deploy.BucketDeployment(this, "SiteDeployment", {
+            sources: [s3deploy.Source.asset(WEB_OUT_DIR)],
+            destinationBucket: siteBucket,
+            distribution,
+            distributionPaths: ["/*"],
+            prune: true,
+        });
+
         if (props?.siteDomainName && props.hostedZoneName) {
             const zone = route53.HostedZone.fromLookup(this, "SiteZone", {
                 domainName: props.hostedZoneName,
@@ -969,6 +979,7 @@ export class CodetypeStack extends Stack {
         });
         new CfnOutput(this, "SiteBucket", { value: siteBucket.bucketName });
         new CfnOutput(this, "CdnDomain", { value: distribution.distributionDomainName });
+        new CfnOutput(this, "DistributionId", { value: distribution.distributionId });
         new CfnOutput(this, "TableName", { value: table.tableName });
     }
 }

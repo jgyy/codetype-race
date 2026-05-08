@@ -149,23 +149,47 @@ bun install
 # 2. (one-time per AWS account+region) bootstrap CDK
 bunx cdk bootstrap --profile your_profile
 
-# 3. Deploy the certificate stack (us-east-1, required by CloudFront), then the app + monitoring stacks
+# 3. Deploy the certificate stack (us-east-1, required by CloudFront)
 bun run cdk deploy CodetypeCertificateStack --profile your_profile
+
+# 4. First-pass deploy of the app stack (creates the S3 site bucket + CloudFront distribution)
 bun run cdk deploy CodetypeStack --profile your_profile
+
+# 5. Wire up the web app with CDK outputs, then build the static export
+cp web/.env.local.example web/.env.local   # fill from CDK outputs (table below)
+bun --filter @codetype/web build           # produces web/out/
+
+# 6. Re-deploy the app stack — this time CDK uploads web/out/ to S3 and invalidates CloudFront
+bun run cdk deploy CodetypeStack --profile your_profile
+
+# 7. Monitoring stack
 ALARM_EMAIL=you@example.com bun run cdk deploy CodetypeMonitoringStack --profile your_profile
 
 # The CodetypeStack provisions race.codephase.dev (CloudFront alias + Route53 ARecord/AAAARecord
 # in the codephase.dev hosted zone). Override SITE_DOMAIN/HOSTED_ZONE in infra/bin/app.ts if forking.
 
-# 4. Seed the snippet table
+# 8. Seed the snippet table
 AWS_PROFILE=your_profile TABLE_NAME=codetype bun scripts/seed-snippets.ts
 
-# 5. Wire up the web app
-cp web/.env.local.example web/.env.local   # then fill from CDK outputs (table below)
-
-# 6. Run locally
+# 9. Run locally
 bun --filter @codetype/web dev    # http://localhost:3000
 ```
+
+> **Note:** `web/out/` must exist before `cdk synth`/`cdk deploy CodetypeStack` runs — the stack's `BucketDeployment` zips it as a CDK asset. If it's missing, run `bun --filter @codetype/web build` first. That's why steps 4 and 6 are both present on the very first deploy: step 4 creates the API Gateway / Cognito outputs that `web/.env.local` needs, step 6 ships the built site.
+
+### Redeploying just the web app
+For frontend-only changes you don't need a full `cdk deploy` — sync the build output to S3 and invalidate CloudFront directly:
+```bash
+bun --filter @codetype/web build
+aws s3 sync web/out/ s3://"$(aws cloudformation describe-stacks --stack-name CodetypeStack \
+  --query 'Stacks[0].Outputs[?OutputKey==`SiteBucket`].OutputValue' --output text \
+  --profile your_profile)" --delete --profile your_profile
+aws cloudfront create-invalidation --paths '/*' --profile your_profile \
+  --distribution-id "$(aws cloudformation describe-stacks --stack-name CodetypeStack \
+    --query 'Stacks[0].Outputs[?OutputKey==`DistributionId`].OutputValue' --output text \
+    --profile your_profile)"
+```
+This is the right escape hatch when CDK is slow or you only want to ship a one-line copy fix. For anything that touches infra (new env var, new Lambda, IAM change), prefer `cdk deploy CodetypeStack` — it does the build-asset upload + invalidation in one shot.
 
 ### Environment variables
 
