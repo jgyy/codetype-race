@@ -13,7 +13,8 @@
     "./anticheat": "./src/anticheat.ts",
     "./seeding": "./src/seeding.ts",
     "./decay": "./src/decay.ts",
-    "./tournaments": "./src/tournaments.ts"
+    "./tournaments": "./src/tournaments.ts",
+    "./social": "./src/social.ts"
   },
   "scripts": {
     "test": "bun test"

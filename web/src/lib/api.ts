@@ -421,3 +421,78 @@ export async function listHistory() {
   if (!r.ok) await failWith(r);
   return r.json() as Promise<{ results: any[] }>;
 }
+
+// ─── Phase 10 (slice 1): friends + presence ──────────────────────────
+export interface FriendSummary {
+  user_id: string;
+  display_name: string;
+  rating: number;
+  presence: "online" | "offline";
+  accepted_at?: string;
+}
+
+export interface FriendRequestSummary {
+  from_user_id: string;
+  display_name: string;
+  rating: number;
+  created_at: string;
+}
+
+export interface UserSearchHit {
+  user_id: string;
+  display_name: string;
+  rating: number;
+}
+
+export async function searchUsers(q: string): Promise<UserSearchHit[]> {
+  const r = await req(`/users/search?q=${encodeURIComponent(q)}`, { auth: true });
+  if (!r.ok) await failWith(r);
+  const body = (await r.json()) as { results: UserSearchHit[] };
+  return body.results;
+}
+
+export async function listFriends(): Promise<FriendSummary[]> {
+  const r = await req("/me/friends", { auth: true });
+  if (!r.ok) await failWith(r);
+  const body = (await r.json()) as { friends: FriendSummary[] };
+  return body.friends;
+}
+
+export async function listFriendRequests(): Promise<FriendRequestSummary[]> {
+  const r = await req("/me/friends/requests", { auth: true });
+  if (!r.ok) await failWith(r);
+  const body = (await r.json()) as { incoming: FriendRequestSummary[] };
+  return body.incoming;
+}
+
+export async function sendFriendRequest(userId: string): Promise<void> {
+  const r = await req(`/friends/${encodeURIComponent(userId)}/request`, {
+    method: "POST",
+    auth: true,
+  });
+  if (!r.ok) await failWith(r);
+}
+
+export async function acceptFriendRequest(userId: string): Promise<void> {
+  const r = await req(`/friends/${encodeURIComponent(userId)}/accept`, {
+    method: "POST",
+    auth: true,
+  });
+  if (!r.ok) await failWith(r);
+}
+
+export async function removeFriend(userId: string): Promise<void> {
+  const r = await req(`/friends/${encodeURIComponent(userId)}`, {
+    method: "DELETE",
+    auth: true,
+  });
+  if (!r.ok) await failWith(r);
+}
+
+export async function blockUser(userId: string): Promise<void> {
+  const r = await req(`/users/${encodeURIComponent(userId)}/block`, {
+    method: "POST",
+    auth: true,
+  });
+  if (!r.ok) await failWith(r);
+}

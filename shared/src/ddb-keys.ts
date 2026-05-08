@@ -73,6 +73,38 @@ export const tournMatchStatusGSI1SK = (round: number, slot: number) =>
 export const tournConnSK = (connectionId: string) =>
     `CONN#${connectionId}`;
 
+// Phase 10 — Social graph (friends + presence). Two rows per friendship
+// (a→b and b→a) so "list my friends" is a single Query on USER#<me>.
+export const friendEdgeSK = (otherUserId: string) =>
+    `FRIEND#${otherUserId}`;
+export const friendRequestInboxSK = (fromUserId: string, ts: string) =>
+    `FREQ#${fromUserId}#${ts}`;
+export const friendRequestInboxPrefix = () => "FREQ#";
+export const friendEdgePrefix = () => "FRIEND#";
+
+// Presence: one row per WS connection so "online if any conn" is a
+// 1-row Query. GSI1 keys let the stream fanout do prefix sweeps.
+export const presencePK = (userId: string) => `PRESENCE#${userId}`;
+export const presenceConnSK = (connectionId: string) =>
+    `CONN#${connectionId}`;
+export const presenceOnlineGSI1PK = () => "PRESENCE#ONLINE";
+export const presenceOnlineGSI1SK = (userId: string, lastSeenAt: number) =>
+    `${userId}#${lastSeenAt}`;
+export const presenceConnLookupGSI1PK = (connectionId: string) =>
+    `PRESENCE-CONN#${connectionId}`;
+
+// Handle search: bucket by 3-char lowercase prefix to keep any one
+// partition cool. `begins_with(GSI1SK, 'pre')` then drives autocomplete.
+export const handleBucketLength = 3;
+export function handleBucket(handleLower: string): string {
+    const trimmed = handleLower.replace(/[^a-z0-9]/g, "");
+    return trimmed.slice(0, handleBucketLength).padEnd(handleBucketLength, "_");
+}
+export const userHandleGSI1PK = (handleLower: string) =>
+    `USER#HANDLE#${handleBucket(handleLower)}`;
+export const userHandleGSI1SK = (handleLower: string, userId: string) =>
+    `${handleLower}#${userId}`;
+
 const CODE_ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
 
 export function generateRoomCode(rand: () => number = Math.random): string {

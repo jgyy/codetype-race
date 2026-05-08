@@ -12,6 +12,8 @@ import {
     leaderboardGlobalPK,
     leaderboardLangPK,
     ratingSortKey,
+    userHandleGSI1PK,
+    userHandleGSI1SK,
     userPK,
     userProfileSK,
     userRaceSK,
@@ -69,10 +71,20 @@ export class UserRepo {
             created_at: Date.now(),
         };
         try {
+            const handleLower = displayName.toLowerCase();
             await this.client.send(
                 new PutCommand({
                     TableName: TABLE,
-                    Item: { PK: userPK(userId), SK: userProfileSK(), ...profile },
+                    Item: {
+                        PK: userPK(userId),
+                        SK: userProfileSK(),
+                        ...profile,
+                        // Denormalized handle index. Bucketed GSI1 partition
+                        // keyed on first 3 chars; supports begins_with autocomplete.
+                        GSI1PK: userHandleGSI1PK(handleLower),
+                        GSI1SK: userHandleGSI1SK(handleLower, userId),
+                        handle_lower: handleLower,
+                    },
                     ConditionExpression: "attribute_not_exists(PK)",
                 }),
             );
@@ -251,6 +263,32 @@ export class UserRepo {
             }),
         );
         return (r.Items as any[] | undefined) ?? [];
+    }
+
+    /**
+     * Handle-prefix search. The 3-char bucket constraint means queries
+     * shorter than 3 chars are rejected upstream; queries 3+ chars hit
+     * exactly one GSI1 partition.
+     */
+    async searchByHandlePrefix(
+        prefix: string,
+        limit = 25,
+    ): Promise<UserProfile[]> {
+        const lower = prefix.trim().toLowerCase();
+        const r = await this.client.send(
+            new QueryCommand({
+                TableName: TABLE,
+                IndexName: "GSI1",
+                KeyConditionExpression:
+                    "GSI1PK = :pk AND begins_with(GSI1SK, :sk)",
+                ExpressionAttributeValues: {
+                    ":pk": userHandleGSI1PK(lower),
+                    ":sk": lower,
+                },
+                Limit: limit,
+            }),
+        );
+        return (r.Items as UserProfile[] | undefined) ?? [];
     }
 
     async pageProfiles(

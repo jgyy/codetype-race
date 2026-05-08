@@ -23,7 +23,7 @@ import { ddb, TABLE } from "../ddb";
 import { Errors } from "../AppError";
 
 export class SeasonRepo {
-    constructor(private readonly client: DynamoDBDocumentClient = ddb) {}
+    constructor(private readonly client: DynamoDBDocumentClient = ddb) { }
 
     async create(season: Season): Promise<void> {
         try {
@@ -72,10 +72,6 @@ export class SeasonRepo {
         return (r.Items as Season[] | undefined) ?? [];
     }
 
-    /**
-     * CAS status transition. Returns false if the current status doesn't match
-     * `from` (another invocation already moved it).
-     */
     async transitionStatus(
         id: string,
         from: SeasonStatus,
@@ -104,10 +100,6 @@ export class SeasonRepo {
         }
     }
 
-    /**
-     * Write a frozen leaderboard row. Uses attribute_not_exists so an already-
-     * archived season's leaderboard is read-only (acceptance criterion).
-     */
     async putLeaderboardRow(row: SeasonLeaderboardRow): Promise<void> {
         try {
             await this.client.send(

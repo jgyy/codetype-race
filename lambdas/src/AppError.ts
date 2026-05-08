@@ -32,6 +32,18 @@ export function requireTournamentsEnabled(): void {
   }
 }
 
+export function requireFriendsEnabled(): void {
+  if (process.env.ENABLE_FRIENDS !== "true") {
+    throw new AppError("FEATURE_DISABLED", 503, "friends are disabled");
+  }
+}
+
+export function requirePresenceEnabled(): void {
+  if (process.env.ENABLE_PRESENCE !== "true") {
+    throw new AppError("FEATURE_DISABLED", 503, "presence is disabled");
+  }
+}
+
 export const Errors = {
   Unauthorized: () => new AppError("UNAUTHORIZED", 401, "unauthorized"),
   NotFound: (what: string) =>

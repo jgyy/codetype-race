@@ -625,6 +625,187 @@ export class CodetypeStack extends Stack {
             value: `wss://${tournWsApi.apiId}.execute-api.${this.region}.amazonaws.com/${tournWsStage.stageName}`,
         });
 
+        // ─── Phase 10 (slice 1) — Friends + Presence ──────────────────────
+        const socialEnv = {
+            ENABLE_FRIENDS: "true",
+            ENABLE_PRESENCE: "true",
+        };
+
+        const userSearch = fn("UserSearch", "http/social/search.ts", socialEnv);
+        const friendList = fn(
+            "FriendList",
+            "http/social/listFriends.ts",
+            socialEnv,
+        );
+        const friendRequestsList = fn(
+            "FriendRequestsList",
+            "http/social/listRequests.ts",
+            socialEnv,
+        );
+        const friendRequest = fn(
+            "FriendRequest",
+            "http/social/request.ts",
+            socialEnv,
+        );
+        const friendAccept = fn(
+            "FriendAccept",
+            "http/social/accept.ts",
+            socialEnv,
+        );
+        const friendRemove = fn(
+            "FriendRemove",
+            "http/social/remove.ts",
+            socialEnv,
+        );
+        const friendBlock = fn(
+            "FriendBlock",
+            "http/social/block.ts",
+            socialEnv,
+        );
+        const presenceConnect = fn(
+            "PresenceConnect",
+            "ws/presence/connect.ts",
+            socialEnv,
+        );
+        const presenceDisconnect = fn(
+            "PresenceDisconnect",
+            "ws/presence/disconnect.ts",
+            socialEnv,
+        );
+        const presencePing = fn(
+            "PresencePing",
+            "ws/presence/ping.ts",
+            socialEnv,
+        );
+        const onPresenceChange = fn(
+            "OnPresenceChange",
+            "stream/onPresenceChange.ts",
+            socialEnv,
+        );
+
+        const socialLambdas = [
+            userSearch,
+            friendList,
+            friendRequestsList,
+            friendRequest,
+            friendAccept,
+            friendRemove,
+            friendBlock,
+            presenceConnect,
+            presenceDisconnect,
+            presencePing,
+            onPresenceChange,
+        ];
+        socialLambdas.forEach((f) => table.grantReadWriteData(f));
+
+        httpApi.addRoutes({
+            path: "/users/search",
+            methods: [apigwv2.HttpMethod.GET],
+            integration: integ("UserSearch", userSearch),
+            authorizer: jwtAuth,
+        });
+        httpApi.addRoutes({
+            path: "/me/friends",
+            methods: [apigwv2.HttpMethod.GET],
+            integration: integ("FriendList", friendList),
+            authorizer: jwtAuth,
+        });
+        httpApi.addRoutes({
+            path: "/me/friends/requests",
+            methods: [apigwv2.HttpMethod.GET],
+            integration: integ("FriendRequestsList", friendRequestsList),
+            authorizer: jwtAuth,
+        });
+        httpApi.addRoutes({
+            path: "/friends/{userId}/request",
+            methods: [apigwv2.HttpMethod.POST],
+            integration: integ("FriendRequest", friendRequest),
+            authorizer: jwtAuth,
+        });
+        httpApi.addRoutes({
+            path: "/friends/{userId}/accept",
+            methods: [apigwv2.HttpMethod.POST],
+            integration: integ("FriendAccept", friendAccept),
+            authorizer: jwtAuth,
+        });
+        httpApi.addRoutes({
+            path: "/friends/{userId}",
+            methods: [apigwv2.HttpMethod.DELETE],
+            integration: integ("FriendRemove", friendRemove),
+            authorizer: jwtAuth,
+        });
+        httpApi.addRoutes({
+            path: "/users/{userId}/block",
+            methods: [apigwv2.HttpMethod.POST],
+            integration: integ("FriendBlock", friendBlock),
+            authorizer: jwtAuth,
+        });
+
+        // Dedicated Presence WebSocket API. Independent from the room WS
+        // because presence is JWT/user-scoped, not room-scoped, and we
+        // want to throttle/scale it independently.
+        const presenceWsApi = new apigwv2.WebSocketApi(this, "PresenceWsApi", {
+            connectRouteOptions: {
+                integration: new apigwv2Integ.WebSocketLambdaIntegration(
+                    "PresenceConnect",
+                    presenceConnect,
+                ),
+            },
+            disconnectRouteOptions: {
+                integration: new apigwv2Integ.WebSocketLambdaIntegration(
+                    "PresenceDisconnect",
+                    presenceDisconnect,
+                ),
+            },
+        });
+        presenceWsApi.addRoute("ping", {
+            integration: new apigwv2Integ.WebSocketLambdaIntegration(
+                "PresencePing",
+                presencePing,
+            ),
+        });
+        const presenceWsStage = new apigwv2.WebSocketStage(
+            this,
+            "PresenceWsStage",
+            {
+                webSocketApi: presenceWsApi,
+                stageName: "prod",
+                autoDeploy: true,
+            },
+        );
+        const presenceWsEndpoint = `https://${presenceWsApi.apiId}.execute-api.${this.region}.amazonaws.com/${presenceWsStage.stageName}`;
+        const presenceManageArn = `arn:aws:execute-api:${this.region}:${this.account}:${presenceWsApi.apiId}/*/*/@connections/*`;
+        [presencePing, onPresenceChange].forEach((f) => {
+            f.addEnvironment("WS_ENDPOINT", presenceWsEndpoint);
+            f.addToRolePolicy(
+                new iam.PolicyStatement({
+                    actions: ["execute-api:ManageConnections"],
+                    resources: [presenceManageArn],
+                }),
+            );
+        });
+
+        // Stream consumer for presence INSERT/REMOVE → friend fanout.
+        // Filtered to PRESENCE# rows so we don't pay invocation cost for
+        // unrelated stream traffic.
+        onPresenceChange.addEventSource(
+            new lambdaSources.DynamoEventSource(table, {
+                startingPosition: lambda.StartingPosition.LATEST,
+                batchSize: 100,
+                maxBatchingWindow: Duration.seconds(1),
+                retryAttempts: 2,
+                filters: [
+                    lambda.FilterCriteria.filter({
+                        dynamodb: { Keys: { PK: { S: [{ prefix: "PRESENCE#" }] } } },
+                    }),
+                ],
+            }),
+        );
+
+        new CfnOutput(this, "PresenceWsApiUrl", {
+            value: `wss://${presenceWsApi.apiId}.execute-api.${this.region}.amazonaws.com/${presenceWsStage.stageName}`,
+        });
+
         const siteBucket = new s3.Bucket(this, "Site", {
             blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
             removalPolicy: RemovalPolicy.DESTROY,

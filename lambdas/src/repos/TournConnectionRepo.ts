@@ -26,7 +26,7 @@ export interface TournConnRow {
 }
 
 export class TournConnectionRepo {
-    constructor(private readonly client: DynamoDBDocumentClient = ddb) {}
+    constructor(private readonly client: DynamoDBDocumentClient = ddb) { }
 
     async put(
         tournId: string,
@@ -52,11 +52,6 @@ export class TournConnectionRepo {
         );
     }
 
-    /**
-     * Find which tournament a connection belongs to. Used by $disconnect
-     * which only receives the connectionId. Returns null when the conn is
-     * not tournament-scoped (e.g. a casual-room connection).
-     */
     async byConnectionId(
         connectionId: string,
     ): Promise<TournConnRow | null> {
@@ -91,7 +86,6 @@ export class TournConnectionRepo {
         return (r.Items ?? []).map((i) => i.connection_id as string);
     }
 
-    /** List connections for a specific user inside a tournament (for MATCH_READY). */
     async listByUserInTournament(
         tournId: string,
         userId: string,
