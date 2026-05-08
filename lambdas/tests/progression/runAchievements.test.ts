@@ -16,6 +16,14 @@ const env = (
     ...over,
 });
 
+const emptyState = {
+    totalRaces: 0,
+    racesWon: 0,
+    bestWpmByLang: {},
+    bestWpm: 0,
+    langsRaced: [],
+};
+
 function makeRepo(unlockedSet = new Set<string>()): AchievementsRepo {
     return {
         async tryUnlock(_u, def) {
@@ -66,7 +74,7 @@ describe("runAchievementsForEnvelope", () => {
                 type: "RACE_FINISHED",
                 payload: { language: "rust", accuracy: 1, wpm: 70 },
             }),
-            { repo, xpRepo },
+            { repo, xpRepo, loadState: async () => emptyState },
         );
         const ids = out.map((o) => o.achievementId).sort();
         expect(ids).toContain("first_race");
@@ -85,8 +93,8 @@ describe("runAchievementsForEnvelope", () => {
             type: "RACE_FINISHED",
             payload: { language: "rust", accuracy: 1 },
         });
-        const first = await runAchievementsForEnvelope(e, { repo, xpRepo });
-        const second = await runAchievementsForEnvelope(e, { repo, xpRepo });
+        const first = await runAchievementsForEnvelope(e, { repo, xpRepo, loadState: async () => emptyState });
+        const second = await runAchievementsForEnvelope(e, { repo, xpRepo, loadState: async () => emptyState });
         expect(first.length).toBeGreaterThan(0);
         expect(second.length).toBe(0);
     });
@@ -96,7 +104,7 @@ describe("runAchievementsForEnvelope", () => {
         const xpRepo = makeXp();
         const out = await runAchievementsForEnvelope(
             env({ type: "DAILY_DONE" }),
-            { repo, xpRepo },
+            { repo, xpRepo, loadState: async () => emptyState },
         );
         expect(out.map((o) => o.achievementId)).toEqual(["daily_done"]);
     });
@@ -110,7 +118,7 @@ describe("runAchievementsForEnvelope", () => {
                 payload: { language: "rust", accuracy: 0.9, wpm: 30 },
                 occurredAt: "2026-05-08T12:00:00.000Z",
             }),
-            { repo, xpRepo },
+            { repo, xpRepo, loadState: async () => emptyState },
         );
         expect(out.map((o) => o.achievementId)).toEqual(["first_race"]);
     });
@@ -133,7 +141,7 @@ describe("runAchievementsForEnvelope", () => {
                     type: "RACE_FINISHED",
                     payload: { accuracy: 1, wpm: 70 },
                 }),
-                { repo, xpRepo },
+                { repo, xpRepo, loadState: async () => emptyState },
             );
             expect(out.length).toBeGreaterThan(0);
         } finally {

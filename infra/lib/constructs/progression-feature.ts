@@ -7,6 +7,7 @@ import * as ddb from "aws-cdk-lib/aws-dynamodb";
 import * as events from "aws-cdk-lib/aws-events";
 import * as eventsTargets from "aws-cdk-lib/aws-events-targets";
 import * as firehose from "aws-cdk-lib/aws-kinesisfirehose";
+import * as iam from "aws-cdk-lib/aws-iam";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as lambdaSources from "aws-cdk-lib/aws-lambda-event-sources";
 import * as s3 from "aws-cdk-lib/aws-s3";
@@ -33,6 +34,15 @@ export interface ProgressionFeatureProps {
     jwtAuth: apigwv2Auth.HttpJwtAuthorizer;
     lambdaFactory: LambdaFactory;
     integFactory: IntegFactory;
+    /**
+     * Optional: enables WS pushes (XP_GAINED, LEVEL_UP, etc.) to the
+     * user's presence connections. When omitted, the stream consumer
+     * runs the engines but emits no toasts (graceful degradation).
+     */
+    presenceWs?: {
+        endpoint: string;
+        manageConnectionsArn: string;
+    };
 }
 
 /**
@@ -89,11 +99,22 @@ export class ProgressionFeature extends Construct {
             "stream/firehoseSink.ts",
             {
                 FIREHOSE_STREAM_NAME: deliveryStream.deliveryStreamName,
+                ...(props.presenceWs
+                    ? { PRESENCE_WS_ENDPOINT: props.presenceWs.endpoint }
+                    : {}),
                 ...this.env,
             },
         );
         table.grantReadWriteData(this.streamConsumer);
         deliveryStream.grantPutRecords(this.streamConsumer);
+        if (props.presenceWs) {
+            this.streamConsumer.addToRolePolicy(
+                new iam.PolicyStatement({
+                    actions: ["execute-api:ManageConnections"],
+                    resources: [props.presenceWs.manageConnectionsArn],
+                }),
+            );
+        }
         this.streamConsumer.addEventSource(
             new lambdaSources.DynamoEventSource(table, {
                 startingPosition: lambda.StartingPosition.LATEST,

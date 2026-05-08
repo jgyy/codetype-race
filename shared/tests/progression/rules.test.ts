@@ -19,8 +19,8 @@ const env = (
 });
 
 describe("ALL_RULES catalog", () => {
-    test("exactly 10 launch rules", () => {
-        expect(ALL_RULES.length).toBe(10);
+    test("exactly 20 launch rules", () => {
+        expect(ALL_RULES.length).toBe(20);
     });
 
     test("every def passes Zod validation", () => {
@@ -133,6 +133,70 @@ describe("rule predicates — negative cases", () => {
                     payload: { language: "rust" },
                 }),
             ),
+        ).toBe(false);
+    });
+});
+
+describe("stateful rules", () => {
+    const baseState = {
+        totalRaces: 0,
+        racesWon: 0,
+        bestWpmByLang: {},
+        bestWpm: 0,
+        langsRaced: [],
+    };
+
+    test("century_race fires only at totalRaces ≥ 100", () => {
+        const r = RULES_BY_ID.century_race!;
+        const e = env({ type: "RACE_FINISHED" });
+        expect(r.match(e, { ...baseState, totalRaces: 99 })).toBe(false);
+        expect(r.match(e, { ...baseState, totalRaces: 100 })).toBe(true);
+    });
+
+    test("polyglot_5 needs 5 unique languages", () => {
+        const r = RULES_BY_ID.polyglot_5!;
+        const e = env({ type: "RACE_FINISHED" });
+        expect(
+            r.match(e, {
+                ...baseState,
+                langsRaced: ["a", "b", "c", "d"],
+            }),
+        ).toBe(false);
+        expect(
+            r.match(e, {
+                ...baseState,
+                langsRaced: ["a", "b", "c", "d", "e"],
+            }),
+        ).toBe(true);
+    });
+
+    test("wpm_120 also accepts in-event wpm even if state lags", () => {
+        const r = RULES_BY_ID.wpm_120!;
+        expect(
+            r.match(env({ type: "RACE_FINISHED", payload: { wpm: 121 } }), baseState),
+        ).toBe(true);
+    });
+
+    test("all_rounder needs 3 langs at 60+ wpm", () => {
+        const r = RULES_BY_ID.all_rounder!;
+        const e = env({ type: "RACE_FINISHED" });
+        expect(
+            r.match(e, {
+                ...baseState,
+                bestWpmByLang: { rust: 70, python: 50, ts: 65 },
+            }),
+        ).toBe(false);
+        expect(
+            r.match(e, {
+                ...baseState,
+                bestWpmByLang: { rust: 70, python: 65, ts: 65 },
+            }),
+        ).toBe(true);
+    });
+
+    test("stateful rules return false when state is undefined (graceful)", () => {
+        expect(
+            RULES_BY_ID.tenth_race!.match(env({ type: "RACE_FINISHED" })),
         ).toBe(false);
     });
 });

@@ -32,9 +32,25 @@ export const AchievementDefSchema = z.object({
 });
 export type AchievementDef = z.infer<typeof AchievementDefSchema>;
 
+/**
+ * Aggregated player state used by stateful rules. Loaded lazily by the
+ * engine and cached for the lifetime of a stream batch.
+ *
+ * Fields are sourced from existing rows (no new write path), which is
+ * why best_wpm is keyed by language — that matches what UserRepo
+ * already persists on race finalization.
+ */
+export interface PlayerState {
+    totalRaces: number;
+    racesWon: number;
+    bestWpmByLang: Record<string, number>;
+    bestWpm: number;
+    langsRaced: string[];
+}
+
 export interface AchievementRule {
     def: AchievementDef;
-    match: (env: EventEnvelope) => boolean;
+    match: (env: EventEnvelope, state?: PlayerState) => boolean;
 }
 
 export const UnlockedAchievementSchema = z.object({

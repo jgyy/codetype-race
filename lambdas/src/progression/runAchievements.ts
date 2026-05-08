@@ -1,10 +1,12 @@
 import type { EventEnvelope } from "@codetype/shared/eventlog";
+import type { PlayerState } from "@codetype/shared/progression/achievements";
 import { ALL_RULES } from "@codetype/shared/progression/rules";
 import {
     achievements as defaultRepo,
     type AchievementsRepo,
 } from "../repos/AchievementsRepo";
 import { xp as defaultXp, type XpRepo } from "../repos/XpRepo";
+import { loadPlayerState } from "./playerState";
 
 export interface UnlockOutcome {
     userId: string;
@@ -24,13 +26,19 @@ export async function runAchievementsForEnvelope(
     deps: {
         repo?: AchievementsRepo;
         xpRepo?: XpRepo;
+        loadState?: (userId: string) => Promise<PlayerState>;
     } = {},
 ): Promise<UnlockOutcome[]> {
     const repo = deps.repo ?? defaultRepo;
     const xpRepo = deps.xpRepo ?? defaultXp;
+    const loadState = deps.loadState ?? loadPlayerState;
+    const needsState = ALL_RULES.some((r) => r.match.length >= 2);
+    const state: PlayerState | undefined = needsState
+        ? await loadState(env.userId).catch(() => undefined)
+        : undefined;
     const matched = ALL_RULES.filter((r) => {
         try {
-            return r.match(env);
+            return r.match(env, state);
         } catch (e) {
             console.log(
                 JSON.stringify({

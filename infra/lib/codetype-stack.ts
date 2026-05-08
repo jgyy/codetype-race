@@ -892,6 +892,10 @@ export class CodetypeStack extends Stack {
             jwtAuth,
             lambdaFactory: fn,
             integFactory: integ,
+            presenceWs: {
+                endpoint: presenceWsEndpoint,
+                manageConnectionsArn: presenceManageArn,
+            },
         });
 
         const siteBucket = new s3.Bucket(this, "Site", {

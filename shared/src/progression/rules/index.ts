@@ -149,6 +149,154 @@ export const ALL_RULES: AchievementRule[] = [
             return h >= 0 && h < 5;
         },
     }),
+    rule({
+        def: {
+            id: "tenth_race",
+            title: "Getting Started",
+            description: "Finish 10 races.",
+            category: "consistency",
+            tier: "bronze",
+            hidden: false,
+            xp: 5,
+            unlisted: false,
+        },
+        match: (e, s) =>
+            e.type === "RACE_FINISHED" && (s?.totalRaces ?? 0) >= 10,
+    }),
+    rule({
+        def: {
+            id: "century_race",
+            title: "Century Club",
+            description: "Finish 100 races.",
+            category: "consistency",
+            tier: "silver",
+            hidden: false,
+            xp: 5,
+            unlisted: false,
+        },
+        match: (e, s) =>
+            e.type === "RACE_FINISHED" && (s?.totalRaces ?? 0) >= 100,
+    }),
+    rule({
+        def: {
+            id: "millennium_race",
+            title: "Mileage",
+            description: "Finish 1,000 races.",
+            category: "consistency",
+            tier: "platinum",
+            hidden: false,
+            xp: 5,
+            unlisted: false,
+        },
+        match: (e, s) =>
+            e.type === "RACE_FINISHED" && (s?.totalRaces ?? 0) >= 1000,
+    }),
+    rule({
+        def: {
+            id: "polyglot_3",
+            title: "Polyglot",
+            description: "Race in 3 different languages.",
+            category: "languages",
+            tier: "silver",
+            hidden: false,
+            xp: 5,
+            unlisted: false,
+        },
+        match: (e, s) =>
+            e.type === "RACE_FINISHED" && (s?.langsRaced.length ?? 0) >= 3,
+    }),
+    rule({
+        def: {
+            id: "polyglot_5",
+            title: "Translator",
+            description: "Race in 5 different languages.",
+            category: "languages",
+            tier: "gold",
+            hidden: false,
+            xp: 5,
+            unlisted: false,
+        },
+        match: (e, s) =>
+            e.type === "RACE_FINISHED" && (s?.langsRaced.length ?? 0) >= 5,
+    }),
+    rule({
+        def: {
+            id: "polyglot_8",
+            title: "Linguist",
+            description: "Race in 8 different languages.",
+            category: "languages",
+            tier: "platinum",
+            hidden: false,
+            xp: 5,
+            unlisted: false,
+        },
+        match: (e, s) =>
+            e.type === "RACE_FINISHED" && (s?.langsRaced.length ?? 0) >= 8,
+    }),
+    rule({
+        def: {
+            id: "ten_wins",
+            title: "Competitor",
+            description: "Win 10 races.",
+            category: "consistency",
+            tier: "silver",
+            hidden: false,
+            xp: 5,
+            unlisted: false,
+        },
+        match: (e, s) =>
+            e.type === "RACE_FINISHED" && (s?.racesWon ?? 0) >= 10,
+    }),
+    rule({
+        def: {
+            id: "fifty_wins",
+            title: "Champion",
+            description: "Win 50 races.",
+            category: "consistency",
+            tier: "gold",
+            hidden: false,
+            xp: 5,
+            unlisted: false,
+        },
+        match: (e, s) =>
+            e.type === "RACE_FINISHED" && (s?.racesWon ?? 0) >= 50,
+    }),
+    rule({
+        def: {
+            id: "wpm_120",
+            title: "Velocity",
+            description: "Hit 120 WPM in any race.",
+            category: "speed",
+            tier: "platinum",
+            hidden: false,
+            xp: 5,
+            unlisted: false,
+        },
+        match: (e, s) => {
+            if (e.type !== "RACE_FINISHED") return false;
+            const here = Number((e.payload as any).wpm ?? 0);
+            const best = s?.bestWpm ?? 0;
+            return Math.max(here, best) >= 120;
+        },
+    }),
+    rule({
+        def: {
+            id: "all_rounder",
+            title: "All-Rounder",
+            description:
+                "Reach 60+ WPM in 3 different languages.",
+            category: "speed",
+            tier: "gold",
+            hidden: false,
+            xp: 5,
+            unlisted: false,
+        },
+        match: (e, s) => {
+            if (e.type !== "RACE_FINISHED") return false;
+            const langWpms = Object.values(s?.bestWpmByLang ?? {});
+            return langWpms.filter((w) => w >= 60).length >= 3;
+        },
+    }),
 ];
 
 export const RULES_BY_ID: Record<string, AchievementRule> =
