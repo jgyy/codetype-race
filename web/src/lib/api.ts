@@ -641,3 +641,30 @@ export async function redeemGuildInvite(
   if (!r.ok) await failWith(r);
   return r.json();
 }
+
+// ─── Phase 10 (slice 4): activity feed ───────────────────────────────
+export type FeedEventType =
+  | "raced"
+  | "joined_guild"
+  | "left_guild"
+  | "won_tournament"
+  | "daily_completed"
+  | "achievement_unlocked"
+  | "pb_set";
+
+export interface FeedEvent {
+  user_id: string;
+  event_id: string;
+  type: FeedEventType;
+  payload: Record<string, unknown>;
+  created_at: string;
+}
+
+export async function getUserFeed(userId: string): Promise<FeedEvent[]> {
+  const r = await req(`/users/${encodeURIComponent(userId)}/feed`, {
+    auth: true,
+  });
+  if (!r.ok) await failWith(r);
+  const body = (await r.json()) as { events: FeedEvent[] };
+  return body.events;
+}

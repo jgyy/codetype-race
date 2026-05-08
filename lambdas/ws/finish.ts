@@ -11,6 +11,7 @@ import { snippets } from "../src/repos/SnippetRepo";
 import { users } from "../src/repos/UserRepo";
 import { teamRatings } from "../src/repos/TeamRatingRepo";
 import { teamRooms } from "../src/repos/TeamRoomRepo";
+import { feed } from "../src/repos/FeedRepo";
 import { computeTeamRatingDeltas } from "@codetype/shared/team-elo";
 import { rankTeams, type TeamPlayerResult } from "@codetype/shared/team-scoring";
 import { userPK, userRaceSK } from "@codetype/shared/ddb-keys";
@@ -158,6 +159,17 @@ async function maybeApplyRatings(
         })),
     };
     await Promise.all(conns.map((id) => postTo(id, payload).catch(() => false)));
+    // Fire-and-forget feed events (Phase 10 slice 4).
+    await Promise.all(
+        applied.map((a) =>
+            feed.append(a.userId, "raced", {
+                room_id: roomId,
+                language,
+                rating_after: a.newRating,
+                rating_delta: a.delta,
+            }),
+        ),
+    );
 }
 
 async function maybeApplyTeamRatings(
@@ -312,4 +324,14 @@ async function maybeApplyTeamRatings(
         })),
     };
     await Promise.all(conns.map((id) => postTo(id, payload).catch(() => false)));
+    await Promise.all(
+        rated.map((p) =>
+            feed.append(p.user_id, "raced", {
+                room_id: roomId,
+                language,
+                team_id: teamOf.get(p.user_id),
+                won: teamOf.get(p.user_id) === winnerId,
+            }),
+        ),
+    );
 }

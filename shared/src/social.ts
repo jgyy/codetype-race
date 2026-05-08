@@ -217,3 +217,30 @@ export type TeamRating = z.infer<typeof TeamRatingSchema>;
 export const TEAM_STARTING_RATING = 1000;
 export const TEAM_ELO_K = 24;
 export const TEAM_SIZE_BONUS = 50;
+
+// ─── Activity feed ──────────────────────────────────────────────────
+export const FeedEventTypeSchema = z.enum([
+    "raced",
+    "joined_guild",
+    "left_guild",
+    "won_tournament",
+    "daily_completed",
+    "achievement_unlocked",
+    "pb_set",
+]);
+export type FeedEventType = z.infer<typeof FeedEventTypeSchema>;
+
+export const FeedEventSchema = z.object({
+    user_id: z.string(),
+    event_id: z.string().uuid(),
+    type: FeedEventTypeSchema,
+    payload: z.record(z.unknown()),
+    created_at: z.string().datetime(),
+});
+export type FeedEvent = z.infer<typeof FeedEventSchema>;
+
+export const FeedResponseSchema = z.object({
+    events: z.array(FeedEventSchema),
+});
+
+export const FEED_PAGE_SIZE = 50;

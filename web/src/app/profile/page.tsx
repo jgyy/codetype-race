@@ -3,6 +3,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { getUserProfile, friendlyMessage } from "@/lib/api";
+import { ActivityFeed } from "@/components/social/ActivityFeed";
 
 interface Profile {
   user_id: string;
@@ -135,6 +136,15 @@ function ProfileView() {
           ))}
         </ul>
       </section>
+
+      {userId ? (
+        <section className="mt-8">
+          <h2 className="mb-2 text-sm font-medium text-neutral-300">
+            Activity
+          </h2>
+          <ActivityFeed userId={userId} />
+        </section>
+      ) : null}
     </main>
   );
 }

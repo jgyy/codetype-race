@@ -4,6 +4,7 @@ import { matches } from "../src/repos/MatchRepo";
 import { tournaments } from "../src/repos/TournamentRepo";
 import { rooms } from "../src/repos/RoomRepo";
 import { tournConnections } from "../src/repos/TournConnectionRepo";
+import { feed } from "../src/repos/FeedRepo";
 import { advanceMatch } from "../src/orchestration/advanceMatch";
 import {
     broadcastBracketUpdate,
@@ -119,6 +120,9 @@ export const handler: DynamoDBStreamHandler = withStream(async (event) => {
                 repo: tournConnections,
                 tournId: matchKey.tournId,
                 winnerId: winner.user_id,
+            });
+            await feed.append(winner.user_id, "won_tournament", {
+                tourn_id: matchKey.tournId,
             });
         }
     }

@@ -3,6 +3,7 @@ import { RedeemInviteResponseSchema } from "@codetype/shared/social";
 import { withHttp } from "../../../src/middleware";
 import { Errors, requireGuildsEnabled } from "../../../src/AppError";
 import { guilds } from "../../../src/repos/GuildRepo";
+import { feed } from "../../../src/repos/FeedRepo";
 
 const EmptyBody = z.object({}).passthrough();
 
@@ -26,6 +27,7 @@ export const handler = withHttp(EmptyBody, async (_input, ctx) => {
         "member",
         new Date().toISOString(),
     );
+    await feed.append(ctx.userId, "joined_guild", { guild_id: invite.guildId });
     return RedeemInviteResponseSchema.parse({
         guild_id: invite.guildId,
         role: "member",

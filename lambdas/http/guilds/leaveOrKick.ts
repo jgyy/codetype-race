@@ -2,6 +2,7 @@ import { z } from "zod";
 import { withHttp } from "../../src/middleware";
 import { Errors, requireGuildsEnabled } from "../../src/AppError";
 import { canKick, guilds } from "../../src/repos/GuildRepo";
+import { feed } from "../../src/repos/FeedRepo";
 
 const EmptyBody = z.object({}).passthrough();
 
@@ -26,5 +27,6 @@ export const handler = withHttp(EmptyBody, async (_input, ctx) => {
     }
 
     await guilds.removeMember(id, targetUserId);
+    await feed.append(targetUserId, "left_guild", { guild_id: id });
     return { status: "removed" } as const;
 });

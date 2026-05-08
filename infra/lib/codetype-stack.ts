@@ -56,15 +56,11 @@ export class CodetypeStack extends Stack {
         const userPoolClient = userPool.addClient("WebClient", {
             authFlows: { userPassword: true, userSrp: true },
         });
-        // Group membership surfaces in the JWT as `cognito:groups`.
-        // Members of this group can review community snippet submissions.
         new cognito.CfnUserPoolGroup(this, "AdminGroup", {
             userPoolId: userPool.userPoolId,
             groupName: "admin",
             description: "Snippet moderation",
         });
-        // Tournament moderators: can create/seed/cancel tournaments. Admins
-        // are implicitly mods (checked by requireMod in lambdas/AppError.ts).
         new cognito.CfnUserPoolGroup(this, "ModGroup", {
             userPoolId: userPool.userPoolId,
             groupName: "mod",
@@ -119,9 +115,6 @@ export class CodetypeStack extends Stack {
             "http/listPendingSnippets.ts",
         );
         const reviewSnippet = fn("ReviewSnippet", "http/reviewSnippet.ts");
-        // Race replays bucket: append-only JSON keyed by roomId, deleted
-        // automatically after 90 days via lifecycle rule. CORS allows
-        // browser PUTs against presigned URLs.
         const replayBucket = new s3.Bucket(this, "Replays", {
             blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
             removalPolicy: RemovalPolicy.DESTROY,
@@ -308,8 +301,6 @@ export class CodetypeStack extends Stack {
             authorizer: jwtAuth,
         });
 
-        // Replay endpoints. Both unauthenticated for v1 to match the
-        // join flow; the room must exist for upload URL issuance.
         httpApi.addRoutes({
             path: "/rooms/{roomId}/replay/upload-url",
             methods: [apigwv2.HttpMethod.GET],
@@ -386,10 +377,6 @@ export class CodetypeStack extends Stack {
             }),
         );
 
-        // ─── Phase 09: Tournaments & Seasons ──────────────────────────────
-        // Single feature flag plumbed into every tournament-aware Lambda so
-        // a stuck rollout can be killed by flipping ENABLE_TOURNAMENTS=false
-        // in the CDK env without code changes.
         const tournEnv = { ENABLE_TOURNAMENTS: "true" };
 
         const tournCreate = fn(
@@ -443,7 +430,6 @@ export class CodetypeStack extends Stack {
             "cron/rolloverSeasons.ts",
             tournEnv,
         );
-        // Decay sweep can be slow on cold pools; bump timeout/memory.
         rolloverSeasons.addEnvironment("AWS_NODEJS_CONNECTION_REUSE_ENABLED", "1");
         const advanceTourn = fn(
             "AdvanceTournaments",
@@ -494,7 +480,6 @@ export class CodetypeStack extends Stack {
         const integ = (id: string, f: lambda.IFunction) =>
             new apigwv2Integ.HttpLambdaIntegration(id, f);
 
-        // Public reads (CloudFront-cacheable).
         httpApi.addRoutes({
             path: "/tournaments",
             methods: [apigwv2.HttpMethod.GET],
@@ -521,8 +506,6 @@ export class CodetypeStack extends Stack {
             integration: integ("SeasonLeaderboard", seasonLeaderboard),
         });
 
-        // Mutating endpoints (Cognito JWT). Mod-group enforcement is in
-        // the handlers themselves via requireMod.
         httpApi.addRoutes({
             path: "/tournaments",
             methods: [apigwv2.HttpMethod.POST],
@@ -547,15 +530,6 @@ export class CodetypeStack extends Stack {
             integration: integ("TournCancel", tournCancel),
             authorizer: jwtAuth,
         });
-        // The withdraw lambda shares the /register path with method=DELETE
-        // above; expose it here as a fallback for clients that prefer
-        // separate routes (no schema diff).
-        // Note: above route handles DELETE; this dummy block is intentionally
-        // omitted to avoid a duplicate-route synth error.
-
-        // Dedicated tournament WebSocket API. The viewer fan-out is
-        // independent of the casual-room WS, so a separate API ID makes
-        // throttling and auth policy independently tunable later.
         const tournWsApi = new apigwv2.WebSocketApi(this, "TournWsApi", {
             connectRouteOptions: {
                 integration: new apigwv2Integ.WebSocketLambdaIntegration(
@@ -583,7 +557,6 @@ export class CodetypeStack extends Stack {
         });
         const tournWsEndpoint = `https://${tournWsApi.apiId}.execute-api.${this.region}.amazonaws.com/${tournWsStage.stageName}`;
         const tournManageArn = `arn:aws:execute-api:${this.region}:${this.account}:${tournWsApi.apiId}/*/*/@connections/*`;
-        // Anything that needs to push WS messages on the /tourn API.
         [
             tournWsConnect,
             tournWsHeartbeat,
@@ -598,8 +571,6 @@ export class CodetypeStack extends Stack {
             );
         });
 
-        // Stream consumer for bracket advancement on race finishes. Sits
-        // alongside the existing chat broadcaster on the same table stream.
         onRaceFinished.addEventSource(
             new lambdaSources.DynamoEventSource(table, {
                 startingPosition: lambda.StartingPosition.LATEST,
@@ -609,14 +580,11 @@ export class CodetypeStack extends Stack {
             }),
         );
 
-        // Crons.
         new events.Rule(this, "RolloverSeasonsCron", {
-            // Daily 00:00 UTC.
             schedule: events.Schedule.cron({ minute: "0", hour: "0" }),
             targets: [new eventsTargets.LambdaFunction(rolloverSeasons)],
         });
         new events.Rule(this, "AdvanceTournamentsCron", {
-            // Every minute.
             schedule: events.Schedule.rate(Duration.minutes(1)),
             targets: [new eventsTargets.LambdaFunction(advanceTourn)],
         });
@@ -625,7 +593,6 @@ export class CodetypeStack extends Stack {
             value: `wss://${tournWsApi.apiId}.execute-api.${this.region}.amazonaws.com/${tournWsStage.stageName}`,
         });
 
-        // ─── Phase 10 (slice 1) — Friends + Presence ──────────────────────
         const socialEnv = {
             ENABLE_FRIENDS: "true",
             ENABLE_PRESENCE: "true",
@@ -741,9 +708,17 @@ export class CodetypeStack extends Stack {
             authorizer: jwtAuth,
         });
 
-        // Dedicated Presence WebSocket API. Independent from the room WS
-        // because presence is JWT/user-scoped, not room-scoped, and we
-        // want to throttle/scale it independently.
+        const feedGet = fn("FeedGet", "http/social/feed.ts", {
+            ENABLE_FRIENDS: "true",
+            ENABLE_GUILDS: "true",
+        });
+        table.grantReadWriteData(feedGet);
+        httpApi.addRoutes({
+            path: "/users/{userId}/feed",
+            methods: [apigwv2.HttpMethod.GET],
+            integration: integ("FeedGet", feedGet),
+        });
+
         const presenceWsApi = new apigwv2.WebSocketApi(this, "PresenceWsApi", {
             connectRouteOptions: {
                 integration: new apigwv2Integ.WebSocketLambdaIntegration(
@@ -785,9 +760,6 @@ export class CodetypeStack extends Stack {
             );
         });
 
-        // Stream consumer for presence INSERT/REMOVE → friend fanout.
-        // Filtered to PRESENCE# rows so we don't pay invocation cost for
-        // unrelated stream traffic.
         onPresenceChange.addEventSource(
             new lambdaSources.DynamoEventSource(table, {
                 startingPosition: lambda.StartingPosition.LATEST,
@@ -806,7 +778,6 @@ export class CodetypeStack extends Stack {
             value: `wss://${presenceWsApi.apiId}.execute-api.${this.region}.amazonaws.com/${presenceWsStage.stageName}`,
         });
 
-        // ─── Phase 10 (slice 2) — Guilds ───────────────────────────────────
         const guildEnv = { ENABLE_GUILDS: "true" };
         const guildCreate = fn("GuildCreate", "http/guilds/create.ts", guildEnv);
         const guildList = fn("GuildList", "http/guilds/list.ts", guildEnv);

@@ -98,6 +98,15 @@ export const userHandleGSI1PK = (handleLower: string) =>
 export const userHandleGSI1SK = (handleLower: string, userId: string) =>
     `${handleLower}#${userId}`;
 
+// Activity feed: reverse-ts SK gives newest-first on a plain Query.
+const FEED_TS_PAD = 16;
+const FEED_TS_BIAS = Number.MAX_SAFE_INTEGER;
+export const feedPK = (userId: string) => `FEED#${userId}`;
+export const feedSK = (createdAtMs: number, eventId: string) => {
+    const inverted = Math.max(0, FEED_TS_BIAS - Math.floor(createdAtMs));
+    return `EV#${String(inverted).padStart(FEED_TS_PAD, "0")}#${eventId}`;
+};
+
 export const teamRoomSK = (teamId: string) => `TEAMS#${teamId}`;
 export const teamRoomPrefix = () => "TEAMS#";
 
