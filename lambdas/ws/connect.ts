@@ -9,6 +9,11 @@ export const handler = withWsLifecycle(async (event, ctx) => {
     .queryStringParameters ?? {};
   const parsed = WsConnectQuerySchema.parse(qs);
 
+  // Phase 12: opt-in reduced cursor stream for mobile (`?cursor.lite=true`).
+  // The dot in the URL key prevents folding it into WsConnectQuerySchema,
+  // so it's pulled out separately here.
+  const cursorLite = qs["cursor.lite"] === "true";
+
   const room = await rooms.getByCode(parsed.code);
   if (!room) throw Errors.NotFound("room");
 
@@ -17,6 +22,7 @@ export const handler = withWsLifecycle(async (event, ctx) => {
     ctx.connectionId,
     parsed.display_name,
     parsed.role,
+    { cursor_lite: cursorLite },
   );
   return { statusCode: 200, body: "connected" };
 });

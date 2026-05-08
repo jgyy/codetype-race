@@ -16,8 +16,33 @@ const pending = new Map<string, PendingState>();
 const COALESCE_MS = 100;
 let flushScheduled = false;
 
+/**
+ * Phase 12 reduced-cursor-stream policy. The flush interval stays at
+ * COALESCE_MS for everyone (the *coalescing* cadence). Lite peers
+ * receive every other emission, halving wire-message rate without
+ * special-casing the producer side. `flushTick` is the global counter.
+ */
+let flushTick = 0;
+
+/** Test hook: reset module-level state between cases. */
+export function __resetCursorState() {
+    pending.clear();
+    flushScheduled = false;
+    flushTick = 0;
+}
+
+export function shouldDeliverToPeer(opts: {
+    cursorLite: boolean;
+    tick: number;
+}): boolean {
+    if (!opts.cursorLite) return true;
+    return opts.tick % 2 === 0;
+}
+
 async function flush() {
     flushScheduled = false;
+    flushTick += 1;
+    const tick = flushTick;
     const snapshot = new Map(pending);
     pending.clear();
 
@@ -36,7 +61,7 @@ async function flush() {
                 state.errors,
             );
 
-            const peers = await connections.listByRoom(roomId);
+            const peers = await connections.listRowsByRoom(roomId);
             const payload = {
                 type: "cursor" as const,
                 display_name: displayName,
@@ -44,8 +69,11 @@ async function flush() {
             };
             await Promise.all(
                 peers
-                    .filter((id) => id !== connectionId)
-                    .map((id) => postTo(id, payload).catch(() => false)),
+                    .filter((p) => p.connection_id !== connectionId)
+                    .filter((p) =>
+                        shouldDeliverToPeer({ cursorLite: p.cursor_lite, tick }),
+                    )
+                    .map((p) => postTo(p.connection_id, payload).catch(() => false)),
             );
         }),
     );

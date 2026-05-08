@@ -57,6 +57,11 @@ export const ConnectionSchema = z.object({
     joined_at: z.number(),
     ttl: z.number(),
     role: RoleSchema.optional().default("racer"),
+    /**
+     * Phase 12 reduced cursor stream. When true, the cursor flush emits
+     * to this connection at half cadence (5 Hz instead of 10 Hz).
+     */
+    cursor_lite: z.boolean().optional().default(false),
 });
 export type Connection = z.infer<typeof ConnectionSchema>;
 

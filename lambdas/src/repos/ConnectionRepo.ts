@@ -25,6 +25,8 @@ export interface ConnRow {
     joined_at: number;
     ttl: number;
     role?: "racer" | "spectator";
+    /** Phase 12: when true, cursor flush emits at 5 Hz instead of 10 Hz. */
+    cursor_lite?: boolean;
     PK: string;
     SK: string;
 }
@@ -37,6 +39,7 @@ export class ConnectionRepo {
         connectionId: string,
         displayName: string,
         role: "racer" | "spectator" = "racer",
+        opts: { cursor_lite?: boolean } = {},
     ): Promise<void> {
         const now = Date.now();
         await this.client.send(
@@ -52,6 +55,8 @@ export class ConnectionRepo {
                     joined_at: now,
                     ttl: Math.floor(now / 1000) + TTL_SECONDS,
                     role,
+                    // Persist only when true to keep most rows compact.
+                    ...(opts.cursor_lite ? { cursor_lite: true } : {}),
                 },
             }),
         );
@@ -79,6 +84,27 @@ export class ConnectionRepo {
             }),
         );
         return (r.Items ?? []).map((i) => i.connection_id as string);
+    }
+
+    /**
+     * Like listByRoom but returns the fields the cursor flusher needs for
+     * per-connection writer policy decisions. Single Query, no extra reads.
+     */
+    async listRowsByRoom(
+        roomId: string,
+    ): Promise<Array<{ connection_id: string; cursor_lite: boolean }>> {
+        const r = await this.client.send(
+            new QueryCommand({
+                TableName: TABLE,
+                KeyConditionExpression: "PK = :pk AND begins_with(SK, :sk)",
+                ExpressionAttributeValues: { ":pk": roomPK(roomId), ":sk": "CONN#" },
+                ProjectionExpression: "connection_id, cursor_lite",
+            }),
+        );
+        return (r.Items ?? []).map((i) => ({
+            connection_id: i.connection_id as string,
+            cursor_lite: Boolean(i.cursor_lite),
+        }));
     }
 
     async delete(pk: string, sk: string): Promise<void> {
