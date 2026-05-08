@@ -3,7 +3,7 @@ import {
   computeRatingDeltas,
   expectedScore,
   type RaceParticipant,
-} from "../src/elo";
+} from "../../src/services/elo";
 
 describe("expectedScore", () => {
   test("equal ratings → 0.5", () => {

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { isConsecutiveUtcDay, utcDayKey } from "../src/streak";
+import { isConsecutiveUtcDay, utcDayKey } from "../../src/services/streak";
 
 describe("utcDayKey", () => {
   test("formats as YYYY-MM-DD", () => {

@@ -6,7 +6,7 @@ import {
   maxSeverity,
   statsFromSamples,
   type KeystrokeSample,
-} from "../src/anticheat";
+} from "../../src/services/anticheat";
 
 function makeSamples(intervals: number[], char = "a"): KeystrokeSample[] {
   let t = 0;

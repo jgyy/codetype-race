@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { accuracy, grossWpm, netWpm, scaledWpm } from "../src/wpm";
+import { accuracy, grossWpm, netWpm, scaledWpm } from "../../src/services/wpm";
 
 describe("grossWpm", () => {
   test("zero chars returns 0", () => {
