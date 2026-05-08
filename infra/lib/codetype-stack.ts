@@ -414,9 +414,13 @@ export class CodetypeStack extends Stack {
             },
         );
 
+        const progressionEnv = { ENABLE_PROGRESSION: "true" };
+
         const firehoseSink = fn("FirehoseSink", "stream/firehoseSink.ts", {
             FIREHOSE_STREAM_NAME: eventsFirehose.deliveryStreamName,
+            ...progressionEnv,
         });
+        table.grantReadWriteData(firehoseSink);
         eventsFirehose.grantPutRecords(firehoseSink);
         firehoseSink.addEventSource(
             new lambdaSources.DynamoEventSource(table, {
@@ -932,6 +936,15 @@ export class CodetypeStack extends Stack {
             path: "/guilds/join/{code}",
             methods: [apigwv2.HttpMethod.POST],
             integration: integ("GuildInviteRedeem", guildInviteRedeem),
+            authorizer: jwtAuth,
+        });
+
+        const meXp = fn("MeXp", "http/progression/getXp.ts", progressionEnv);
+        table.grantReadWriteData(meXp);
+        httpApi.addRoutes({
+            path: "/me/xp",
+            methods: [apigwv2.HttpMethod.GET],
+            integration: integ("MeXp", meXp),
             authorizer: jwtAuth,
         });
 

@@ -50,6 +50,12 @@ export function requireGuildsEnabled(): void {
   }
 }
 
+export function requireProgressionEnabled(): void {
+  if (process.env.ENABLE_PROGRESSION !== "true") {
+    throw new AppError("FEATURE_DISABLED", 503, "progression is disabled");
+  }
+}
+
 export const Errors = {
   Unauthorized: () => new AppError("UNAUTHORIZED", 401, "unauthorized"),
   NotFound: (what: string) =>

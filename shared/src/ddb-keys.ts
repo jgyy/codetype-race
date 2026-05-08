@@ -141,6 +141,15 @@ export const userGuildGSI1SK = (guildId: string, joinedAt: string) =>
 export const inviteCodeGSI1PK = (code: string) => `INVITE#${code}`;
 export const inviteCodeGSI1SK = (guildId: string) => `GUILD#${guildId}`;
 
+// Phase 11 — progression (XP / achievements / quests)
+const REVERSE_TS_BASE = 9_999_999_999_999;
+export const xpLedgerPK = (userId: string) => `XP#${userId}`;
+export const xpLedgerSK = (epochMs: number, eventId: string) => {
+    const inv = Math.max(0, REVERSE_TS_BASE - epochMs);
+    return `EV#${String(inv).padStart(13, "0")}#${eventId}`;
+};
+export const xpSummarySK = () => "XP#SUMMARY";
+
 const CODE_ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
 
 export function generateRoomCode(rand: () => number = Math.random): string {

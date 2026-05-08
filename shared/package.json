@@ -17,7 +17,8 @@
     "./social": "./src/social.ts",
     "./team-scoring": "./src/team-scoring.ts",
     "./team-elo": "./src/team-elo.ts",
-    "./eventlog": "./src/eventlog.ts"
+    "./eventlog": "./src/eventlog.ts",
+    "./progression/xp": "./src/progression/xp.ts"
   },
   "scripts": {
     "test": "bun test"

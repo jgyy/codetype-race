@@ -5,8 +5,11 @@ import {
 import type { DynamoDBStreamHandler } from "aws-lambda";
 import { withStream } from "../src/middleware";
 import { recordsToEnvelopes } from "../src/eventlog-map";
+import { awardForEnvelope } from "../src/progression/awardXp";
 
 const STREAM_NAME = process.env.FIREHOSE_STREAM_NAME ?? "";
+const ENABLE_PROGRESSION =
+    (process.env.ENABLE_PROGRESSION ?? "false").toLowerCase() === "true";
 const REGION = process.env.AWS_REGION;
 
 const firehose = new FirehoseClient({ region: REGION });
@@ -29,6 +32,10 @@ export const handler: DynamoDBStreamHandler = withStream(async (event) => {
     }
     const envelopes = recordsToEnvelopes(event.Records);
     if (envelopes.length === 0) return;
+
+    if (ENABLE_PROGRESSION) {
+        await Promise.all(envelopes.map((e) => awardForEnvelope(e)));
+    }
 
     for (const batch of chunk(envelopes, FIREHOSE_BATCH_LIMIT)) {
         const records = batch.map((e) => ({
