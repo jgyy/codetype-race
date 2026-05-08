@@ -52,7 +52,7 @@ export default function GuildsPage() {
             {results.map((g) => (
               <li key={g.id} className="p-2 text-sm">
                 <Link
-                  href={`/guilds/${encodeURIComponent(g.id)}`}
+                  href={`/guilds/view/?id=${encodeURIComponent(g.id)}`}
                   className="block hover:bg-zinc-900"
                 >
                   <span className="font-medium">{g.name}</span>{" "}
@@ -77,7 +77,7 @@ export default function GuildsPage() {
             setErr(null);
             try {
               const { guild_id } = await redeemGuildInvite(inviteCode);
-              window.location.href = `/guilds/${encodeURIComponent(guild_id)}`;
+              window.location.href = `/guilds/view/?id=${encodeURIComponent(guild_id)}`;
             } catch (err) {
               setErr(friendlyMessage(err));
             }
@@ -127,7 +127,7 @@ function CreateGuildForm({ onError }: { onError: (msg: string) => void }) {
         setBusy(true);
         try {
           const g = await createGuild({ name, slug, visibility, description });
-          window.location.href = `/guilds/${encodeURIComponent(g.id)}`;
+          window.location.href = `/guilds/view/?id=${encodeURIComponent(g.id)}`;
         } catch (err) {
           onError(friendlyMessage(err));
         } finally {

@@ -1,6 +1,6 @@
 "use client";
-import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { getCurrentUser } from "@/lib/aws/cognito";
 import {
   createGuildInvite,
@@ -16,8 +16,9 @@ import {
 
 type Tab = "members" | "leaderboard";
 
-export default function GuildDetailPage() {
-  const { id } = useParams<{ id: string }>();
+function GuildDetailInner() {
+  const params = useSearchParams();
+  const id = params.get("id") ?? "";
   const [guild, setGuild] = useState<Guild | null>(null);
   const [viewerRole, setViewerRole] = useState<GuildMember["role"] | null>(null);
   const [members, setMembers] = useState<GuildMember[]>([]);
@@ -196,5 +197,17 @@ export default function GuildDetailPage() {
         </div>
       ) : null}
     </main>
+  );
+}
+
+export default function GuildDetailPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="mx-auto max-w-2xl p-6 text-zinc-100">Loading...</main>
+      }
+    >
+      <GuildDetailInner />
+    </Suspense>
   );
 }
