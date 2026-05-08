@@ -127,6 +127,7 @@ jobs:
           path: ~/.bun/install/cache
           key: bun-${{ hashFiles('**/bun.lock') }}
       - run: bun install --frozen-lockfile
+      - run: bun --filter @codetype/web build
       - run: bun --filter @codetype/infra cdk synth
 
   merge-gate:
