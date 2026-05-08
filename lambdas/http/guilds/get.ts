@@ -1,8 +1,9 @@
 import { z } from "zod";
 import { GuildDetailResponseSchema } from "@codetype/shared/social";
+import { DomainError } from "@codetype/domain";
 import { withHttp } from "../../src/middleware";
-import { Errors, requireGuildsEnabled } from "../../src/AppError";
-import { guilds } from "../../src/repos/GuildRepo";
+import { AppError, Errors, requireGuildsEnabled } from "../../src/AppError";
+import { GetGuildQuery, queryBus } from "../_container";
 
 const EmptyBody = z.object({}).passthrough();
 
@@ -10,18 +11,13 @@ export const handler = withHttp(EmptyBody, async (_input, ctx) => {
     requireGuildsEnabled();
     const id = ctx.pathParameters.id;
     if (!id) throw Errors.BadRequest("id required");
-    const guild = await guilds.get(id);
-    if (!guild) throw Errors.NotFound("guild");
-    let viewerRole = null;
-    if (ctx.userId) {
-        const m = await guilds.getMember(id, ctx.userId);
-        viewerRole = m?.role ?? null;
+    try {
+        const result = await queryBus.execute(new GetGuildQuery(id, ctx.userId));
+        return GuildDetailResponseSchema.parse(result);
+    } catch (e) {
+        if (e instanceof DomainError) {
+            throw new AppError(e.code, e.status, e.message, e.details);
+        }
+        throw e;
     }
-    if (guild.visibility === "private" && viewerRole === null) {
-        throw Errors.NotFound("guild");
-    }
-    return GuildDetailResponseSchema.parse({
-        guild,
-        viewer_role: viewerRole,
-    });
 });

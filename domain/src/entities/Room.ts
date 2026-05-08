@@ -18,6 +18,7 @@ export interface RoomSnapshot {
     version: number;
     mode?: RoomMode;
     started_at?: number;
+    replay_key?: string;
 }
 
 export interface SeedPlayer {

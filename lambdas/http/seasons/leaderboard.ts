@@ -3,9 +3,10 @@ import {
     SeasonIdSchema,
     SeasonLeaderboardResponseSchema,
 } from "@codetype/shared/tournaments";
+import { DomainError } from "@codetype/domain";
 import { withHttp } from "../../src/middleware";
-import { Errors } from "../../src/AppError";
-import { seasons } from "../../src/repos/SeasonRepo";
+import { AppError } from "../../src/AppError";
+import { GetSeasonLeaderboardQuery, queryBus } from "../_container";
 
 const EmptyBody = z.object({}).passthrough();
 
@@ -25,13 +26,19 @@ export const handler = withHttp(EmptyBody, async (_input, ctx) => {
         lang: ctx.queryStringParameters.lang,
         limit: ctx.queryStringParameters.limit,
     });
-    const lang = q.lang ?? "*";
-    const season = await seasons.get(id);
-    if (!season) throw Errors.NotFound("season");
-    const rows = await seasons.getLeaderboard(id, lang, q.limit ?? 100);
-    return SeasonLeaderboardResponseSchema.parse({
-        seasonId: id,
-        language: lang,
-        rows,
-    });
+    try {
+        const result = await queryBus.execute(
+            new GetSeasonLeaderboardQuery({
+                id,
+                lang: q.lang ?? "*",
+                limit: q.limit ?? 100,
+            }),
+        );
+        return SeasonLeaderboardResponseSchema.parse(result);
+    } catch (e) {
+        if (e instanceof DomainError) {
+            throw new AppError(e.code, e.status, e.message, e.details);
+        }
+        throw e;
+    }
 });

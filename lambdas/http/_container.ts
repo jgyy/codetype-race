@@ -51,12 +51,80 @@ import {
     WithdrawFromTournamentHandler,
     CancelTournamentCommand,
     CancelTournamentHandler,
+    GetRandomSnippetQuery,
+    GetRandomSnippetHandler,
+    ListPendingSnippetsQuery,
+    ListPendingSnippetsHandler,
+    GetStarterPackQuery,
+    GetStarterPackHandler,
+    GetDailyQuery,
+    GetDailyHandler,
+    GetDailyLeaderboardQuery,
+    GetDailyLeaderboardHandler,
+    GetUserQuery,
+    GetUserHandler,
+    ListHistoryQuery,
+    ListHistoryHandler,
+    GetReplayKeyQuery,
+    GetReplayKeyHandler,
+    ReserveReplayUploadCommand,
+    ReserveReplayUploadHandler,
+    GetGuildQuery,
+    GetGuildHandler,
+    ListGuildsQuery,
+    ListGuildsHandler,
+    ListGuildMembersQuery,
+    ListGuildMembersHandler,
+    GetGuildLeaderboardQuery,
+    GetGuildLeaderboardHandler,
+    GetAchievementCatalogQuery,
+    GetAchievementCatalogHandler,
+    GetXpSummaryQuery,
+    GetXpSummaryHandler,
+    ListMyAchievementsQuery,
+    ListMyAchievementsHandler,
+    ListPublicAchievementsQuery,
+    ListPublicAchievementsHandler,
+    ListQuestsQuery,
+    ListQuestsHandler,
+    GetFeedQuery,
+    GetFeedHandler,
+    ListFriendsQuery,
+    ListFriendsHandler,
+    ListFriendRequestsQuery,
+    ListFriendRequestsHandler,
+    SearchUsersQuery,
+    SearchUsersHandler,
+    GetCurrentSeasonQuery,
+    GetCurrentSeasonHandler,
+    GetSeasonLeaderboardQuery,
+    GetSeasonLeaderboardHandler,
+    GetTournamentQuery,
+    GetTournamentHandler,
+    ListTournamentsQuery,
+    ListTournamentsHandler,
+    GetTournamentBracketQuery,
+    GetTournamentBracketHandler,
     telemetryMiddleware,
+    type AchievementsReadsSink,
+    type DailyReadsSink,
+    type FeedReadsSink,
+    type FriendsReadsSink,
+    type GuildReadsSink,
     type GuildsSink,
+    type HistoryReadsSink,
+    type MatchReadsSink,
+    type PresenceSink,
+    type QuestsReadsSink,
+    type SeasonsReadsSink,
     type SeedingOrchestrator,
+    type SnippetReadsSink,
     type TeamRoomSink,
+    type TournamentReadsSink,
     type TournamentsSink,
     type UserProfileLookup,
+    type UserReadsSink,
+    type XpReadsSink,
 } from "@codetype/app";
 import {
     CryptoRandom,
@@ -79,6 +147,9 @@ import { feed } from "../src/repos/FeedRepo";
 import { tournaments as tournamentsRepo } from "../src/repos/TournamentRepo";
 import { matches as matchesRepo } from "../src/repos/MatchRepo";
 import { seedTournament } from "../src/orchestration/seedTournament";
+import { xp } from "../src/repos/XpRepo";
+import { seasons as seasonsRepo } from "../src/repos/SeasonRepo";
+import { presence } from "../src/repos/PresenceRepo";
 
 const clock = new SystemClock();
 const random = new CryptoRandom();
@@ -148,6 +219,111 @@ const seedingOrchestrator: SeedingOrchestrator = {
 const userProfileLookup: UserProfileLookup = {
     getProfile: (uid) =>
         users.getProfile(uid) as ReturnType<UserProfileLookup["getProfile"]>,
+};
+
+/* -------- 13.5b read sinks -------- */
+
+const snippetReads: SnippetReadsSink = {
+    getById: (id) =>
+        snippetsLegacy.getById(id) as ReturnType<SnippetReadsSink["getById"]>,
+    list: (filters, limit) =>
+        snippetsLegacy.list(filters, limit) as ReturnType<SnippetReadsSink["list"]>,
+    listPending: (limit) =>
+        snippetsLegacy.listPending(limit) as ReturnType<SnippetReadsSink["listPending"]>,
+    random: (filters) =>
+        snippetsLegacy.random(filters) as ReturnType<SnippetReadsSink["random"]>,
+};
+
+const dailyReads: DailyReadsSink = {
+    getMeta: (date) => daily.getMeta(date) as ReturnType<DailyReadsSink["getMeta"]>,
+    listRuns: (date, limit) =>
+        daily.listRuns(date, limit) as ReturnType<DailyReadsSink["listRuns"]>,
+};
+
+const userReads: UserReadsSink = {
+    getProfile: (uid) =>
+        users.getProfile(uid) as ReturnType<UserReadsSink["getProfile"]>,
+    listRecentRaces: (uid, limit) =>
+        users.listRecentRaces(uid, limit) as ReturnType<UserReadsSink["listRecentRaces"]>,
+    getOrCreate: (uid, name) =>
+        users.getOrCreate(uid, name) as ReturnType<UserReadsSink["getOrCreate"]>,
+    searchByHandlePrefix: (prefix, limit) =>
+        users.searchByHandlePrefix(prefix, limit) as ReturnType<
+            UserReadsSink["searchByHandlePrefix"]
+        >,
+};
+
+const historyReads: HistoryReadsSink = {
+    listForHost: (uid) =>
+        history.listForHost(uid) as ReturnType<HistoryReadsSink["listForHost"]>,
+};
+
+const guildReads: GuildReadsSink = {
+    get: (id) =>
+        guildsRepo.get(id) as ReturnType<GuildReadsSink["get"]>,
+    getMember: (id, uid) =>
+        guildsRepo.getMember(id, uid) as ReturnType<GuildReadsSink["getMember"]>,
+    listMembers: (id) =>
+        guildsRepo.listMembers(id) as ReturnType<GuildReadsSink["listMembers"]>,
+    discoverPublic: (q, limit) => guildsRepo.discoverPublic(q, limit),
+};
+
+const achievementsReads: AchievementsReadsSink = {
+    listForUser: (uid) =>
+        achievements.listForUser(uid) as ReturnType<AchievementsReadsSink["listForUser"]>,
+    listPinned: (uid) => achievements.listPinned(uid),
+};
+
+const xpReads: XpReadsSink = {
+    getSummary: (uid) =>
+        xp.getSummary(uid) as ReturnType<XpReadsSink["getSummary"]>,
+};
+
+const questsReads: QuestsReadsSink = {
+    listActive: (period, rotationId) =>
+        quests.listActive(period, rotationId) as ReturnType<QuestsReadsSink["listActive"]>,
+    getProgressMap: (uid, rotationId) =>
+        quests.getProgressMap(uid, rotationId) as ReturnType<
+            QuestsReadsSink["getProgressMap"]
+        >,
+};
+
+const friendsReads: FriendsReadsSink = {
+    getEdge: (a, b) =>
+        friends.getEdge(a, b) as ReturnType<FriendsReadsSink["getEdge"]>,
+    listFriends: (uid) =>
+        friends.listFriends(uid) as ReturnType<FriendsReadsSink["listFriends"]>,
+    listIncomingRequests: (uid) =>
+        friends.listIncomingRequests(uid) as ReturnType<
+            FriendsReadsSink["listIncomingRequests"]
+        >,
+};
+
+const feedReads: FeedReadsSink = {
+    list: (uid) => feed.list(uid) as ReturnType<FeedReadsSink["list"]>,
+};
+
+const presenceSink: PresenceSink = {
+    whichOnline: (ids) => presence.whichOnline(ids),
+};
+
+const seasonsReads: SeasonsReadsSink = {
+    listByStatus: (status) =>
+        seasonsRepo.listByStatus(status) as ReturnType<SeasonsReadsSink["listByStatus"]>,
+    get: (id) => seasonsRepo.get(id) as ReturnType<SeasonsReadsSink["get"]>,
+    getLeaderboard: (id, lang, limit) =>
+        seasonsRepo.getLeaderboard(id, lang, limit),
+};
+
+const tournamentReads: TournamentReadsSink = {
+    listByStatus: (status) =>
+        tournamentsRepo.listByStatus(status) as ReturnType<
+            TournamentReadsSink["listByStatus"]
+        >,
+};
+
+const matchReads: MatchReadsSink = {
+    listAll: (id) => matchesRepo.listAll(id),
 };
 
 export const commandBus = new CommandBus()
@@ -257,14 +433,89 @@ export const commandBus = new CommandBus()
     .register(
         CancelTournamentCommand,
         new CancelTournamentHandler(tournamentsSink),
+    )
+    .register(
+        ReserveReplayUploadCommand,
+        new ReserveReplayUploadHandler(rooms),
     );
 
 export const queryBus = new QueryBus()
     .use(telemetryMiddleware)
     .register(GetRoomQuery, new GetRoomHandler(rooms))
+    .register(GetLeaderboardQuery, new GetLeaderboardHandler(leaderboard))
     .register(
-        GetLeaderboardQuery,
-        new GetLeaderboardHandler(leaderboard),
+        GetRandomSnippetQuery,
+        new GetRandomSnippetHandler(snippetReads),
+    )
+    .register(
+        ListPendingSnippetsQuery,
+        new ListPendingSnippetsHandler(snippetReads),
+    )
+    .register(
+        GetStarterPackQuery,
+        new GetStarterPackHandler(snippetReads),
+    )
+    .register(GetDailyQuery, new GetDailyHandler(dailyReads, snippetReads))
+    .register(
+        GetDailyLeaderboardQuery,
+        new GetDailyLeaderboardHandler(dailyReads),
+    )
+    .register(GetUserQuery, new GetUserHandler(userReads))
+    .register(ListHistoryQuery, new ListHistoryHandler(historyReads))
+    .register(GetReplayKeyQuery, new GetReplayKeyHandler(rooms))
+    .register(GetGuildQuery, new GetGuildHandler(guildReads))
+    .register(ListGuildsQuery, new ListGuildsHandler(guildReads))
+    .register(
+        ListGuildMembersQuery,
+        new ListGuildMembersHandler(guildReads, userReads),
+    )
+    .register(
+        GetGuildLeaderboardQuery,
+        new GetGuildLeaderboardHandler(guildReads, userReads),
+    )
+    .register(
+        GetAchievementCatalogQuery,
+        new GetAchievementCatalogHandler(),
+    )
+    .register(GetXpSummaryQuery, new GetXpSummaryHandler(xpReads))
+    .register(
+        ListMyAchievementsQuery,
+        new ListMyAchievementsHandler(achievementsReads),
+    )
+    .register(
+        ListPublicAchievementsQuery,
+        new ListPublicAchievementsHandler(achievementsReads),
+    )
+    .register(ListQuestsQuery, new ListQuestsHandler(questsReads))
+    .register(
+        GetFeedQuery,
+        new GetFeedHandler(feedReads, friendsReads, guildReads),
+    )
+    .register(
+        ListFriendsQuery,
+        new ListFriendsHandler(friendsReads, userReads, presenceSink),
+    )
+    .register(
+        ListFriendRequestsQuery,
+        new ListFriendRequestsHandler(friendsReads, userReads),
+    )
+    .register(SearchUsersQuery, new SearchUsersHandler(userReads))
+    .register(
+        GetCurrentSeasonQuery,
+        new GetCurrentSeasonHandler(seasonsReads),
+    )
+    .register(
+        GetSeasonLeaderboardQuery,
+        new GetSeasonLeaderboardHandler(seasonsReads),
+    )
+    .register(GetTournamentQuery, new GetTournamentHandler(tournamentsSink))
+    .register(
+        ListTournamentsQuery,
+        new ListTournamentsHandler(tournamentReads),
+    )
+    .register(
+        GetTournamentBracketQuery,
+        new GetTournamentBracketHandler(tournamentsSink, matchReads),
     );
 
 export {
@@ -293,4 +544,31 @@ export {
     SeedTournamentCommand,
     WithdrawFromTournamentCommand,
     CancelTournamentCommand,
+    ReserveReplayUploadCommand,
+    GetRandomSnippetQuery,
+    ListPendingSnippetsQuery,
+    GetStarterPackQuery,
+    GetDailyQuery,
+    GetDailyLeaderboardQuery,
+    GetUserQuery,
+    ListHistoryQuery,
+    GetReplayKeyQuery,
+    GetGuildQuery,
+    ListGuildsQuery,
+    ListGuildMembersQuery,
+    GetGuildLeaderboardQuery,
+    GetAchievementCatalogQuery,
+    GetXpSummaryQuery,
+    ListMyAchievementsQuery,
+    ListPublicAchievementsQuery,
+    ListQuestsQuery,
+    GetFeedQuery,
+    ListFriendsQuery,
+    ListFriendRequestsQuery,
+    SearchUsersQuery,
+    GetCurrentSeasonQuery,
+    GetSeasonLeaderboardQuery,
+    GetTournamentQuery,
+    ListTournamentsQuery,
+    GetTournamentBracketQuery,
 };

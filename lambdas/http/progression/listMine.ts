@@ -1,8 +1,9 @@
 import { z } from "zod";
-import { withHttp } from "../../src/middleware";
-import { Errors, requireProgressionEnabled } from "../../src/AppError";
-import { achievements } from "../../src/repos/AchievementsRepo";
 import { RULES_BY_ID } from "@codetype/shared/progression/rules";
+import { DomainError } from "@codetype/domain";
+import { withHttp } from "../../src/middleware";
+import { AppError, Errors, requireProgressionEnabled } from "../../src/AppError";
+import { ListMyAchievementsQuery, queryBus } from "../_container";
 
 const EmptyBody = z.object({}).passthrough();
 
@@ -22,31 +23,28 @@ const ListMineResponseSchema = z.object({
     pinned: z.array(z.string()),
 });
 
+const ALL_DEFS = Object.values(RULES_BY_ID).map((r) => ({
+    id: r.def.id,
+    title: r.def.title,
+    description: r.def.description,
+    category: r.def.category,
+    tier: r.def.tier,
+    hidden: r.def.hidden,
+    xp: r.def.xp,
+}));
+
 export const handler = withHttp(EmptyBody, async (_input, ctx) => {
     requireProgressionEnabled();
     if (!ctx.userId) throw Errors.Unauthorized();
-
-    const [unlocked, pinned] = await Promise.all([
-        achievements.listForUser(ctx.userId),
-        achievements.listPinned(ctx.userId),
-    ]);
-    const unlockedById = new Map(unlocked.map((u) => [u.achievement_id, u]));
-
-    const items = Object.values(RULES_BY_ID)
-        .filter((r) => !r.def.hidden || unlockedById.has(r.def.id))
-        .map((r) => {
-            const u = unlockedById.get(r.def.id);
-            return {
-                id: r.def.id,
-                title: r.def.title,
-                description: r.def.description,
-                category: r.def.category,
-                tier: r.def.tier,
-                unlocked: !!u,
-                unlocked_at: u?.unlocked_at,
-                xp_awarded: u?.xp_awarded,
-            };
-        });
-
-    return ListMineResponseSchema.parse({ achievements: items, pinned });
+    try {
+        const result = await queryBus.execute(
+            new ListMyAchievementsQuery(ctx.userId, ALL_DEFS),
+        );
+        return ListMineResponseSchema.parse(result);
+    } catch (e) {
+        if (e instanceof DomainError) {
+            throw new AppError(e.code, e.status, e.message, e.details);
+        }
+        throw e;
+    }
 });

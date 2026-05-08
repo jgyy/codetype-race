@@ -38,9 +38,7 @@ export interface RoomRepo {
 
     recordFinish(input: RecordFinishInput): Promise<void>;
 
-    /**
-     * Add a player row to a room. Throws DomainError("player.display_name_taken")
-     * on conflict (display_name unique per room).
-     */
     addPlayer(roomId: string, player: SeedPlayer & { role?: "racer" | "spectator" }): Promise<void>;
+
+    recordReplay(roomId: string, replayKey: string): Promise<void>;
 }

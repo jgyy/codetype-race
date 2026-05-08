@@ -1,8 +1,9 @@
 import { z } from "zod";
 import { ListGuildsResponseSchema } from "@codetype/shared/social";
+import { DomainError } from "@codetype/domain";
 import { withHttp } from "../../src/middleware";
-import { Errors, requireGuildsEnabled } from "../../src/AppError";
-import { guilds } from "../../src/repos/GuildRepo";
+import { AppError, Errors, requireGuildsEnabled } from "../../src/AppError";
+import { ListGuildsQuery, queryBus } from "../_container";
 
 const EmptyBody = z.object({}).passthrough();
 
@@ -16,6 +17,13 @@ export const handler = withHttp(EmptyBody, async (_input, ctx) => {
     if (q.length < 3) {
         throw Errors.BadRequest("query must be 3+ chars");
     }
-    const list = await guilds.discoverPublic(q, 25);
-    return ListGuildsResponseSchema.parse({ guilds: list });
+    try {
+        const result = await queryBus.execute(new ListGuildsQuery(q));
+        return ListGuildsResponseSchema.parse(result);
+    } catch (e) {
+        if (e instanceof DomainError) {
+            throw new AppError(e.code, e.status, e.message, e.details);
+        }
+        throw e;
+    }
 });

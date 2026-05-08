@@ -1,8 +1,9 @@
 import { z } from "zod";
 import { GetUserResponseSchema } from "@codetype/shared/schemas";
+import { DomainError } from "@codetype/domain";
 import { withHttp } from "../src/middleware";
-import { Errors } from "../src/AppError";
-import { users } from "../src/repos/UserRepo";
+import { AppError, Errors } from "../src/AppError";
+import { GetUserQuery, queryBus } from "./_container";
 
 const EmptyBody = z.object({}).passthrough();
 
@@ -15,22 +16,27 @@ export const handler = withHttp(EmptyBody, async (_input, ctx) => {
     } else {
         target = param;
     }
-
-    let profile = await users.getProfile(target);
-    if (!profile) {
-        if (target !== ctx.userId) throw Errors.NotFound("user");
-        const c = ctx.claims;
-        const displayName =
-            (c["preferred_username"] as string | undefined) ||
-            (c["cognito:username"] as string | undefined) ||
-            (c["name"] as string | undefined) ||
-            ((c["email"] as string | undefined)?.split("@")[0]) ||
-            target.slice(0, 8);
-        profile = await users.getOrCreate(target, displayName);
+    const c = ctx.claims;
+    const displayNameFallback =
+        (c["preferred_username"] as string | undefined) ||
+        (c["cognito:username"] as string | undefined) ||
+        (c["name"] as string | undefined) ||
+        ((c["email"] as string | undefined)?.split("@")[0]) ||
+        target.slice(0, 8);
+    try {
+        const result = await queryBus.execute(
+            new GetUserQuery({
+                targetUserId: target,
+                viewerUserId: ctx.userId,
+                displayNameFallback,
+                viewerGroups: ctx.groups,
+            }),
+        );
+        return GetUserResponseSchema.parse(result);
+    } catch (e) {
+        if (e instanceof DomainError) {
+            throw new AppError(e.code, e.status, e.message, e.details);
+        }
+        throw e;
     }
-
-    const recent = await users.listRecentRaces(target, 20);
-    // Only surface group claims when the caller is asking about themselves.
-    const groups = target === ctx.userId ? ctx.groups : undefined;
-    return GetUserResponseSchema.parse({ profile, recent, groups });
 });

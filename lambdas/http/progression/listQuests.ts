@@ -1,12 +1,13 @@
 import { z } from "zod";
-import { withHttp } from "../../src/middleware";
-import { Errors, requireProgressionEnabled } from "../../src/AppError";
-import { quests } from "../../src/repos/QuestsRepo";
 import {
     ALL_QUEST_DEFS,
     dailyRotationId,
     weeklyRotationId,
 } from "@codetype/shared/progression/quests";
+import { DomainError } from "@codetype/domain";
+import { withHttp } from "../../src/middleware";
+import { AppError, Errors, requireProgressionEnabled } from "../../src/AppError";
+import { ListQuestsQuery, queryBus } from "../_container";
 
 const EmptyBody = z.object({}).passthrough();
 
@@ -24,47 +25,38 @@ const QuestItem = z.object({
 
 const Response = z.object({ quests: z.array(QuestItem) });
 
+const QUEST_DEFS_LITE = Object.fromEntries(
+    Object.entries(ALL_QUEST_DEFS).map(([k, def]) => [
+        k,
+        {
+            id: def.id,
+            period: def.period,
+            title: def.title,
+            description: def.description,
+            target: def.target,
+            xp: def.xp,
+        },
+    ]),
+);
+
 export const handler = withHttp(EmptyBody, async (_input, ctx) => {
     requireProgressionEnabled();
     if (!ctx.userId) throw Errors.Unauthorized();
-
     const now = new Date();
-    const daily = dailyRotationId(now);
-    const weekly = weeklyRotationId(now);
-
-    const [dailyActive, weeklyActive, dailyProg, weeklyProg] =
-        await Promise.all([
-            quests.listActive("daily", daily),
-            quests.listActive("weekly", weekly),
-            quests.getProgressMap(ctx.userId, daily),
-            quests.getProgressMap(ctx.userId, weekly),
-        ]);
-
-    const items = [
-        ...dailyActive.map((a) => buildItem(a.quest_id, daily, dailyProg)),
-        ...weeklyActive.map((a) => buildItem(a.quest_id, weekly, weeklyProg)),
-    ].filter((x): x is NonNullable<typeof x> => x !== null);
-
-    return Response.parse({ quests: items });
+    try {
+        const result = await queryBus.execute(
+            new ListQuestsQuery({
+                userId: ctx.userId,
+                dailyRotationId: dailyRotationId(now),
+                weeklyRotationId: weeklyRotationId(now),
+                questDefs: QUEST_DEFS_LITE,
+            }),
+        );
+        return Response.parse(result);
+    } catch (e) {
+        if (e instanceof DomainError) {
+            throw new AppError(e.code, e.status, e.message, e.details);
+        }
+        throw e;
+    }
 });
-
-function buildItem(
-    questId: string,
-    rotationId: string,
-    progress: Map<string, { progress: number; claimed: boolean }>,
-) {
-    const def = ALL_QUEST_DEFS[questId];
-    if (!def) return null;
-    const p = progress.get(questId);
-    return {
-        id: def.id,
-        period: def.period,
-        rotation_id: rotationId,
-        title: def.title,
-        description: def.description,
-        target: def.target,
-        progress: p?.progress ?? 0,
-        claimed: p?.claimed ?? false,
-        xp: def.xp,
-    };
-}

@@ -1,7 +1,9 @@
 import { z } from "zod";
 import { SnippetSchema } from "@codetype/shared/schemas";
+import { DomainError } from "@codetype/domain";
 import { withHttp } from "../src/middleware";
-import { snippets } from "../src/repos/SnippetRepo";
+import { AppError } from "../src/AppError";
+import { GetStarterPackQuery, queryBus } from "./_container";
 
 const EmptyBody = z.object({}).passthrough();
 
@@ -32,26 +34,15 @@ export const handler = withHttp(EmptyBody, async (_input, ctx) => {
         languages: ctx.queryStringParameters.languages,
         n: ctx.queryStringParameters.n,
     });
-
-    let pool: Awaited<ReturnType<typeof snippets.list>> = [];
-    if (languages.length === 0) {
-        pool = await snippets.list({}, n * 2);
-    } else {
-        const perLang = Math.max(1, Math.ceil(n / languages.length));
-        const results = await Promise.all(
-            languages.map((language) => snippets.list({ language }, perLang * 2)),
+    try {
+        const result = await queryBus.execute(
+            new GetStarterPackQuery({ languages, n }),
         );
-        pool = results.flat();
+        return ResponseSchema.parse(result);
+    } catch (e) {
+        if (e instanceof DomainError) {
+            throw new AppError(e.code, e.status, e.message, e.details);
+        }
+        throw e;
     }
-
-    const seen = new Set<string>();
-    const out: typeof pool = [];
-    for (const s of pool) {
-        if (seen.has(s.snippet_id)) continue;
-        seen.add(s.snippet_id);
-        out.push(s);
-        if (out.length >= n) break;
-    }
-
-    return ResponseSchema.parse({ snippets: out });
 });

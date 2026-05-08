@@ -183,6 +183,17 @@ export class DdbRoomRepo implements RoomRepo {
         }
     }
 
+    async recordReplay(roomId: string, replayKey: string): Promise<void> {
+        await this.cfg.client.send(
+            new UpdateCommand({
+                TableName: this.cfg.table,
+                Key: { PK: roomPK(roomId), SK: roomMetaSK() },
+                UpdateExpression: "SET replay_key = :k",
+                ExpressionAttributeValues: { ":k": replayKey },
+            }),
+        );
+    }
+
     async addPlayer(
         roomId: string,
         player: SeedPlayer & { role?: "racer" | "spectator" },

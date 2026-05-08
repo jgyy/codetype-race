@@ -99,6 +99,13 @@ export class InMemoryRoomRepo implements RoomRepo {
         this.dnf.push({ roomId, displayName });
     }
 
+    public replays: Array<{ roomId: string; key: string }> = [];
+    async recordReplay(roomId: string, replayKey: string): Promise<void> {
+        this.replays.push({ roomId, key: replayKey });
+        const snap = this.snapshots.get(roomId);
+        if (snap) this.snapshots.set(roomId, { ...snap, replay_key: replayKey });
+    }
+
     async addPlayer(
         roomId: string,
         player: SeedPlayer & { role?: "racer" | "spectator" },

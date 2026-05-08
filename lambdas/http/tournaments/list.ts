@@ -3,17 +3,24 @@ import {
     ListTournamentsResponseSchema,
     TournamentStatusSchema,
 } from "@codetype/shared/tournaments";
+import { DomainError } from "@codetype/domain";
 import { withHttp } from "../../src/middleware";
-import { tournaments } from "../../src/repos/TournamentRepo";
+import { AppError } from "../../src/AppError";
+import { ListTournamentsQuery, queryBus } from "../_container";
 
 const EmptyBody = z.object({}).passthrough();
 
 export const handler = withHttp(EmptyBody, async (_input, ctx) => {
-    const status =
-        TournamentStatusSchema.parse(
-            ctx.queryStringParameters.status ?? "registering",
-        );
-    const list = await tournaments.listByStatus(status);
-    list.sort((a, b) => a.startsAt.localeCompare(b.startsAt));
-    return ListTournamentsResponseSchema.parse({ tournaments: list });
+    const status = TournamentStatusSchema.parse(
+        ctx.queryStringParameters.status ?? "registering",
+    );
+    try {
+        const result = await queryBus.execute(new ListTournamentsQuery(status));
+        return ListTournamentsResponseSchema.parse(result);
+    } catch (e) {
+        if (e instanceof DomainError) {
+            throw new AppError(e.code, e.status, e.message, e.details);
+        }
+        throw e;
+    }
 });

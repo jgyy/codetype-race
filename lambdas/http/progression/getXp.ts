@@ -1,8 +1,9 @@
 import { z } from "zod";
-import { withHttp } from "../../src/middleware";
-import { Errors, requireProgressionEnabled } from "../../src/AppError";
-import { xp } from "../../src/repos/XpRepo";
 import { levelFor } from "@codetype/shared/progression/xp";
+import { DomainError } from "@codetype/domain";
+import { withHttp } from "../../src/middleware";
+import { AppError, Errors, requireProgressionEnabled } from "../../src/AppError";
+import { GetXpSummaryQuery, queryBus } from "../_container";
 
 const EmptyBody = z.object({}).passthrough();
 
@@ -17,22 +18,21 @@ const XpSummaryResponseSchema = z.object({
 export const handler = withHttp(EmptyBody, async (_input, ctx) => {
     requireProgressionEnabled();
     if (!ctx.userId) throw Errors.Unauthorized();
-
-    const summary = await xp.getSummary(ctx.userId);
-    if (!summary) {
-        const seed = levelFor(0);
-        return XpSummaryResponseSchema.parse({
-            total_xp: seed.totalXp,
-            level: seed.level,
-            current_level_xp: seed.currentLevelXp,
-            next_level_xp: seed.nextLevelXp,
-        });
+    const seed = levelFor(0);
+    try {
+        const result = await queryBus.execute(
+            new GetXpSummaryQuery(ctx.userId, {
+                totalXp: seed.totalXp,
+                level: seed.level,
+                currentLevelXp: seed.currentLevelXp,
+                nextLevelXp: seed.nextLevelXp,
+            }),
+        );
+        return XpSummaryResponseSchema.parse(result);
+    } catch (e) {
+        if (e instanceof DomainError) {
+            throw new AppError(e.code, e.status, e.message, e.details);
+        }
+        throw e;
     }
-    return XpSummaryResponseSchema.parse({
-        total_xp: summary.totalXp,
-        level: summary.level,
-        current_level_xp: summary.currentLevelXp,
-        next_level_xp: summary.nextLevelXp,
-        last_race_date: summary.lastRaceDate,
-    });
 });

@@ -222,3 +222,141 @@ export {
     type SeedingOrchestrator,
     type UserProfileLookup,
 } from "./commands/tournaments/Tournaments";
+
+export {
+    GetRandomSnippetQuery,
+    GetRandomSnippetHandler,
+    ListPendingSnippetsQuery,
+    ListPendingSnippetsHandler,
+    GetStarterPackQuery,
+    GetStarterPackHandler,
+    GetDailyQuery,
+    GetDailyHandler,
+    GetDailyLeaderboardQuery,
+    GetDailyLeaderboardHandler,
+    type SnippetReadsSink,
+    type SnippetFull,
+    type DailyReadsSink,
+    type DailyMeta,
+    type DailyRunRow as DailyRunRowRead,
+    type GetStarterPackInput,
+    type GetDailyResult,
+    type GetDailyLeaderboardResult,
+} from "./queries/Snippets";
+
+export {
+    GetUserQuery,
+    GetUserHandler,
+    ListHistoryQuery,
+    ListHistoryHandler,
+    type UserReadsSink,
+    type HistoryReadsSink,
+    type UserProfile,
+    type RaceHistoryEntry,
+    type GetUserInput,
+    type GetUserResult,
+} from "./queries/Users";
+
+export {
+    GetReplayKeyQuery,
+    GetReplayKeyHandler,
+    type GetReplayKeyResult,
+} from "./queries/Replay";
+
+export {
+    ReserveReplayUploadCommand,
+    ReserveReplayUploadHandler,
+    type ReserveReplayUploadInput,
+    type ReserveReplayUploadResult,
+} from "./commands/replay/ReserveReplayUpload";
+
+export {
+    GetGuildQuery,
+    GetGuildHandler,
+    ListGuildsQuery,
+    ListGuildsHandler,
+    ListGuildMembersQuery,
+    ListGuildMembersHandler,
+    GetGuildLeaderboardQuery,
+    GetGuildLeaderboardHandler,
+    type GuildReadsSink,
+    type GuildVisibilityRow,
+    type GuildMemberRow,
+    type GetGuildResult,
+    type ListGuildMembersInput,
+    type ListGuildMembersResult,
+    type GetGuildLeaderboardInput,
+    type GetGuildLeaderboardResult,
+    type GuildLeaderboardEntry,
+} from "./queries/Guilds";
+
+export {
+    GetAchievementCatalogQuery,
+    GetAchievementCatalogHandler,
+    GetXpSummaryQuery,
+    GetXpSummaryHandler,
+    ListMyAchievementsQuery,
+    ListMyAchievementsHandler,
+    ListPublicAchievementsQuery,
+    ListPublicAchievementsHandler,
+    ListQuestsQuery,
+    ListQuestsHandler,
+    type AchievementsReadsSink,
+    type XpReadsSink,
+    type XpSummary,
+    type QuestsReadsSink,
+    type AchievementDef,
+    type AchievementUnlock,
+    type QuestDef,
+    type QuestProgress,
+    type CatalogItem,
+    type GetXpSummaryResult,
+    type MyAchievementItem,
+    type PublicAchievementItem,
+    type ListQuestsInput,
+    type QuestItemOut,
+} from "./queries/Progression";
+
+export {
+    GetFeedQuery,
+    GetFeedHandler,
+    ListFriendsQuery,
+    ListFriendsHandler,
+    ListFriendRequestsQuery,
+    ListFriendRequestsHandler,
+    SearchUsersQuery,
+    SearchUsersHandler,
+    type FeedReadsSink,
+    type FriendsReadsSink,
+    type PresenceSink,
+    type FeedEvent,
+    type FriendEdgeRow,
+    type GetFeedInput,
+    type ListFriendsInput,
+    type FriendListEntry,
+    type FriendRequestEntry,
+    type UserSearchResultEntry,
+} from "./queries/Social";
+
+export {
+    GetCurrentSeasonQuery,
+    GetCurrentSeasonHandler,
+    GetSeasonLeaderboardQuery,
+    GetSeasonLeaderboardHandler,
+    type SeasonsReadsSink,
+    type SeasonRow,
+    type GetSeasonLeaderboardInput,
+} from "./queries/Seasons";
+
+export {
+    GetTournamentQuery,
+    GetTournamentHandler,
+    ListTournamentsQuery,
+    ListTournamentsHandler,
+    GetTournamentBracketQuery,
+    GetTournamentBracketHandler,
+    type TournamentReadsSink,
+    type MatchReadsSink,
+    type GetTournamentResult,
+    type GetTournamentBracketResult,
+} from "./queries/Tournaments";

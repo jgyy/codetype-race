@@ -1,8 +1,9 @@
 import { z } from "zod";
-import { withHttp } from "../../src/middleware";
-import { Errors, requireProgressionEnabled } from "../../src/AppError";
-import { achievements } from "../../src/repos/AchievementsRepo";
 import { RULES_BY_ID } from "@codetype/shared/progression/rules";
+import { DomainError } from "@codetype/domain";
+import { withHttp } from "../../src/middleware";
+import { AppError, Errors, requireProgressionEnabled } from "../../src/AppError";
+import { ListPublicAchievementsQuery, queryBus } from "../_container";
 
 const EmptyBody = z.object({}).passthrough();
 
@@ -19,31 +20,29 @@ const PublicResponseSchema = z.object({
     pinned: z.array(z.string()),
 });
 
+const ALL_DEFS = Object.values(RULES_BY_ID).map((r) => ({
+    id: r.def.id,
+    title: r.def.title,
+    description: r.def.description,
+    category: r.def.category,
+    tier: r.def.tier,
+    hidden: r.def.hidden,
+    xp: r.def.xp,
+}));
+
 export const handler = withHttp(EmptyBody, async (_input, ctx) => {
     requireProgressionEnabled();
     const userId = ctx.pathParameters.userId;
     if (!userId) throw Errors.BadRequest("userId required");
-
-    const [unlocked, pinned] = await Promise.all([
-        achievements.listForUser(userId),
-        achievements.listPinned(userId),
-    ]);
-    const items = unlocked
-        .map((u) => {
-            const def = RULES_BY_ID[u.achievement_id]?.def;
-            if (!def || def.hidden) return null;
-            return {
-                id: def.id,
-                title: def.title,
-                tier: def.tier,
-                unlocked_at: u.unlocked_at,
-            };
-        })
-        .filter((x): x is NonNullable<typeof x> => x !== null);
-
-    return PublicResponseSchema.parse({
-        user_id: userId,
-        achievements: items,
-        pinned,
-    });
+    try {
+        const result = await queryBus.execute(
+            new ListPublicAchievementsQuery(userId, ALL_DEFS),
+        );
+        return PublicResponseSchema.parse(result);
+    } catch (e) {
+        if (e instanceof DomainError) {
+            throw new AppError(e.code, e.status, e.message, e.details);
+        }
+        throw e;
+    }
 });

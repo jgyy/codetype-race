@@ -3,9 +3,10 @@ import {
     UserSearchQuerySchema,
     UserSearchResponseSchema,
 } from "@codetype/shared/social";
+import { DomainError } from "@codetype/domain";
 import { withHttp } from "../../src/middleware";
-import { Errors, requireFriendsEnabled } from "../../src/AppError";
-import { users } from "../../src/repos/UserRepo";
+import { AppError, Errors, requireFriendsEnabled } from "../../src/AppError";
+import { queryBus, SearchUsersQuery } from "../_container";
 
 const EmptyBody = z.object({}).passthrough();
 
@@ -17,14 +18,15 @@ export const handler = withHttp(EmptyBody, async (_input, ctx) => {
     if (!parsed.success) {
         throw Errors.BadRequest("query must be 3+ chars");
     }
-    const profiles = await users.searchByHandlePrefix(parsed.data, 25);
-    return UserSearchResponseSchema.parse({
-        results: profiles
-            .filter((p) => p.user_id !== ctx.userId)
-            .map((p) => ({
-                user_id: p.user_id,
-                display_name: p.display_name,
-                rating: p.rating,
-            })),
-    });
+    try {
+        const result = await queryBus.execute(
+            new SearchUsersQuery(ctx.userId, parsed.data),
+        );
+        return UserSearchResponseSchema.parse(result);
+    } catch (e) {
+        if (e instanceof DomainError) {
+            throw new AppError(e.code, e.status, e.message, e.details);
+        }
+        throw e;
+    }
 });

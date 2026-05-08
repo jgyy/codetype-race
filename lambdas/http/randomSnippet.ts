@@ -1,11 +1,9 @@
 import { z } from "zod";
-import {
-    DifficultySchema,
-    SnippetSchema,
-} from "@codetype/shared/schemas";
+import { DifficultySchema, SnippetSchema } from "@codetype/shared/schemas";
+import { DomainError } from "@codetype/domain";
 import { withHttp } from "../src/middleware";
-import { Errors } from "../src/AppError";
-import { snippets } from "../src/repos/SnippetRepo";
+import { AppError } from "../src/AppError";
+import { GetRandomSnippetQuery, queryBus } from "./_container";
 
 const EmptyBody = z.object({}).passthrough();
 
@@ -24,8 +22,13 @@ export const handler = withHttp(EmptyBody, async (_input, ctx) => {
         language: ctx.queryStringParameters.language,
         difficulty: ctx.queryStringParameters.difficulty,
     });
-
-    const picked = await snippets.random(filters);
-    if (!picked) throw Errors.NotFound("snippet");
-    return SnippetSchema.parse(picked);
+    try {
+        const result = await queryBus.execute(new GetRandomSnippetQuery(filters));
+        return SnippetSchema.parse(result);
+    } catch (e) {
+        if (e instanceof DomainError) {
+            throw new AppError(e.code, e.status, e.message, e.details);
+        }
+        throw e;
+    }
 });
