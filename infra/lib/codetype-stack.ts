@@ -3,7 +3,6 @@ import { fileURLToPath } from "node:url";
 import {
     Duration,
     RemovalPolicy,
-    Size,
     Stack,
     type StackProps,
     CfnOutput,
@@ -20,10 +19,10 @@ import * as lambdaSources from "aws-cdk-lib/aws-lambda-event-sources";
 import * as events from "aws-cdk-lib/aws-events";
 import * as eventsTargets from "aws-cdk-lib/aws-events-targets";
 import * as s3 from "aws-cdk-lib/aws-s3";
-import * as firehose from "aws-cdk-lib/aws-kinesisfirehose";
 import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
 import * as origins from "aws-cdk-lib/aws-cloudfront-origins";
 import { Construct } from "constructs";
+import { ProgressionFeature } from "./constructs/progression-feature";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const LAMBDA_DIR = path.resolve(__dirname, "../../lambdas");
@@ -92,6 +91,9 @@ export class CodetypeStack extends Stack {
                     ...env,
                 },
             });
+
+        const integ = (id: string, f: lambda.IFunction) =>
+            new apigwv2Integ.HttpLambdaIntegration(id, f);
 
         const createRoom = fn("CreateRoom", "http/createRoom.ts");
         const joinRoom = fn("JoinRoom", "http/joinRoom.ts");
@@ -379,58 +381,6 @@ export class CodetypeStack extends Stack {
             }),
         );
 
-        const eventsBucket = new s3.Bucket(this, "EventsArchiveBucket", {
-            bucketName: `codetype-events-${this.account}-${this.region}`,
-            blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
-            encryption: s3.BucketEncryption.S3_MANAGED,
-            removalPolicy: RemovalPolicy.RETAIN,
-            lifecycleRules: [
-                {
-                    id: "to-deep-archive-365d",
-                    enabled: true,
-                    transitions: [
-                        {
-                            storageClass: s3.StorageClass.DEEP_ARCHIVE,
-                            transitionAfter: Duration.days(365),
-                        },
-                    ],
-                },
-            ],
-        });
-
-        const eventsFirehose = new firehose.DeliveryStream(
-            this,
-            "EventsFirehose",
-            {
-                destination: new firehose.S3Bucket(eventsBucket, {
-                    compression: firehose.Compression.GZIP,
-                    bufferingInterval: Duration.seconds(60),
-                    bufferingSize: Size.mebibytes(64),
-                    dataOutputPrefix:
-                        "progression/year=!{timestamp:yyyy}/month=!{timestamp:MM}/day=!{timestamp:dd}/hour=!{timestamp:HH}/",
-                    errorOutputPrefix:
-                        "errors/!{firehose:error-output-type}/year=!{timestamp:yyyy}/month=!{timestamp:MM}/day=!{timestamp:dd}/",
-                }),
-            },
-        );
-
-        const progressionEnv = { ENABLE_PROGRESSION: "true" };
-
-        const firehoseSink = fn("FirehoseSink", "stream/firehoseSink.ts", {
-            FIREHOSE_STREAM_NAME: eventsFirehose.deliveryStreamName,
-            ...progressionEnv,
-        });
-        table.grantReadWriteData(firehoseSink);
-        eventsFirehose.grantPutRecords(firehoseSink);
-        firehoseSink.addEventSource(
-            new lambdaSources.DynamoEventSource(table, {
-                startingPosition: lambda.StartingPosition.LATEST,
-                batchSize: 100,
-                maxBatchingWindow: Duration.seconds(5),
-                retryAttempts: 3,
-            }),
-        );
-
         const tournEnv = { ENABLE_TOURNAMENTS: "true" };
 
         const tournCreate = fn(
@@ -530,9 +480,6 @@ export class CodetypeStack extends Stack {
             onRaceFinished,
         ];
         tournLambdas.forEach((f) => table.grantReadWriteData(f));
-
-        const integ = (id: string, f: lambda.IFunction) =>
-            new apigwv2Integ.HttpLambdaIntegration(id, f);
 
         httpApi.addRoutes({
             path: "/tournaments",
@@ -939,53 +886,12 @@ export class CodetypeStack extends Stack {
             authorizer: jwtAuth,
         });
 
-        const meXp = fn("MeXp", "http/progression/getXp.ts", progressionEnv);
-        const achCatalog = fn(
-            "AchCatalog",
-            "http/progression/catalog.ts",
-            progressionEnv,
-        );
-        const achListMine = fn(
-            "AchListMine",
-            "http/progression/listMine.ts",
-            progressionEnv,
-        );
-        const achListPublic = fn(
-            "AchListPublic",
-            "http/progression/listPublic.ts",
-            progressionEnv,
-        );
-        const achPin = fn("AchPin", "http/progression/pin.ts", progressionEnv);
-        [meXp, achCatalog, achListMine, achListPublic, achPin].forEach((f) =>
-            table.grantReadWriteData(f),
-        );
-        httpApi.addRoutes({
-            path: "/me/xp",
-            methods: [apigwv2.HttpMethod.GET],
-            integration: integ("MeXp", meXp),
-            authorizer: jwtAuth,
-        });
-        httpApi.addRoutes({
-            path: "/achievements",
-            methods: [apigwv2.HttpMethod.GET],
-            integration: integ("AchCatalog", achCatalog),
-        });
-        httpApi.addRoutes({
-            path: "/me/achievements",
-            methods: [apigwv2.HttpMethod.GET],
-            integration: integ("AchListMine", achListMine),
-            authorizer: jwtAuth,
-        });
-        httpApi.addRoutes({
-            path: "/users/{userId}/achievements",
-            methods: [apigwv2.HttpMethod.GET],
-            integration: integ("AchListPublic", achListPublic),
-        });
-        httpApi.addRoutes({
-            path: "/me/achievements/pin",
-            methods: [apigwv2.HttpMethod.PUT],
-            integration: integ("AchPin", achPin),
-            authorizer: jwtAuth,
+        new ProgressionFeature(this, "Progression", {
+            table,
+            httpApi,
+            jwtAuth,
+            lambdaFactory: fn,
+            integFactory: integ,
         });
 
         const siteBucket = new s3.Bucket(this, "Site", {
