@@ -21,7 +21,7 @@ import { ddb, TABLE } from "../ddb";
 import { Errors } from "../AppError";
 
 export class MatchRepo {
-    constructor(private readonly client: DynamoDBDocumentClient = ddb) {}
+    constructor(private readonly client: DynamoDBDocumentClient = ddb) { }
 
     async put(match: TournamentMatch): Promise<void> {
         await this.client.send(
@@ -109,11 +109,6 @@ export class MatchRepo {
         return (r.Items as TournamentMatch[] | undefined) ?? [];
     }
 
-    /**
-     * CAS transition for match status. Used by the orchestrator so that two
-     * simultaneous "race finished" stream events cannot both advance the
-     * bracket — second writer fails cleanly.
-     */
     async transitionStatus(
         tournId: string,
         round: number,
@@ -159,11 +154,6 @@ export class MatchRepo {
         }
     }
 
-    /**
-     * Place a winner into a parent match's player slot atomically.
-     * Conditional on parent slot being null and child match being `live`.
-     * Single TransactWriteItems keeps bracket+match consistent.
-     */
     async advanceWinner(args: {
         tournId: string;
         childRound: number;
@@ -232,7 +222,6 @@ export class MatchRepo {
             return true;
         } catch (e) {
             if (e instanceof ConditionalCheckFailedException) return false;
-            // TransactionCanceledException also surfaces conditional failures
             if ((e as { name?: string }).name === "TransactionCanceledException") {
                 return false;
             }

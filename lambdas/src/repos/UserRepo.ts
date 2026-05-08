@@ -3,7 +3,9 @@ import {
     GetCommand,
     PutCommand,
     QueryCommand,
+    ScanCommand,
     TransactWriteCommand,
+    UpdateCommand,
 } from "@aws-sdk/lib-dynamodb";
 import { ConditionalCheckFailedException } from "@aws-sdk/client-dynamodb";
 import {
@@ -249,6 +251,58 @@ export class UserRepo {
             }),
         );
         return (r.Items as any[] | undefined) ?? [];
+    }
+
+    async pageProfiles(
+        startKey: Record<string, unknown> | undefined,
+        limit = 100,
+    ): Promise<{
+        items: UserProfile[];
+        nextKey: Record<string, unknown> | undefined;
+    }> {
+        const r = await this.client.send(
+            new ScanCommand({
+                TableName: TABLE,
+                FilterExpression: "SK = :sk AND begins_with(PK, :pk)",
+                ExpressionAttributeValues: {
+                    ":sk": "PROFILE",
+                    ":pk": "USER#",
+                },
+                ExclusiveStartKey: startKey,
+                Limit: limit,
+            }),
+        );
+        return {
+            items: (r.Items as UserProfile[] | undefined) ?? [],
+            nextKey: r.LastEvaluatedKey,
+        };
+    }
+
+    async applyDecayToProfile(
+        userId: string,
+        newRating: number,
+        seasonId: string,
+    ): Promise<boolean> {
+        try {
+            await this.client.send(
+                new UpdateCommand({
+                    TableName: TABLE,
+                    Key: { PK: userPK(userId), SK: userProfileSK() },
+                    UpdateExpression:
+                        "SET rating = :r, decayAppliedFor = :sid",
+                    ConditionExpression:
+                        "attribute_not_exists(decayAppliedFor) OR decayAppliedFor <> :sid",
+                    ExpressionAttributeValues: {
+                        ":r": newRating,
+                        ":sid": seasonId,
+                    },
+                }),
+            );
+            return true;
+        } catch (e) {
+            if (e instanceof ConditionalCheckFailedException) return false;
+            throw e;
+        }
     }
 }
 

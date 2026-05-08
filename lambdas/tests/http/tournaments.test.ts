@@ -171,7 +171,6 @@ describe("POST /tournaments/:id/register", () => {
                 winnerId: null,
             },
         });
-        // listEntrants returns 4 items → full
         ddbMock.on(QueryCommand).resolves({
             Items: Array.from({ length: 4 }, (_, i) => ({
                 tournId: id,
