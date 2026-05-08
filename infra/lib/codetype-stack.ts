@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import {
     Duration,
     RemovalPolicy,
+    Size,
     Stack,
     type StackProps,
     CfnOutput,
@@ -19,6 +20,7 @@ import * as lambdaSources from "aws-cdk-lib/aws-lambda-event-sources";
 import * as events from "aws-cdk-lib/aws-events";
 import * as eventsTargets from "aws-cdk-lib/aws-events-targets";
 import * as s3 from "aws-cdk-lib/aws-s3";
+import * as firehose from "aws-cdk-lib/aws-kinesisfirehose";
 import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
 import * as origins from "aws-cdk-lib/aws-cloudfront-origins";
 import { Construct } from "constructs";
@@ -374,6 +376,54 @@ export class CodetypeStack extends Stack {
                 batchSize: 100,
                 maxBatchingWindow: Duration.seconds(1),
                 retryAttempts: 2,
+            }),
+        );
+
+        const eventsBucket = new s3.Bucket(this, "EventsArchiveBucket", {
+            bucketName: `codetype-events-${this.account}-${this.region}`,
+            blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+            encryption: s3.BucketEncryption.S3_MANAGED,
+            removalPolicy: RemovalPolicy.RETAIN,
+            lifecycleRules: [
+                {
+                    id: "to-deep-archive-365d",
+                    enabled: true,
+                    transitions: [
+                        {
+                            storageClass: s3.StorageClass.DEEP_ARCHIVE,
+                            transitionAfter: Duration.days(365),
+                        },
+                    ],
+                },
+            ],
+        });
+
+        const eventsFirehose = new firehose.DeliveryStream(
+            this,
+            "EventsFirehose",
+            {
+                destination: new firehose.S3Bucket(eventsBucket, {
+                    compression: firehose.Compression.GZIP,
+                    bufferingInterval: Duration.seconds(60),
+                    bufferingSize: Size.mebibytes(64),
+                    dataOutputPrefix:
+                        "progression/year=!{timestamp:yyyy}/month=!{timestamp:MM}/day=!{timestamp:dd}/hour=!{timestamp:HH}/",
+                    errorOutputPrefix:
+                        "errors/!{firehose:error-output-type}/year=!{timestamp:yyyy}/month=!{timestamp:MM}/day=!{timestamp:dd}/",
+                }),
+            },
+        );
+
+        const firehoseSink = fn("FirehoseSink", "stream/firehoseSink.ts", {
+            FIREHOSE_STREAM_NAME: eventsFirehose.deliveryStreamName,
+        });
+        eventsFirehose.grantPutRecords(firehoseSink);
+        firehoseSink.addEventSource(
+            new lambdaSources.DynamoEventSource(table, {
+                startingPosition: lambda.StartingPosition.LATEST,
+                batchSize: 100,
+                maxBatchingWindow: Duration.seconds(5),
+                retryAttempts: 3,
             }),
         );
 
