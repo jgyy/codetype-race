@@ -186,6 +186,31 @@ export {
     type CursorPersistSink,
     type CursorPeerListSink,
 } from "./commands/ws/PersistCursorBatch";
+
+export {
+    ConnectToTournamentBracketCommand,
+    ConnectToTournamentBracketHandler,
+    DisconnectFromTournamentBracketCommand,
+    DisconnectFromTournamentBracketHandler,
+    TournHeartbeatCommand,
+    TournHeartbeatHandler,
+    type ConnectToTournamentBracketInput,
+    type TournConnectionsSink,
+    type MatchListSink,
+    type TournamentExistsSink,
+    type BracketInitBroadcaster,
+} from "./commands/ws/TournConnections";
+
+export {
+    ConnectPresenceCommand,
+    ConnectPresenceHandler,
+    DisconnectPresenceCommand,
+    DisconnectPresenceHandler,
+    TouchPresenceCommand,
+    TouchPresenceHandler,
+    type ConnectPresenceInput,
+    type PresenceWriteSink,
+} from "./commands/ws/Presence";
 export {
     FinishRaceCommand,
     FinishRaceHandler,

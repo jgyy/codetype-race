@@ -1,7 +1,7 @@
 import { withWsLifecycle } from "../../src/middleware";
-import { presence } from "../../src/repos/PresenceRepo";
+import { commandBus, DisconnectPresenceCommand } from "../_container";
 
 export const handler = withWsLifecycle(async (_event, ctx) => {
-    await presence.deleteByConnection(ctx.connectionId);
+    await commandBus.dispatch(new DisconnectPresenceCommand(ctx.connectionId));
     return { statusCode: 200, body: "ok" };
 });

@@ -1,13 +1,18 @@
 import { z } from "zod";
+import { DomainError } from "@codetype/domain";
 import { withWs } from "../../src/middleware";
-import { Errors } from "../../src/AppError";
-import { tournConnections } from "../../src/repos/TournConnectionRepo";
+import { AppError } from "../../src/AppError";
+import { commandBus, TournHeartbeatCommand } from "../_container";
 
 const HeartbeatSchema = z.object({ type: z.literal("HEARTBEAT") });
 
 export const handler = withWs(HeartbeatSchema, async (_input, ctx) => {
-    const row = await tournConnections.byConnectionId(ctx.connectionId);
-    if (!row) throw Errors.NotFound("connection");
-    // Refresh TTL by re-putting the row.
-    await tournConnections.put(row.tourn_id, ctx.connectionId, row.user_id);
+    try {
+        await commandBus.dispatch(new TournHeartbeatCommand(ctx.connectionId));
+    } catch (e) {
+        if (e instanceof DomainError) {
+            throw new AppError(e.code, e.status, e.message, e.details);
+        }
+        throw e;
+    }
 });

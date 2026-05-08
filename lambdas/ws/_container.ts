@@ -14,6 +14,18 @@ import {
     StartCountdownHandler,
     PersistCursorBatchCommand,
     PersistCursorBatchHandler,
+    ConnectToTournamentBracketCommand,
+    ConnectToTournamentBracketHandler,
+    DisconnectFromTournamentBracketCommand,
+    DisconnectFromTournamentBracketHandler,
+    TournHeartbeatCommand,
+    TournHeartbeatHandler,
+    ConnectPresenceCommand,
+    ConnectPresenceHandler,
+    DisconnectPresenceCommand,
+    DisconnectPresenceHandler,
+    TouchPresenceCommand,
+    TouchPresenceHandler,
     telemetryMiddleware,
 } from "@codetype/app";
 import {
@@ -32,6 +44,11 @@ import { teamRooms } from "../src/repos/TeamRoomRepo";
 import { feed } from "../src/repos/FeedRepo";
 import { rooms as roomsLegacy } from "../src/repos/RoomRepo";
 import { connections as connectionsLegacy } from "../src/repos/ConnectionRepo";
+import { tournaments as tournamentsRepo } from "../src/repos/TournamentRepo";
+import { matches as matchesRepo } from "../src/repos/MatchRepo";
+import { tournConnections } from "../src/repos/TournConnectionRepo";
+import { presence } from "../src/repos/PresenceRepo";
+import { sendInitToConn } from "../src/orchestration/bracketBroadcast";
 
 const clock = new SystemClock();
 const rooms = new DdbRoomRepo({ table: TABLE, client: ddb });
@@ -85,6 +102,25 @@ const buildTeamHistoryItems: ConstructorParameters<
     })),
 ];
 
+const tournConnSink = {
+    put: (tid: string, cid: string, uid: string) =>
+        tournConnections.put(tid, cid, uid),
+    byConnectionId: async (cid: string) => {
+        const r = await tournConnections.byConnectionId(cid);
+        return r
+            ? { tourn_id: r.tourn_id, user_id: r.user_id, connection_id: cid }
+            : null;
+    },
+    delete: (tid: string, cid: string) => tournConnections.delete(tid, cid),
+};
+
+const presenceSink = {
+    put: (uid: string, cid: string) => presence.put(uid, cid),
+    deleteByConnection: (cid: string) => presence.deleteByConnection(cid),
+    userIdByConnection: (cid: string) => presence.userIdByConnection(cid),
+    touch: (uid: string, cid: string) => presence.touch(uid, cid),
+};
+
 export const commandBus = new CommandBus()
     .use(telemetryMiddleware)
     .register(
@@ -133,7 +169,36 @@ export const commandBus = new CommandBus()
             },
             broadcaster,
         ),
-    );
+    )
+    .register(
+        ConnectToTournamentBracketCommand,
+        new ConnectToTournamentBracketHandler(
+            { get: (id) => tournamentsRepo.get(id) },
+            tournConnSink,
+            { listAll: (tid) => matchesRepo.listAll(tid) },
+            {
+                sendInit: (cid, tid, all) =>
+                    sendInitToConn(cid, tid, all as Parameters<typeof sendInitToConn>[2]),
+            },
+        ),
+    )
+    .register(
+        DisconnectFromTournamentBracketCommand,
+        new DisconnectFromTournamentBracketHandler(tournConnSink),
+    )
+    .register(
+        TournHeartbeatCommand,
+        new TournHeartbeatHandler(tournConnSink),
+    )
+    .register(
+        ConnectPresenceCommand,
+        new ConnectPresenceHandler(presenceSink),
+    )
+    .register(
+        DisconnectPresenceCommand,
+        new DisconnectPresenceHandler(presenceSink),
+    )
+    .register(TouchPresenceCommand, new TouchPresenceHandler(presenceSink));
 
 export {
     ConnectToRoomCommand,
@@ -143,4 +208,10 @@ export {
     PersistCursorBatchCommand,
     SendChatCommand,
     StartCountdownCommand,
+    ConnectToTournamentBracketCommand,
+    DisconnectFromTournamentBracketCommand,
+    TournHeartbeatCommand,
+    ConnectPresenceCommand,
+    DisconnectPresenceCommand,
+    TouchPresenceCommand,
 };

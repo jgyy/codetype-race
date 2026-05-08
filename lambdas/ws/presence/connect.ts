@@ -1,6 +1,6 @@
 import { withWsLifecycle } from "../../src/middleware";
 import { Errors, requirePresenceEnabled } from "../../src/AppError";
-import { presence } from "../../src/repos/PresenceRepo";
+import { commandBus, ConnectPresenceCommand } from "../_container";
 
 export const handler = withWsLifecycle(async (event, ctx) => {
     requirePresenceEnabled();
@@ -8,6 +8,8 @@ export const handler = withWsLifecycle(async (event, ctx) => {
         .queryStringParameters ?? {};
     const userId = qs.user_id;
     if (!userId) throw Errors.Unauthorized();
-    await presence.put(userId, ctx.connectionId);
+    await commandBus.dispatch(
+        new ConnectPresenceCommand({ userId, connectionId: ctx.connectionId }),
+    );
     return { statusCode: 200, body: "connected" };
 });
