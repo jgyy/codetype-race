@@ -59,6 +59,57 @@ export {
 } from "./commands/progression/PinAchievements";
 
 export {
+    SubmitSnippetCommand,
+    SubmitSnippetHandler,
+    type SubmitSnippetInput,
+    type SubmitSnippetResult,
+    type SnippetSubmissionSink,
+    type SnippetSubmissionPayload,
+} from "./commands/snippets/SubmitSnippet";
+
+export {
+    ReviewSnippetCommand,
+    ReviewSnippetHandler,
+    type ReviewSnippetInput,
+    type ReviewSnippetResult,
+    type SnippetReviewSink,
+    type ReviewDecision,
+} from "./commands/snippets/ReviewSnippet";
+
+export {
+    DailySubmitCommand,
+    DailySubmitHandler,
+    type DailySubmitInput,
+    type DailySubmitResult,
+    type DailyRepoSink,
+    type DailyRunRow,
+    type UserDirectory,
+} from "./commands/daily/DailySubmit";
+
+export {
+    PracticeRunCommand,
+    PracticeRunHandler,
+    type PracticeRunInput,
+    type PracticeRunResult,
+    type PracticeHistorySink,
+} from "./commands/daily/PracticeRun";
+
+export {
+    SendFriendRequestCommand,
+    SendFriendRequestHandler,
+    AcceptFriendRequestCommand,
+    AcceptFriendRequestHandler,
+    BlockUserCommand,
+    BlockUserHandler,
+    RemoveFriendCommand,
+    RemoveFriendHandler,
+    type FriendActionInput,
+    type FriendActionResult,
+    type FriendActionStatus,
+    type FriendsSink,
+} from "./commands/social/Friends";
+
+export {
     ConnectToRoomCommand,
     ConnectToRoomHandler,
     type ConnectToRoomInput,

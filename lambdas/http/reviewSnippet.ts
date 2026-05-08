@@ -1,7 +1,8 @@
 import { z } from "zod";
+import { DomainError } from "@codetype/domain";
 import { withHttp } from "../src/middleware";
-import { Errors, requireAdmin } from "../src/AppError";
-import { snippets } from "../src/repos/SnippetRepo";
+import { AppError, Errors, requireAdmin } from "../src/AppError";
+import { commandBus, ReviewSnippetCommand } from "./_container";
 
 const Body = z
     .object({ reason: z.string().max(280).optional() })
@@ -18,6 +19,19 @@ export const handler = withHttp(Body, async (input, ctx) => {
     else if (route.endsWith("/reject")) decision = "rejected";
     else throw Errors.BadRequest("invalid review action");
 
-    await snippets.approveOrReject(id, ctx.userId!, decision, input.reason);
-    return { snippet_id: id, status: decision };
+    try {
+        return await commandBus.dispatch(
+            new ReviewSnippetCommand({
+                snippetId: id,
+                reviewerId: ctx.userId!,
+                decision,
+                reason: input.reason,
+            }),
+        );
+    } catch (e) {
+        if (e instanceof DomainError) {
+            throw new AppError(e.code, e.status, e.message, e.details);
+        }
+        throw e;
+    }
 });

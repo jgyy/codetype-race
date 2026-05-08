@@ -1,54 +1,32 @@
 import {
-  PracticeRunRequestSchema,
-  PracticeRunResponseSchema,
+    PracticeRunRequestSchema,
+    PracticeRunResponseSchema,
 } from "@codetype/shared/schemas";
-import { accuracy, grossWpm, netWpm, scaledWpm } from "@codetype/shared/wpm";
+import { DomainError } from "@codetype/domain";
 import { withHttp } from "../src/middleware";
-import { Errors } from "../src/AppError";
-import { history } from "../src/repos/HistoryRepo";
-import { snippets } from "../src/repos/SnippetRepo";
+import { AppError } from "../src/AppError";
+import { commandBus, PracticeRunCommand } from "./_container";
 
 export const handler = withHttp(
-  PracticeRunRequestSchema,
-  async (input, ctx) => {
-    if (!ctx.userId && input.save) throw Errors.Unauthorized();
-
-    const snippet = await snippets.getById(input.snippet_id);
-    if (!snippet) throw Errors.NotFound("snippet");
-    if (input.chars_typed < snippet.length) {
-      throw Errors.BadRequest("incomplete");
-    }
-
-    const finishedAt = Date.now();
-    const gross = grossWpm(input.chars_typed, input.duration_ms);
-    const net = netWpm(input.chars_typed, input.errors, input.duration_ms);
-    const acc = accuracy(input.chars_typed, input.errors);
-    const scaled = scaledWpm(input.chars_typed, input.errors, input.duration_ms);
-
-    let saved = false;
-    if (input.save && ctx.userId) {
-      await history.appendPractice({
-        user_id: ctx.userId,
-        snippet_id: input.snippet_id,
-        finished_at: finishedAt,
-        chars_typed: input.chars_typed,
-        errors: input.errors,
-        duration_ms: input.duration_ms,
-        gross_wpm: gross,
-        net_wpm: net,
-        accuracy: acc,
-        scaled_wpm: scaled,
-      });
-      saved = true;
-    }
-
-    return PracticeRunResponseSchema.parse({
-      finished_at: finishedAt,
-      gross_wpm: gross,
-      net_wpm: net,
-      accuracy: acc,
-      scaled_wpm: scaled,
-      saved,
-    });
-  },
+    PracticeRunRequestSchema,
+    async (input, ctx) => {
+        try {
+            const result = await commandBus.dispatch(
+                new PracticeRunCommand({
+                    userId: ctx.userId,
+                    snippetId: input.snippet_id,
+                    chars_typed: input.chars_typed,
+                    errors: input.errors,
+                    duration_ms: input.duration_ms,
+                    save: input.save,
+                }),
+            );
+            return PracticeRunResponseSchema.parse(result);
+        } catch (e) {
+            if (e instanceof DomainError) {
+                throw new AppError(e.code, e.status, e.message, e.details);
+            }
+            throw e;
+        }
+    },
 );
