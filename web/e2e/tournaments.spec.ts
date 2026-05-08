@@ -1,15 +1,5 @@
 import { expect, test } from "@playwright/test";
 
-/**
- * Static-export smoke: the /tournaments page loads against a stubbed
- * NEXT_PUBLIC_HTTP_API. We mock /tournaments?status=registering with
- * a 4-player size-4 entry so the row renders without a real backend.
- *
- * The full 4-player race-to-finish happy path documented in the spec
- * lives behind a deployed preview pipeline (Phase 08) — running it
- * here would require DDB-local + a Cognito test pool, which is out of
- * scope for static-frontend e2e.
- */
 test.describe("tournaments list", () => {
     test("renders status tabs and a registering tournament row", async ({
         page,

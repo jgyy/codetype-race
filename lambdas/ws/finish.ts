@@ -81,13 +81,6 @@ export async function applyFinish(
     }
 }
 
-/**
- * After every finish, check whether all racers have crossed the line.
- * If so, build the participant list (only players with user_id are
- * rated) and call into UserRepo.applyRaceResults. The transaction's
- * `elo_applied` flag on room META makes this idempotent against
- * concurrent finishers.
- */
 async function maybeApplyRatings(
     roomId: string,
     language: string,
@@ -159,7 +152,6 @@ async function maybeApplyRatings(
         })),
     };
     await Promise.all(conns.map((id) => postTo(id, payload).catch(() => false)));
-    // Fire-and-forget feed events (Phase 10 slice 4).
     await Promise.all(
         applied.map((a) =>
             feed.append(a.userId, "raced", {
@@ -287,8 +279,6 @@ async function maybeApplyTeamRatings(
                     oldRating: oldRatingFor(d.userId),
                 })),
             );
-            // buildApplyItems pushes its own idempotency Update first;
-            // drop it because we already added one above.
             txItems = [...txItems, ...ratingItems.slice(1)];
             appliedDeltas = deltas.map((d) => ({
                 userId: d.userId,
