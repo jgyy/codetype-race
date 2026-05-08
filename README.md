@@ -2,6 +2,8 @@
 
 Real-time multiplayer typing race for code snippets. A host creates a room, shares a 6-character join code, 2–8 players join a lobby, everyone races the same snippet at the same time, and a podium shows the winner with WPM and accuracy.
 
+Live at **https://race.codephase.dev**.
+
 ## Overview
 
 ### Problem
@@ -147,9 +149,13 @@ bun install
 # 2. (one-time per AWS account+region) bootstrap CDK
 bunx cdk bootstrap --profile your_profile
 
-# 3. Deploy the application stack and the monitoring stack
+# 3. Deploy the certificate stack (us-east-1, required by CloudFront), then the app + monitoring stacks
+bun run cdk deploy CodetypeCertificateStack --profile your_profile
 bun run cdk deploy CodetypeStack --profile your_profile
 ALARM_EMAIL=you@example.com bun run cdk deploy CodetypeMonitoringStack --profile your_profile
+
+# The CodetypeStack provisions race.codephase.dev (CloudFront alias + Route53 ARecord/AAAARecord
+# in the codephase.dev hosted zone). Override SITE_DOMAIN/HOSTED_ZONE in infra/bin/app.ts if forking.
 
 # 4. Seed the snippet table
 AWS_PROFILE=your_profile TABLE_NAME=codetype bun scripts/seed-snippets.ts
@@ -182,7 +188,7 @@ bun --filter @codetype/web dev    # http://localhost:3000
 ## Usage
 
 ### As an end-user (player)
-1. Open the deployed site (CloudFront URL from CDK output `SiteUrl`).
+1. Open https://race.codephase.dev (or the CloudFront URL from CDK output `SiteUrl`).
 2. **Sign in** (Cognito email/password) — or use **Practice** without an account.
 3. **Host a race:** *Create Room* → pick a snippet (filter by language/difficulty) → copy the 6-char code.
 4. **Join a race:** paste the code on the home page.

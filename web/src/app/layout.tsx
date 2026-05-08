@@ -3,6 +3,8 @@ import "./globals.css";
 import { Nav } from "@/components/Nav";
 import { SkipLink } from "@/components/a11y/SkipLink";
 import { SwBootstrap } from "@/components/SwBootstrap";
+import { OfflineBanner } from "@/components/OfflineBanner";
+import { InstallPrompt } from "@/components/InstallPrompt";
 
 export const metadata: Metadata = {
   title: "CodeType Race",
@@ -37,8 +39,10 @@ export default function RootLayout({
       <body className="min-h-screen">
         <SkipLink />
         <SwBootstrap />
+        <OfflineBanner />
         <Nav />
         <main id="main">{children}</main>
+        <InstallPrompt />
       </body>
     </html>
   );

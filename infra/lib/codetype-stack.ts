@@ -21,14 +21,23 @@ import * as eventsTargets from "aws-cdk-lib/aws-events-targets";
 import * as s3 from "aws-cdk-lib/aws-s3";
 import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
 import * as origins from "aws-cdk-lib/aws-cloudfront-origins";
+import * as acm from "aws-cdk-lib/aws-certificatemanager";
+import * as route53 from "aws-cdk-lib/aws-route53";
+import * as route53Targets from "aws-cdk-lib/aws-route53-targets";
 import { Construct } from "constructs";
 import { ProgressionFeature } from "./constructs/progression-feature";
+
+export interface CodetypeStackProps extends StackProps {
+    siteDomainName?: string;
+    hostedZoneName?: string;
+    certificate?: acm.ICertificate;
+}
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const LAMBDA_DIR = path.resolve(__dirname, "../../lambdas");
 
 export class CodetypeStack extends Stack {
-    constructor(scope: Construct, id: string, props?: StackProps) {
+    constructor(scope: Construct, id: string, props?: CodetypeStackProps) {
         super(scope, id, props);
 
         const table = new ddb.Table(this, "Table", {
@@ -903,10 +912,10 @@ export class CodetypeStack extends Stack {
             removalPolicy: RemovalPolicy.DESTROY,
             autoDeleteObjects: true,
         });
-        // Phase 12 (PWA): when a CD path is wired up, invalidate
-        //   /sw.js, /manifest.webmanifest, /index.html
-        // on every deploy. Everything under /_next/static/* is content-hashed
-        // and must NOT be invalidated (CacheFirst SW relies on immutability).
+        const customDomain =
+            props?.siteDomainName && props.certificate
+                ? { domainNames: [props.siteDomainName], certificate: props.certificate }
+                : {};
         const distribution = new cloudfront.Distribution(this, "Cdn", {
             defaultBehavior: {
                 origin: origins.S3BucketOrigin.withOriginAccessControl(siteBucket),
@@ -916,7 +925,29 @@ export class CodetypeStack extends Stack {
             errorResponses: [
                 { httpStatus: 404, responseHttpStatus: 200, responsePagePath: "/index.html" },
             ],
+            ...customDomain,
         });
+
+        if (props?.siteDomainName && props.hostedZoneName) {
+            const zone = route53.HostedZone.fromLookup(this, "SiteZone", {
+                domainName: props.hostedZoneName,
+            });
+            new route53.ARecord(this, "SiteAliasA", {
+                zone,
+                recordName: props.siteDomainName,
+                target: route53.RecordTarget.fromAlias(
+                    new route53Targets.CloudFrontTarget(distribution),
+                ),
+            });
+            new route53.AaaaRecord(this, "SiteAliasAAAA", {
+                zone,
+                recordName: props.siteDomainName,
+                target: route53.RecordTarget.fromAlias(
+                    new route53Targets.CloudFrontTarget(distribution),
+                ),
+            });
+            new CfnOutput(this, "SiteUrl", { value: `https://${props.siteDomainName}` });
+        }
 
         new CfnOutput(this, "HttpApiUrl", { value: httpApi.apiEndpoint });
         new CfnOutput(this, "WsApiUrl", {
