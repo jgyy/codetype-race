@@ -3,17 +3,13 @@ import { withStream } from "../src/middleware";
 import { matches } from "../src/repos/MatchRepo";
 import { tournaments } from "../src/repos/TournamentRepo";
 import { rooms } from "../src/repos/RoomRepo";
+import { tournConnections } from "../src/repos/TournConnectionRepo";
 import { advanceMatch } from "../src/orchestration/advanceMatch";
-
-/**
- * Stream handler that watches PLAYER# rows for `finished_at` writes. When
- * the player's room is tied to a tournament match, advance the bracket.
- *
- * The room metadata carries `tourn_match_key` of the form
- * `<tournId>#<round>#<slot>` once a tournament-scheduled room is created.
- * Rooms without that field are ignored (regular casual races flow through
- * the broadcast handler instead).
- */
+import {
+    broadcastBracketUpdate,
+    broadcastMatchDone,
+    broadcastTournamentFinished,
+} from "../src/orchestration/bracketBroadcast";
 
 interface FinishContext {
     roomId: string;
@@ -60,7 +56,6 @@ export const handler: DynamoDBStreamHandler = withStream(async (event) => {
     );
     if (finishes.length === 0) return;
 
-    // Group by room so we resolve each room's winner exactly once.
     const byRoom = new Map<string, FinishContext[]>();
     for (const f of finishes) {
         if (!byRoom.has(f.roomId)) byRoom.set(f.roomId, []);
@@ -75,7 +70,6 @@ export const handler: DynamoDBStreamHandler = withStream(async (event) => {
         );
         if (!matchKey) continue;
 
-        // Pick the player with the lowest finish time as winner.
         const players = await rooms.listPlayers(roomId);
         const finished = players.filter((p) => p.finished_at);
         if (finished.length === 0) continue;
@@ -83,9 +77,6 @@ export const handler: DynamoDBStreamHandler = withStream(async (event) => {
         const winner = finished[0]!;
         if (!winner.user_id) continue;
 
-        // CAS-transition match to live first so a pending match becomes
-        // advanceable; if it's already live (already scheduled by seed
-        // logic) this is a no-op for status.
         await matches.transitionStatus(
             matchKey.tournId,
             matchKey.round,
@@ -94,7 +85,7 @@ export const handler: DynamoDBStreamHandler = withStream(async (event) => {
             "live",
         );
 
-        await advanceMatch({
+        const result = await advanceMatch({
             tournId: matchKey.tournId,
             round: matchKey.round,
             slot: matchKey.slot,
@@ -102,5 +93,33 @@ export const handler: DynamoDBStreamHandler = withStream(async (event) => {
             matches,
             tournaments,
         });
+        if (!result.advanced) continue;
+
+        const updated = await matches.get(
+            matchKey.tournId,
+            matchKey.round,
+            matchKey.slot,
+        );
+        if (updated) {
+            await broadcastBracketUpdate({
+                repo: tournConnections,
+                tournId: matchKey.tournId,
+                match: updated,
+            });
+        }
+        await broadcastMatchDone({
+            repo: tournConnections,
+            tournId: matchKey.tournId,
+            round: matchKey.round,
+            slot: matchKey.slot,
+            winnerId: winner.user_id,
+        });
+        if (result.finished) {
+            await broadcastTournamentFinished({
+                repo: tournConnections,
+                tournId: matchKey.tournId,
+                winnerId: winner.user_id,
+            });
+        }
     }
 });

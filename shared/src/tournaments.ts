@@ -182,6 +182,13 @@ export const CurrentSeasonResponseSchema = z.object({
     daysRemaining: z.number().int().nonnegative().nullable(),
 });
 
+// WS connect query
+export const TournWsConnectQuerySchema = z.object({
+    tournId: z.string().uuid(),
+    userId: z.string().optional(),
+});
+export type TournWsConnectQuery = z.infer<typeof TournWsConnectQuerySchema>;
+
 export const SeasonLeaderboardResponseSchema = z.object({
     seasonId: SeasonIdSchema,
     language: z.string(),
