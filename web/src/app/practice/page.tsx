@@ -1,10 +1,16 @@
 "use client";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useReducer, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useMachine } from "@xstate/react";
 import Link from "next/link";
 import { TypingArea } from "@/components/typing/TypingArea";
 import { Podium } from "@/components/race/Podium";
+import { RaceLiveRegion } from "@/components/a11y/RaceLiveRegion";
+import {
+  initialAnnouncerState,
+  reduceAnnouncer,
+  type AnnouncerEvent,
+} from "@/lib/a11y/announcer";
 import { practiceMachine } from "@/lib/machines/practiceMachine";
 import { getCurrentUser } from "@/lib/aws/cognito";
 
@@ -26,8 +32,33 @@ function PracticeView() {
   });
   const ctx = state.context;
 
+  const [announcer, dispatchAnnouncer] = useReducer(
+    (s: ReturnType<typeof initialAnnouncerState>, e: AnnouncerEvent) => reduceAnnouncer(s, e),
+    undefined,
+    initialAnnouncerState,
+  );
+  const lastTickRef = useRef(0);
+  const snippetLen = ctx.snippet?.code.length ?? 0;
+
+  const finishedAnnouncedRef = useRef(false);
+  useEffect(() => {
+    if (state.matches("finished") && ctx.result && !finishedAnnouncedRef.current) {
+      finishedAnnouncedRef.current = true;
+      dispatchAnnouncer({
+        type: "finished",
+        wpm: ctx.result.net_wpm,
+        accuracy: ctx.result.accuracy,
+        now: Date.now(),
+      });
+    }
+    if (state.matches("ready") || state.matches("loading")) {
+      finishedAnnouncedRef.current = false;
+    }
+  }, [state, ctx.result]);
+
   return (
     <main className="mx-auto max-w-3xl px-6 py-10 space-y-6">
+      <RaceLiveRegion message={announcer.message} seq={announcer.seq} />
       <header className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Practice</h1>
         <Link href="/" className="text-sm text-neutral-400 hover:underline">
@@ -63,14 +94,23 @@ function PracticeView() {
             </p>
             <TypingArea
               snippet={ctx.snippet.code}
-              onProgress={(s) =>
+              onProgress={(s) => {
                 send({
                   type: "TYPED",
                   progress: s.progress,
                   chars_typed: s.chars_typed,
                   errors: s.errors,
-                })
-              }
+                });
+                const now = Date.now();
+                if (now - lastTickRef.current >= 3000) {
+                  lastTickRef.current = now;
+                  dispatchAnnouncer({
+                    type: "tick",
+                    charsLeft: Math.max(0, snippetLen - s.chars_typed),
+                    now,
+                  });
+                }
+              }}
               onFinish={(s) =>
                 send({
                   type: "FINISH",
