@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "test": "bun test",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "icons:gen": "bun run scripts/generate-icons.ts"
   },
   "dependencies": {
     "@aws-amplify/auth": "^6.5.0",
