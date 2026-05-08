@@ -149,3 +149,5 @@ export class SeasonRepo {
         return (r.Items as SeasonLeaderboardRow[] | undefined) ?? [];
     }
 }
+
+export const seasons = new SeasonRepo();

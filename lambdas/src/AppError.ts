@@ -15,6 +15,23 @@ export function requireAdmin(ctx: { userId?: string; groups: string[] }): void {
   if (!ctx.groups.includes("admin")) throw Errors.Forbidden();
 }
 
+export function requireMod(ctx: { userId?: string; groups: string[] }): void {
+  if (!ctx.userId) throw Errors.Unauthorized();
+  if (!ctx.groups.includes("admin") && !ctx.groups.includes("mod")) {
+    throw Errors.Forbidden();
+  }
+}
+
+export function requireTournamentsEnabled(): void {
+  if (process.env.ENABLE_TOURNAMENTS !== "true") {
+    throw new AppError(
+      "FEATURE_DISABLED",
+      503,
+      "tournaments are disabled",
+    );
+  }
+}
+
 export const Errors = {
   Unauthorized: () => new AppError("UNAUTHORIZED", 401, "unauthorized"),
   NotFound: (what: string) =>

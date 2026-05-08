@@ -207,3 +207,5 @@ export class TournamentRepo {
         );
     }
 }
+
+export const tournaments = new TournamentRepo();

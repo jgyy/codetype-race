@@ -240,3 +240,5 @@ export class MatchRepo {
         }
     }
 }
+
+export const matches = new MatchRepo();

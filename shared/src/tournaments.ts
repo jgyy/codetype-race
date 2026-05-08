@@ -138,3 +138,52 @@ export const BracketWsClientSchema = z.object({
     type: z.literal("HEARTBEAT"),
 });
 export type BracketWsClientMessage = z.infer<typeof BracketWsClientSchema>;
+
+// HTTP request/response schemas
+
+export const CreateTournamentRequestSchema = z.object({
+    name: z.string().min(3).max(64),
+    size: TournamentSizeSchema,
+    language: z.string().default("*"),
+    difficulty: z.enum(["easy", "medium", "hard", "any"]).default("any"),
+    startsAt: z.string().datetime(),
+    registrationClosesAt: z.string().datetime(),
+    seasonId: SeasonIdSchema,
+});
+export type CreateTournamentRequest = z.infer<
+    typeof CreateTournamentRequestSchema
+>;
+
+export const CreateTournamentResponseSchema = z.object({
+    id: z.string().uuid(),
+});
+
+export const ListTournamentsResponseSchema = z.object({
+    tournaments: z.array(TournamentSchema),
+});
+
+export const GetTournamentResponseSchema = TournamentSchema.extend({
+    entrantCount: z.number().int().nonnegative(),
+});
+
+export const BracketResponseSchema = z.object({
+    tournId: z.string().uuid(),
+    size: TournamentSizeSchema,
+    matches: z.array(TournamentMatchSchema),
+});
+
+export const RegisterResponseSchema = z.object({
+    ok: z.literal(true),
+    seedSnapshot: z.number().int(),
+});
+
+export const CurrentSeasonResponseSchema = z.object({
+    season: SeasonSchema.nullable(),
+    daysRemaining: z.number().int().nonnegative().nullable(),
+});
+
+export const SeasonLeaderboardResponseSchema = z.object({
+    seasonId: SeasonIdSchema,
+    language: z.string(),
+    rows: z.array(SeasonLeaderboardRowSchema),
+});
