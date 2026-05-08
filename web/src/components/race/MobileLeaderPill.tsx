@@ -26,7 +26,7 @@ export function MobileLeaderPill({
         return b.progress - a.progress;
     });
     const leader = sorted[0];
-    const self = selfId ? players.find((p) => p.id === selfId) : undefined;
+    const self = selfName ? players.find((p) => p.display_name === selfName) : undefined;
 
     return (
         <section aria-label="Race status" className="space-y-2">

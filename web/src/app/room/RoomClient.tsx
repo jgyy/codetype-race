@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { getRoom, createRoom } from "@/lib/api";
 import { TypingArea } from "@/components/typing/TypingArea";
 import { Leaderboard } from "@/components/race/Leaderboard";
+import { MobileLeaderPill } from "@/components/race/MobileLeaderPill";
+import { MobileComposerDock } from "@/components/race/MobileComposerDock";
 import { Podium } from "@/components/race/Podium";
 import { Lobby } from "@/components/lobby/Lobby";
 import { ChatPanel } from "@/components/chat/ChatPanel";
@@ -257,31 +259,43 @@ function RoomShell({ code, identity, bootstrap, snippet, onRematch }: ShellProps
 
       {state.matches("racing") && (
         <section className="space-y-4">
-          <Leaderboard players={players.filter((p) => (p.role ?? "racer") === "racer")} />
+          {/* Desktop (≥768): full N-lane leaderboard. */}
+          <div className="hidden md:block">
+            <Leaderboard players={players.filter((p) => (p.role ?? "racer") === "racer")} />
+          </div>
+          {/* Mobile (<768): single-leader pill with expandable mini-board. */}
+          <div className="md:hidden">
+            <MobileLeaderPill
+              players={players.filter((p) => (p.role ?? "racer") === "racer")}
+              selfName={identity.displayName}
+            />
+          </div>
           {isSpectator ? (
             <p className="text-sm text-neutral-400">
               Watching as spectator. Live cursors update above.
             </p>
           ) : (
-            <TypingArea
-              snippet={snippet.code}
-              disabled={!identity.displayName}
-              onProgress={(s) =>
-                send({
-                  type: "TYPED",
-                  progress: s.progress,
-                  chars_typed: s.chars_typed,
-                  errors: s.errors,
-                })
-              }
-              onFinish={(s) =>
-                send({
-                  type: "FINISH_LOCALLY",
-                  chars_typed: s.chars_typed,
-                  errors: s.errors,
-                })
-              }
-            />
+            <MobileComposerDock>
+              <TypingArea
+                snippet={snippet.code}
+                disabled={!identity.displayName}
+                onProgress={(s) =>
+                  send({
+                    type: "TYPED",
+                    progress: s.progress,
+                    chars_typed: s.chars_typed,
+                    errors: s.errors,
+                  })
+                }
+                onFinish={(s) =>
+                  send({
+                    type: "FINISH_LOCALLY",
+                    chars_typed: s.chars_typed,
+                    errors: s.errors,
+                  })
+                }
+              />
+            </MobileComposerDock>
           )}
         </section>
       )}
