@@ -105,6 +105,34 @@ export const userHandleGSI1PK = (handleLower: string) =>
 export const userHandleGSI1SK = (handleLower: string, userId: string) =>
     `${handleLower}#${userId}`;
 
+// ─── Guilds ────────────────────────────────────────────────────────
+export const guildPK = (guildId: string) => `GUILD#${guildId}`;
+export const guildMetaSK = () => "META";
+export const guildMemberSK = (userId: string) => `MEMBER#${userId}`;
+export const guildMemberPrefix = () => "MEMBER#";
+export const guildInviteSK = (code: string) => `INVITE#${code}`;
+export const guildInvitePrefix = () => "INVITE#";
+
+// Slug-uniqueness sentinel row. Conditional `attribute_not_exists(PK)`
+// in a TransactWriteItems guarantees only one create wins per slug.
+export const guildSlugPK = (slugLower: string) => `GUILD#SLUG#${slugLower}`;
+
+// Discovery (public guilds only). Bucketed by 3-char slug prefix to
+// keep partitions cool, mirroring the user-handle approach.
+export const guildPublicGSI1PK = (slugLower: string) =>
+    `GUILD#PUBLIC#${handleBucket(slugLower)}`;
+export const guildPublicGSI1SK = (slugLower: string, guildId: string) =>
+    `${slugLower}#${guildId}`;
+
+// Membership inverse index: query a user's guilds via GSI1 partition.
+export const userGuildGSI1PK = (userId: string) => `USER#${userId}`;
+export const userGuildGSI1SK = (guildId: string, joinedAt: string) =>
+    `GUILD#${guildId}#${joinedAt}`;
+
+// Invite-by-code lookup (GSI1).
+export const inviteCodeGSI1PK = (code: string) => `INVITE#${code}`;
+export const inviteCodeGSI1SK = (guildId: string) => `GUILD#${guildId}`;
+
 const CODE_ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
 
 export function generateRoomCode(rand: () => number = Math.random): string {

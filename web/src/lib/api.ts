@@ -496,3 +496,139 @@ export async function blockUser(userId: string): Promise<void> {
   });
   if (!r.ok) await failWith(r);
 }
+
+// ─── Phase 10 (slice 2): guilds ──────────────────────────────────────
+export interface Guild {
+  id: string;
+  name: string;
+  slug: string;
+  visibility: "public" | "private";
+  ownerId: string;
+  description: string;
+  memberCount: number;
+  createdAt: string;
+}
+
+export interface GuildMember {
+  user_id: string;
+  display_name: string;
+  rating: number;
+  role: "owner" | "mod" | "member";
+  joined_at: string;
+}
+
+export interface GuildLeaderboardEntry {
+  user_id: string;
+  display_name: string;
+  rating: number;
+  rank: number;
+}
+
+export async function createGuild(input: {
+  name: string;
+  slug: string;
+  visibility: "public" | "private";
+  description?: string;
+}): Promise<Guild> {
+  const r = await req("/guilds", {
+    method: "POST",
+    auth: true,
+    body: JSON.stringify(input),
+  });
+  if (!r.ok) await failWith(r);
+  return r.json() as Promise<Guild>;
+}
+
+export async function searchGuilds(q: string): Promise<Guild[]> {
+  const r = await req(`/guilds?q=${encodeURIComponent(q)}&visibility=public`);
+  if (!r.ok) await failWith(r);
+  const body = (await r.json()) as { guilds: Guild[] };
+  return body.guilds;
+}
+
+export async function getGuild(
+  id: string,
+): Promise<{ guild: Guild; viewer_role: GuildMember["role"] | null }> {
+  const r = await req(`/guilds/${encodeURIComponent(id)}`, { auth: true });
+  if (!r.ok) await failWith(r);
+  return r.json();
+}
+
+export async function getGuildMembers(id: string): Promise<GuildMember[]> {
+  const r = await req(`/guilds/${encodeURIComponent(id)}/members`, {
+    auth: true,
+  });
+  if (!r.ok) await failWith(r);
+  const body = (await r.json()) as { members: GuildMember[] };
+  return body.members;
+}
+
+export async function getGuildLeaderboard(
+  id: string,
+  lang = "*",
+): Promise<{ entries: GuildLeaderboardEntry[]; language: string }> {
+  const r = await req(
+    `/guilds/${encodeURIComponent(id)}/leaderboard?lang=${encodeURIComponent(lang)}`,
+    { auth: true },
+  );
+  if (!r.ok) await failWith(r);
+  return r.json();
+}
+
+export async function patchGuild(
+  id: string,
+  patch: Partial<Pick<Guild, "name" | "description" | "visibility">>,
+): Promise<Guild> {
+  const r = await req(`/guilds/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    auth: true,
+    body: JSON.stringify(patch),
+  });
+  if (!r.ok) await failWith(r);
+  return r.json();
+}
+
+export async function transferGuild(
+  id: string,
+  newOwnerId: string,
+): Promise<void> {
+  const r = await req(`/guilds/${encodeURIComponent(id)}/transfer`, {
+    method: "POST",
+    auth: true,
+    body: JSON.stringify({ new_owner_id: newOwnerId }),
+  });
+  if (!r.ok) await failWith(r);
+}
+
+export async function leaveOrKickGuild(
+  guildId: string,
+  userId: string,
+): Promise<void> {
+  const r = await req(
+    `/guilds/${encodeURIComponent(guildId)}/members/${encodeURIComponent(userId)}`,
+    { method: "DELETE", auth: true },
+  );
+  if (!r.ok) await failWith(r);
+}
+
+export async function createGuildInvite(
+  id: string,
+): Promise<{ code: string; expires_at: string }> {
+  const r = await req(`/guilds/${encodeURIComponent(id)}/invites`, {
+    method: "POST",
+    auth: true,
+  });
+  if (!r.ok) await failWith(r);
+  return r.json();
+}
+
+export async function redeemGuildInvite(
+  code: string,
+): Promise<{ guild_id: string; role: GuildMember["role"] }> {
+  const r = await req(`/guilds/join/${encodeURIComponent(code)}`, {
+    method: "POST",
+    auth: true,
+  });
+  if (!r.ok) await failWith(r);
+  return r.json();
+}

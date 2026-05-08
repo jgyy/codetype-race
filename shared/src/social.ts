@@ -83,3 +83,115 @@ export const WsServerPresenceMsgSchema = z.discriminatedUnion("type", [
     WsServerFriendOfflineSchema,
 ]);
 export type WsServerPresenceMsg = z.infer<typeof WsServerPresenceMsgSchema>;
+
+// ─── Guilds ─────────────────────────────────────────────────────────
+export const GuildVisibilitySchema = z.enum(["public", "private"]);
+export type GuildVisibility = z.infer<typeof GuildVisibilitySchema>;
+
+export const GuildRoleSchema = z.enum(["owner", "mod", "member"]);
+export type GuildRole = z.infer<typeof GuildRoleSchema>;
+
+export const GuildSlugSchema = z
+    .string()
+    .regex(/^[a-z0-9-]{3,32}$/, "slug must be 3-32 chars, lowercase/digits/dashes");
+
+export const GuildNameSchema = z.string().min(3).max(32);
+
+export const GuildSchema = z.object({
+    id: z.string().uuid(),
+    name: GuildNameSchema,
+    slug: GuildSlugSchema,
+    visibility: GuildVisibilitySchema,
+    ownerId: z.string(),
+    description: z.string().max(500).default(""),
+    memberCount: z.number().int().nonnegative(),
+    createdAt: z.string().datetime(),
+});
+export type Guild = z.infer<typeof GuildSchema>;
+
+export const GuildMemberSchema = z.object({
+    guildId: z.string().uuid(),
+    userId: z.string(),
+    role: GuildRoleSchema,
+    joinedAt: z.string().datetime(),
+});
+export type GuildMember = z.infer<typeof GuildMemberSchema>;
+
+export const GuildInviteSchema = z.object({
+    guildId: z.string().uuid(),
+    code: z.string().min(6).max(16),
+    createdBy: z.string(),
+    createdAt: z.string().datetime(),
+    expiresAt: z.string().datetime(),
+});
+export type GuildInvite = z.infer<typeof GuildInviteSchema>;
+
+export const CreateGuildRequestSchema = z.object({
+    name: GuildNameSchema,
+    slug: GuildSlugSchema,
+    visibility: GuildVisibilitySchema,
+    description: z.string().max(500).optional(),
+});
+
+export const UpdateGuildRequestSchema = z
+    .object({
+        name: GuildNameSchema.optional(),
+        description: z.string().max(500).optional(),
+        visibility: GuildVisibilitySchema.optional(),
+    })
+    .refine(
+        (v) => Object.keys(v).length > 0,
+        "at least one field is required",
+    );
+
+export const TransferGuildRequestSchema = z.object({
+    new_owner_id: z.string(),
+});
+
+export const ListGuildsResponseSchema = z.object({
+    guilds: z.array(GuildSchema),
+});
+
+export const GuildDetailResponseSchema = z.object({
+    guild: GuildSchema,
+    viewer_role: GuildRoleSchema.nullable(),
+});
+
+export const GuildMemberSummarySchema = z.object({
+    user_id: z.string(),
+    display_name: z.string(),
+    rating: z.number().int(),
+    role: GuildRoleSchema,
+    joined_at: z.string().datetime(),
+});
+export type GuildMemberSummary = z.infer<typeof GuildMemberSummarySchema>;
+
+export const GuildMembersResponseSchema = z.object({
+    members: z.array(GuildMemberSummarySchema),
+});
+
+export const GuildLeaderboardEntrySchema = z.object({
+    user_id: z.string(),
+    display_name: z.string(),
+    rating: z.number().int(),
+    rank: z.number().int().min(1),
+});
+export const GuildLeaderboardResponseSchema = z.object({
+    guild_id: z.string().uuid(),
+    language: z.string(),
+    entries: z.array(GuildLeaderboardEntrySchema),
+});
+
+export const CreateInviteResponseSchema = z.object({
+    code: z.string(),
+    expires_at: z.string().datetime(),
+});
+
+export const RedeemInviteResponseSchema = z.object({
+    guild_id: z.string().uuid(),
+    role: GuildRoleSchema,
+});
+
+export const GUILD_MIN_MEMBERS = 1;
+export const GUILD_MAX_MEMBERS = 50;
+export const INVITE_TTL_SECONDS = 7 * 24 * 3600;

@@ -44,6 +44,12 @@ export function requirePresenceEnabled(): void {
   }
 }
 
+export function requireGuildsEnabled(): void {
+  if (process.env.ENABLE_GUILDS !== "true") {
+    throw new AppError("FEATURE_DISABLED", 503, "guilds are disabled");
+  }
+}
+
 export const Errors = {
   Unauthorized: () => new AppError("UNAUTHORIZED", 401, "unauthorized"),
   NotFound: (what: string) =>

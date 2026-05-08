@@ -806,6 +806,114 @@ export class CodetypeStack extends Stack {
             value: `wss://${presenceWsApi.apiId}.execute-api.${this.region}.amazonaws.com/${presenceWsStage.stageName}`,
         });
 
+        // ─── Phase 10 (slice 2) — Guilds ───────────────────────────────────
+        const guildEnv = { ENABLE_GUILDS: "true" };
+        const guildCreate = fn("GuildCreate", "http/guilds/create.ts", guildEnv);
+        const guildList = fn("GuildList", "http/guilds/list.ts", guildEnv);
+        const guildGet = fn("GuildGet", "http/guilds/get.ts", guildEnv);
+        const guildMembers = fn(
+            "GuildMembers",
+            "http/guilds/members.ts",
+            guildEnv,
+        );
+        const guildLeaderboard = fn(
+            "GuildLeaderboard",
+            "http/guilds/leaderboard.ts",
+            guildEnv,
+        );
+        const guildUpdate = fn("GuildUpdate", "http/guilds/update.ts", guildEnv);
+        const guildTransfer = fn(
+            "GuildTransfer",
+            "http/guilds/transfer.ts",
+            guildEnv,
+        );
+        const guildLeaveOrKick = fn(
+            "GuildLeaveOrKick",
+            "http/guilds/leaveOrKick.ts",
+            guildEnv,
+        );
+        const guildInviteCreate = fn(
+            "GuildInviteCreate",
+            "http/guilds/invites/create.ts",
+            guildEnv,
+        );
+        const guildInviteRedeem = fn(
+            "GuildInviteRedeem",
+            "http/guilds/invites/redeem.ts",
+            guildEnv,
+        );
+
+        const guildLambdas = [
+            guildCreate,
+            guildList,
+            guildGet,
+            guildMembers,
+            guildLeaderboard,
+            guildUpdate,
+            guildTransfer,
+            guildLeaveOrKick,
+            guildInviteCreate,
+            guildInviteRedeem,
+        ];
+        guildLambdas.forEach((f) => table.grantReadWriteData(f));
+
+        httpApi.addRoutes({
+            path: "/guilds",
+            methods: [apigwv2.HttpMethod.POST],
+            integration: integ("GuildCreate", guildCreate),
+            authorizer: jwtAuth,
+        });
+        httpApi.addRoutes({
+            path: "/guilds",
+            methods: [apigwv2.HttpMethod.GET],
+            integration: integ("GuildList", guildList),
+        });
+        httpApi.addRoutes({
+            path: "/guilds/{id}",
+            methods: [apigwv2.HttpMethod.GET],
+            integration: integ("GuildGet", guildGet),
+        });
+        httpApi.addRoutes({
+            path: "/guilds/{id}",
+            methods: [apigwv2.HttpMethod.PATCH],
+            integration: integ("GuildUpdate", guildUpdate),
+            authorizer: jwtAuth,
+        });
+        httpApi.addRoutes({
+            path: "/guilds/{id}/members",
+            methods: [apigwv2.HttpMethod.GET],
+            integration: integ("GuildMembers", guildMembers),
+        });
+        httpApi.addRoutes({
+            path: "/guilds/{id}/members/{userId}",
+            methods: [apigwv2.HttpMethod.DELETE],
+            integration: integ("GuildLeaveOrKick", guildLeaveOrKick),
+            authorizer: jwtAuth,
+        });
+        httpApi.addRoutes({
+            path: "/guilds/{id}/leaderboard",
+            methods: [apigwv2.HttpMethod.GET],
+            integration: integ("GuildLeaderboard", guildLeaderboard),
+        });
+        httpApi.addRoutes({
+            path: "/guilds/{id}/transfer",
+            methods: [apigwv2.HttpMethod.POST],
+            integration: integ("GuildTransfer", guildTransfer),
+            authorizer: jwtAuth,
+        });
+        httpApi.addRoutes({
+            path: "/guilds/{id}/invites",
+            methods: [apigwv2.HttpMethod.POST],
+            integration: integ("GuildInviteCreate", guildInviteCreate),
+            authorizer: jwtAuth,
+        });
+        httpApi.addRoutes({
+            path: "/guilds/join/{code}",
+            methods: [apigwv2.HttpMethod.POST],
+            integration: integ("GuildInviteRedeem", guildInviteRedeem),
+            authorizer: jwtAuth,
+        });
+
         const siteBucket = new s3.Bucket(this, "Site", {
             blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
             removalPolicy: RemovalPolicy.DESTROY,
