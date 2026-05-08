@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Nav } from "@/components/Nav";
+import { SkipLink } from "@/components/a11y/SkipLink";
 
 export const metadata: Metadata = {
   title: "CodeType Race",
@@ -33,8 +34,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="min-h-screen">
+        <SkipLink />
         <Nav />
-        {children}
+        <main id="main">{children}</main>
       </body>
     </html>
   );

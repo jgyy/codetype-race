@@ -27,3 +27,18 @@ html[data-theme="hc"] body {
   color: theme("colors.contrast.fg");
 }
 
+/* Phase 12 a11y: honour OS-level reduced-motion preference globally.
+   Component-specific motion (cursor easing, podium confetti, XP toasts)
+   should additionally use Tailwind's `motion-safe:`/`motion-reduce:`
+   variants so they fully snap rather than just shorten. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
