@@ -143,3 +143,4 @@ vite.config.ts.timestamp-*
 .vite/
 next-env.d.ts
 infra/cdk.out/
+cdk.out/
