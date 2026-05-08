@@ -50,9 +50,22 @@ import {
     CreateGuildInviteHandler,
     RedeemGuildInviteCommand,
     RedeemGuildInviteHandler,
+    CreateTournamentCommand,
+    CreateTournamentHandler,
+    RegisterForTournamentCommand,
+    RegisterForTournamentHandler,
+    SeedTournamentCommand,
+    SeedTournamentHandler,
+    WithdrawFromTournamentCommand,
+    WithdrawFromTournamentHandler,
+    CancelTournamentCommand,
+    CancelTournamentHandler,
     telemetryMiddleware,
     type GuildsSink,
+    type SeedingOrchestrator,
     type TeamRoomSink,
+    type TournamentsSink,
+    type UserProfileLookup,
 } from "@codetype/app";
 import {
     CryptoRandom,
@@ -71,6 +84,9 @@ import { users } from "../src/repos/UserRepo";
 import { friends } from "../src/repos/FriendsRepo";
 import { guilds as guildsRepo } from "../src/repos/GuildRepo";
 import { feed } from "../src/repos/FeedRepo";
+import { tournaments as tournamentsRepo } from "../src/repos/TournamentRepo";
+import { matches as matchesRepo } from "../src/repos/MatchRepo";
+import { seedTournament } from "../src/orchestration/seedTournament";
 
 const clock = new SystemClock();
 const random = new CryptoRandom();
@@ -113,6 +129,35 @@ const guildsSink: GuildsSink = {
 const feedSink = {
     append: (userId: string, type: string, payload: Record<string, unknown>) =>
         feed.append(userId, type as Parameters<typeof feed.append>[1], payload),
+};
+
+const tournamentsSink: TournamentsSink = {
+    create: (t) => tournamentsRepo.create(t),
+    get: (id) => tournamentsRepo.get(id) as ReturnType<TournamentsSink["get"]>,
+    transitionStatus: (id, from, to) =>
+        tournamentsRepo.transitionStatus(id, from, to),
+    addEntrant: (e) => tournamentsRepo.addEntrant(e),
+    removeEntrant: (id, uid) => tournamentsRepo.removeEntrant(id, uid),
+    listEntrants: (id) =>
+        tournamentsRepo.listEntrants(id) as ReturnType<
+            TournamentsSink["listEntrants"]
+        >,
+};
+
+const seedingOrchestrator: SeedingOrchestrator = {
+    seed: ({ tournId, size, startsAt }) =>
+        seedTournament({
+            tournId,
+            size,
+            startsAt,
+            matches: matchesRepo,
+            tournaments: tournamentsRepo,
+        }),
+};
+
+const userProfileLookup: UserProfileLookup = {
+    getProfile: (uid) =>
+        users.getProfile(uid) as ReturnType<UserProfileLookup["getProfile"]>,
 };
 
 export const commandBus = new CommandBus()
@@ -202,6 +247,26 @@ export const commandBus = new CommandBus()
     .register(
         RedeemGuildInviteCommand,
         new RedeemGuildInviteHandler(guildsSink, feedSink),
+    )
+    .register(
+        CreateTournamentCommand,
+        new CreateTournamentHandler(tournamentsSink, random),
+    )
+    .register(
+        RegisterForTournamentCommand,
+        new RegisterForTournamentHandler(tournamentsSink, userProfileLookup, clock),
+    )
+    .register(
+        SeedTournamentCommand,
+        new SeedTournamentHandler(tournamentsSink, seedingOrchestrator),
+    )
+    .register(
+        WithdrawFromTournamentCommand,
+        new WithdrawFromTournamentHandler(tournamentsSink),
+    )
+    .register(
+        CancelTournamentCommand,
+        new CancelTournamentHandler(tournamentsSink),
     );
 
 export const queryBus = new QueryBus()
@@ -228,4 +293,9 @@ export {
     SubmitSnippetCommand,
     TransferGuildOwnershipCommand,
     UpdateGuildCommand,
+    CreateTournamentCommand,
+    RegisterForTournamentCommand,
+    SeedTournamentCommand,
+    WithdrawFromTournamentCommand,
+    CancelTournamentCommand,
 };
