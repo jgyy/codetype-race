@@ -10,7 +10,8 @@
     "test": "bun test"
   },
   "dependencies": {
-    "@codetype/domain": "workspace:*"
+    "@codetype/domain": "workspace:*",
+    "@codetype/shared": "workspace:*"
   },
   "devDependencies": {
     "@types/bun": "latest",

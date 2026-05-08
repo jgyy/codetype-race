@@ -12,10 +12,16 @@
 import {
     CommandBus,
     QueryBus,
+    ClaimQuestCommand,
+    ClaimQuestHandler,
     CreateRoomCommand,
     CreateRoomHandler,
     GetRoomQuery,
     GetRoomHandler,
+    JoinRoomCommand,
+    JoinRoomHandler,
+    PinAchievementsCommand,
+    PinAchievementsHandler,
     telemetryMiddleware,
     type TeamRoomSink,
 } from "@codetype/app";
@@ -27,6 +33,8 @@ import {
 } from "@codetype/adapters-aws";
 import { ddb, TABLE } from "../src/ddb";
 import { teamRooms } from "../src/repos/TeamRoomRepo";
+import { quests } from "../src/repos/QuestsRepo";
+import { achievements } from "../src/repos/AchievementsRepo";
 
 const clock = new SystemClock();
 const random = new CryptoRandom();
@@ -45,10 +53,31 @@ export const commandBus = new CommandBus()
     .register(
         CreateRoomCommand,
         new CreateRoomHandler(rooms, snippets, clock, random, teamRoomSink),
+    )
+    .register(JoinRoomCommand, new JoinRoomHandler(rooms, clock))
+    .register(
+        ClaimQuestCommand,
+        new ClaimQuestHandler({
+            getProgress: (u, r, q) => quests.getProgress(u, r, q),
+            claim: (u, r, def) => quests.claim(u, r, def),
+        }),
+    )
+    .register(
+        PinAchievementsCommand,
+        new PinAchievementsHandler({
+            listForUser: (u) => achievements.listForUser(u),
+            setPinned: (u, s) => achievements.setPinned(u, s),
+        }),
     );
 
 export const queryBus = new QueryBus()
     .use(telemetryMiddleware)
     .register(GetRoomQuery, new GetRoomHandler(rooms));
 
-export { CreateRoomCommand, GetRoomQuery };
+export {
+    ClaimQuestCommand,
+    CreateRoomCommand,
+    GetRoomQuery,
+    JoinRoomCommand,
+    PinAchievementsCommand,
+};

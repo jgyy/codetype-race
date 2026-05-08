@@ -8,107 +8,97 @@ export type RoomStatus = "lobby" | "countdown" | "racing" | "finished";
 
 export type RoomMode = "solo" | "team";
 
-/**
- * Persisted shape, kept in lock-step with @codetype/shared/schemas#Room
- * so the DDB adapter can round-trip without a translation table. Adding
- * fields here is the canonical place; the persistence shape adapts.
- */
 export interface RoomSnapshot {
-  room_id: string;
-  code: string;
-  host_id: string;
-  snippet_id: string;
-  status: RoomStatus;
-  created_at: number;
-  version: number;
-  mode?: RoomMode;
-  started_at?: number;
+    room_id: string;
+    code: string;
+    host_id: string;
+    snippet_id: string;
+    status: RoomStatus;
+    created_at: number;
+    version: number;
+    mode?: RoomMode;
+    started_at?: number;
 }
 
-/** Player payload accepted by CreateRoom (e.g. rematch seeding). */
 export interface SeedPlayer {
-  user_id: string;
-  display_name: string;
-  joined_at: number;
-  chars_typed: number;
-  errors: number;
-  progress: number;
+    user_id?: string;
+    display_name: string;
+    joined_at: number;
+    chars_typed: number;
+    errors: number;
+    progress: number;
 }
 
 export interface CreateRoomArgs {
-  hostId: string;
-  snippetId: string;
-  joinCode: JoinCode;
-  mode?: RoomMode;
-  clock: Clock;
-  random: Random;
+    hostId: string;
+    snippetId: string;
+    joinCode: JoinCode;
+    mode?: RoomMode;
+    clock: Clock;
+    random: Random;
 }
 
 export class Room {
-  private constructor(private state: RoomSnapshot) {}
+    private constructor(private state: RoomSnapshot) { }
 
-  static create(args: CreateRoomArgs): Room {
-    const id = RoomId.from(args.random.uuid());
-    return new Room({
-      room_id: id.value,
-      code: args.joinCode.value,
-      host_id: args.hostId,
-      snippet_id: args.snippetId,
-      status: "lobby",
-      created_at: args.clock.epochMs(),
-      version: 0,
-      ...(args.mode === "team" ? { mode: "team" as const } : {}),
-    });
-  }
-
-  static fromSnapshot(s: RoomSnapshot): Room {
-    return new Room({ ...s });
-  }
-
-  toSnapshot(): RoomSnapshot {
-    return { ...this.state };
-  }
-
-  get id(): RoomId {
-    return RoomId.from(this.state.room_id);
-  }
-
-  get joinCode(): JoinCode {
-    return JoinCode.from(this.state.code);
-  }
-
-  get status(): RoomStatus {
-    return this.state.status;
-  }
-
-  get hostId(): string {
-    return this.state.host_id;
-  }
-
-  get snippetId(): string {
-    return this.state.snippet_id;
-  }
-
-  get mode(): RoomMode {
-    return this.state.mode ?? "solo";
-  }
-
-  /**
-   * Transition to countdown. Used by phase-13 future slices; included
-   * here so the entity carries its state machine in one place.
-   */
-  startCountdown(by: string, clock: Clock): void {
-    if (by !== this.state.host_id) {
-      throw new DomainError("room.not_host", 403);
+    static create(args: CreateRoomArgs): Room {
+        const id = RoomId.from(args.random.uuid());
+        return new Room({
+            room_id: id.value,
+            code: args.joinCode.value,
+            host_id: args.hostId,
+            snippet_id: args.snippetId,
+            status: "lobby",
+            created_at: args.clock.epochMs(),
+            version: 0,
+            ...(args.mode === "team" ? { mode: "team" as const } : {}),
+        });
     }
-    if (this.state.status !== "lobby") {
-      throw new DomainError("room.not_lobby", 409);
+
+    static fromSnapshot(s: RoomSnapshot): Room {
+        return new Room({ ...s });
     }
-    this.state = {
-      ...this.state,
-      status: "countdown",
-      started_at: clock.epochMs(),
-      version: this.state.version + 1,
-    };
-  }
+
+    toSnapshot(): RoomSnapshot {
+        return { ...this.state };
+    }
+
+    get id(): RoomId {
+        return RoomId.from(this.state.room_id);
+    }
+
+    get joinCode(): JoinCode {
+        return JoinCode.from(this.state.code);
+    }
+
+    get status(): RoomStatus {
+        return this.state.status;
+    }
+
+    get hostId(): string {
+        return this.state.host_id;
+    }
+
+    get snippetId(): string {
+        return this.state.snippet_id;
+    }
+
+    get mode(): RoomMode {
+        return this.state.mode ?? "solo";
+    }
+
+    startCountdown(by: string, clock: Clock): void {
+        if (by !== this.state.host_id) {
+            throw new DomainError("room.not_host", 403);
+        }
+        if (this.state.status !== "lobby") {
+            throw new DomainError("room.not_lobby", 409);
+        }
+        this.state = {
+            ...this.state,
+            status: "countdown",
+            started_at: clock.epochMs(),
+            version: this.state.version + 1,
+        };
+    }
 }

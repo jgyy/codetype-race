@@ -34,6 +34,31 @@ export {
 } from "./queries/GetRoom";
 
 export {
+    JoinRoomCommand,
+    JoinRoomHandler,
+    type JoinRoomInput,
+    type JoinRoomResult,
+} from "./commands/JoinRoom";
+
+export {
+    ClaimQuestCommand,
+    ClaimQuestHandler,
+    type ClaimQuestInput,
+    type ClaimQuestResult,
+    type QuestDefLite,
+    type QuestProgressLite,
+    type QuestsSink,
+} from "./commands/progression/ClaimQuest";
+
+export {
+    PinAchievementsCommand,
+    PinAchievementsHandler,
+    type PinAchievementsInput,
+    type PinAchievementsResult,
+    type AchievementsSink,
+} from "./commands/progression/PinAchievements";
+
+export {
     ConnectToRoomCommand,
     ConnectToRoomHandler,
     type ConnectToRoomInput,

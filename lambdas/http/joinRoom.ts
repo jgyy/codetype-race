@@ -2,37 +2,25 @@ import {
     JoinRoomRequestSchema,
     JoinRoomResponseSchema,
 } from "@codetype/shared/schemas";
+import { DomainError } from "@codetype/domain";
 import { withHttp } from "../src/middleware";
-import { Errors } from "../src/AppError";
-import { rooms } from "../src/repos/RoomRepo";
-
-const MAX_RACERS = 8;
+import { AppError } from "../src/AppError";
+import { commandBus, JoinRoomCommand } from "./_container";
 
 export const handler = withHttp(JoinRoomRequestSchema, async (input) => {
-    const room = await rooms.getByCode(input.code);
-    if (!room) throw Errors.NotFound("room");
-    if (room.status !== "lobby") throw Errors.Conflict("room not joinable");
-
-    if (input.role === "racer") {
-        const existing = await rooms.listPlayers(room.room_id);
-        const racerCount = existing.filter(
-            (p) => (p.role ?? "racer") === "racer",
-        ).length;
-        if (racerCount >= MAX_RACERS) throw Errors.Conflict("room full");
+    try {
+        const result = await commandBus.dispatch(
+            new JoinRoomCommand({
+                code: input.code,
+                displayName: input.display_name,
+                role: input.role,
+            }),
+        );
+        return JoinRoomResponseSchema.parse(result);
+    } catch (e) {
+        if (e instanceof DomainError) {
+            throw new AppError(e.code, e.status, e.message, e.details);
+        }
+        throw e;
     }
-
-    await rooms.addPlayer(room.room_id, {
-        display_name: input.display_name,
-        joined_at: Date.now(),
-        chars_typed: 0,
-        errors: 0,
-        progress: 0,
-        role: input.role,
-    });
-
-    return JoinRoomResponseSchema.parse({
-        room_id: room.room_id,
-        snippet_id: room.snippet_id,
-        status: room.status,
-    });
 });

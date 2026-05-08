@@ -99,6 +99,18 @@ export class InMemoryRoomRepo implements RoomRepo {
         this.dnf.push({ roomId, displayName });
     }
 
+    async addPlayer(
+        roomId: string,
+        player: SeedPlayer & { role?: "racer" | "spectator" },
+    ): Promise<void> {
+        const list = this.players.get(roomId) ?? [];
+        if (list.some((p) => p.display_name === player.display_name)) {
+            throw new Error("player.display_name_taken");
+        }
+        list.push(player);
+        this.players.set(roomId, list);
+    }
+
     public finishes: RecordFinishInput[] = [];
     async recordFinish(input: RecordFinishInput): Promise<void> {
         this.finishes.push(input);

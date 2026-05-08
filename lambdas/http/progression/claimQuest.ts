@@ -1,12 +1,13 @@
 import { z } from "zod";
-import { withHttp } from "../../src/middleware";
-import { Errors, requireProgressionEnabled } from "../../src/AppError";
-import { quests } from "../../src/repos/QuestsRepo";
+import { DomainError } from "@codetype/domain";
 import {
     ALL_QUEST_DEFS,
     dailyRotationId,
     weeklyRotationId,
 } from "@codetype/shared/progression/quests";
+import { withHttp } from "../../src/middleware";
+import { AppError, Errors, requireProgressionEnabled } from "../../src/AppError";
+import { ClaimQuestCommand, commandBus } from "../_container";
 
 const EmptyBody = z.object({}).passthrough();
 
@@ -28,22 +29,20 @@ export const handler = withHttp(EmptyBody, async (_input, ctx) => {
         def.period === "daily"
             ? dailyRotationId(new Date())
             : weeklyRotationId(new Date());
-    const progress = await quests.getProgress(ctx.userId, rotationId, def.id);
-    if (!progress) throw Errors.NotFound("quest progress");
-    if (progress.claimed) {
-        throw Errors.Conflict("already claimed");
-    }
-    if (progress.progress < def.target) {
-        throw Errors.Conflict("quest not complete");
-    }
 
-    const ok = await quests.claim(ctx.userId, rotationId, def);
-    if (!ok) {
-        throw Errors.Conflict("claim conflicted");
+    try {
+        const result = await commandBus.dispatch(
+            new ClaimQuestCommand({
+                userId: ctx.userId,
+                rotationId,
+                def: { id: def.id, target: def.target, xp: def.xp },
+            }),
+        );
+        return Response.parse(result);
+    } catch (e) {
+        if (e instanceof DomainError) {
+            throw new AppError(e.code, e.status, e.message, e.details);
+        }
+        throw e;
     }
-    return Response.parse({
-        claimed: true,
-        quest_id: def.id,
-        xp_awarded: def.xp,
-    });
 });

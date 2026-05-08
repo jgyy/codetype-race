@@ -183,6 +183,30 @@ export class DdbRoomRepo implements RoomRepo {
         }
     }
 
+    async addPlayer(
+        roomId: string,
+        player: SeedPlayer & { role?: "racer" | "spectator" },
+    ): Promise<void> {
+        try {
+            await this.cfg.client.send(
+                new PutCommand({
+                    TableName: this.cfg.table,
+                    Item: {
+                        PK: roomPK(roomId),
+                        SK: playerSK(player.display_name),
+                        ...player,
+                    },
+                    ConditionExpression: "attribute_not_exists(SK)",
+                }),
+            );
+        } catch (e) {
+            if (e instanceof ConditionalCheckFailedException) {
+                throw new DomainError("player.display_name_taken", 409);
+            }
+            throw e;
+        }
+    }
+
     async recordFinish(input: RecordFinishInput): Promise<void> {
         const {
             roomId,
