@@ -11,6 +11,7 @@ import {
 } from "@codetype/shared/ddb-keys";
 import type {
     SnippetFilters,
+    SnippetMeta,
     SnippetRef,
     SnippetRepo,
 } from "@codetype/domain";
@@ -43,6 +44,26 @@ export class DdbSnippetRepo implements SnippetRepo {
         );
         const item = r.Item as { snippet_id?: string } | undefined;
         return item?.snippet_id ? { snippet_id: item.snippet_id } : null;
+    }
+
+    async getMetaById(snippetId: string): Promise<SnippetMeta | null> {
+        const r = await this.cfg.client.send(
+            new GetCommand({
+                TableName: this.cfg.table,
+                Key: { PK: snippetPK(snippetId), SK: "META" },
+            }),
+        );
+        const item = r.Item as
+            | { snippet_id?: string; language?: string; length?: number }
+            | undefined;
+        if (!item?.snippet_id || !item.language || item.length === undefined) {
+            return null;
+        }
+        return {
+            snippet_id: item.snippet_id,
+            language: item.language,
+            length: item.length,
+        };
     }
 
     async random(filters: SnippetFilters): Promise<SnippetRef | null> {

@@ -1,17 +1,19 @@
 export interface SnippetFilters {
-  language?: string;
-  difficulty?: number;
+    language?: string;
+    difficulty?: number;
 }
 
 export interface SnippetRef {
-  snippet_id: string;
+    snippet_id: string;
 }
 
-/**
- * SnippetRepo port — slice 13.3 surface.
- * Only id-lookup and random-pick are needed by CreateRoom.
- */
+export interface SnippetMeta extends SnippetRef {
+    language: string;
+    length: number;
+}
+
 export interface SnippetRepo {
-  getById(snippetId: string): Promise<SnippetRef | null>;
-  random(filters: SnippetFilters): Promise<SnippetRef | null>;
+    getById(snippetId: string): Promise<SnippetRef | null>;
+    getMetaById(snippetId: string): Promise<SnippetMeta | null>;
+    random(filters: SnippetFilters): Promise<SnippetRef | null>;
 }

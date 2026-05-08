@@ -3,12 +3,14 @@ import type {
     Clock,
     ConnectionRecord,
     ConnectionRepo,
+    RecordFinishInput,
     Random,
     Room,
     RoomRepo,
     RoomSnapshot,
     SeedPlayer,
     SnippetFilters,
+    SnippetMeta,
     SnippetRef,
     SnippetRepo,
 } from "@codetype/domain";
@@ -96,6 +98,37 @@ export class InMemoryRoomRepo implements RoomRepo {
     async markPlayerDnf(roomId: string, displayName: string): Promise<void> {
         this.dnf.push({ roomId, displayName });
     }
+
+    public finishes: RecordFinishInput[] = [];
+    async recordFinish(input: RecordFinishInput): Promise<void> {
+        this.finishes.push(input);
+        // Mirror the legacy adapter side-effect: stamp finish on the
+        // matching player row so subsequent listPlayers sees them as
+        // finished. The InMemoryRoomRepo stores players by roomId.
+        const players = this.players.get(input.roomId) ?? [];
+        const idx = players.findIndex(
+            (p) => p.display_name === input.displayName,
+        );
+        if (idx >= 0) {
+            const merged = {
+                ...players[idx],
+                finished_at: input.finishedAt,
+                gross_wpm: input.grossWpm,
+                net_wpm: input.netWpm,
+                accuracy: input.accuracy,
+                scaled_wpm: input.scaledWpm,
+                progress: 1,
+            } as SeedPlayer & {
+                finished_at?: number;
+                scaled_wpm?: number;
+                net_wpm?: number;
+                gross_wpm?: number;
+                accuracy?: number;
+            };
+            players[idx] = merged;
+            this.players.set(input.roomId, players);
+        }
+    }
 }
 
 export class InMemoryConnectionRepo implements ConnectionRepo {
@@ -161,11 +194,18 @@ export class FakeBroadcaster implements Broadcaster {
 }
 
 export class InMemorySnippetRepo implements SnippetRepo {
-    public readonly byId = new Map<string, SnippetRef>();
+    public readonly byId = new Map<string, SnippetMeta>();
     public pickQueue: SnippetRef[] = [];
 
     add(...ids: string[]) {
-        for (const id of ids) this.byId.set(id, { snippet_id: id });
+        for (const id of ids) {
+            this.byId.set(id, { snippet_id: id, language: "ts", length: 100 });
+        }
+        return this;
+    }
+
+    addMeta(meta: SnippetMeta) {
+        this.byId.set(meta.snippet_id, meta);
         return this;
     }
 
@@ -175,6 +215,11 @@ export class InMemorySnippetRepo implements SnippetRepo {
     }
 
     async getById(id: string): Promise<SnippetRef | null> {
+        const m = this.byId.get(id);
+        return m ? { snippet_id: m.snippet_id } : null;
+    }
+
+    async getMetaById(id: string): Promise<SnippetMeta | null> {
         return this.byId.get(id) ?? null;
     }
 

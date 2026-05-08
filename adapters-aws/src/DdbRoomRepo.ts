@@ -8,12 +8,16 @@ import {
 import { ConditionalCheckFailedException } from "@aws-sdk/client-dynamodb";
 import {
     codeGSI1PK,
+    finishedGSI1SK,
+    hostGSI1PK,
     playerSK,
+    resultSK,
     roomMetaSK,
     roomPK,
 } from "@codetype/shared/ddb-keys";
 import {
     DomainError,
+    type RecordFinishInput,
     type Room,
     type RoomRepo,
     type RoomSnapshot,
@@ -177,5 +181,64 @@ export class DdbRoomRepo implements RoomRepo {
             if (e instanceof ConditionalCheckFailedException) return;
             throw e;
         }
+    }
+
+    async recordFinish(input: RecordFinishInput): Promise<void> {
+        const {
+            roomId,
+            hostId,
+            displayName,
+            finishedAt,
+            charsTyped,
+            errors,
+            grossWpm,
+            netWpm,
+            accuracy,
+            scaledWpm,
+            flagged,
+            flags,
+        } = input;
+        try {
+            await this.cfg.client.send(
+                new UpdateCommand({
+                    TableName: this.cfg.table,
+                    Key: { PK: roomPK(roomId), SK: playerSK(displayName) },
+                    UpdateExpression:
+                        "SET finished_at = :f, gross_wpm = :g, net_wpm = :n, accuracy = :a, scaled_wpm = :s, progress = :p",
+                    ConditionExpression: "attribute_not_exists(finished_at)",
+                    ExpressionAttributeValues: {
+                        ":f": finishedAt,
+                        ":g": grossWpm,
+                        ":n": netWpm,
+                        ":a": accuracy,
+                        ":s": scaledWpm,
+                        ":p": 1,
+                    },
+                }),
+            );
+        } catch (e) {
+            if (!(e instanceof ConditionalCheckFailedException)) throw e;
+        }
+        await this.cfg.client.send(
+            new PutCommand({
+                TableName: this.cfg.table,
+                Item: {
+                    PK: roomPK(roomId),
+                    SK: resultSK(finishedAt, displayName),
+                    GSI1PK: hostGSI1PK(hostId),
+                    GSI1SK: finishedGSI1SK(finishedAt),
+                    room_id: roomId,
+                    display_name: displayName,
+                    finished_at: finishedAt,
+                    gross_wpm: grossWpm,
+                    net_wpm: netWpm,
+                    accuracy,
+                    scaled_wpm: scaledWpm,
+                    chars_typed: charsTyped,
+                    errors,
+                    ...(flagged ? { flagged: true, flags: flags ?? [] } : {}),
+                },
+            }),
+        );
     }
 }

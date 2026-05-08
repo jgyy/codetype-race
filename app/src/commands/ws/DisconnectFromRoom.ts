@@ -8,7 +8,6 @@ export interface DisconnectFromRoomInput {
 }
 
 export interface DisconnectFromRoomResult {
-    /** False when the connection was already gone (idempotent noop). */
     applied: boolean;
 }
 

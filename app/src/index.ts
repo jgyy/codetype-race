@@ -59,3 +59,20 @@ export {
     SendChatHandler,
     type SendChatInput,
 } from "./commands/ws/SendChat";
+export {
+    FinishRaceCommand,
+    FinishRaceHandler,
+    type FinishRaceInput,
+    type UserRatingsApplier,
+    type UserProfileLite,
+    type RaceResultInput,
+    type AppliedDelta,
+    type FeedAppender,
+    type TeamRoomReader,
+    type TeamLite,
+    type TeamRatingApplier,
+    type TeamRatingApplyItem,
+    type TeamRatingRowLite,
+    type RaceFinishedEmitter,
+    type AntiCheatMetrics,
+} from "./commands/ws/FinishRace";
