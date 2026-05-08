@@ -940,11 +940,51 @@ export class CodetypeStack extends Stack {
         });
 
         const meXp = fn("MeXp", "http/progression/getXp.ts", progressionEnv);
-        table.grantReadWriteData(meXp);
+        const achCatalog = fn(
+            "AchCatalog",
+            "http/progression/catalog.ts",
+            progressionEnv,
+        );
+        const achListMine = fn(
+            "AchListMine",
+            "http/progression/listMine.ts",
+            progressionEnv,
+        );
+        const achListPublic = fn(
+            "AchListPublic",
+            "http/progression/listPublic.ts",
+            progressionEnv,
+        );
+        const achPin = fn("AchPin", "http/progression/pin.ts", progressionEnv);
+        [meXp, achCatalog, achListMine, achListPublic, achPin].forEach((f) =>
+            table.grantReadWriteData(f),
+        );
         httpApi.addRoutes({
             path: "/me/xp",
             methods: [apigwv2.HttpMethod.GET],
             integration: integ("MeXp", meXp),
+            authorizer: jwtAuth,
+        });
+        httpApi.addRoutes({
+            path: "/achievements",
+            methods: [apigwv2.HttpMethod.GET],
+            integration: integ("AchCatalog", achCatalog),
+        });
+        httpApi.addRoutes({
+            path: "/me/achievements",
+            methods: [apigwv2.HttpMethod.GET],
+            integration: integ("AchListMine", achListMine),
+            authorizer: jwtAuth,
+        });
+        httpApi.addRoutes({
+            path: "/users/{userId}/achievements",
+            methods: [apigwv2.HttpMethod.GET],
+            integration: integ("AchListPublic", achListPublic),
+        });
+        httpApi.addRoutes({
+            path: "/me/achievements/pin",
+            methods: [apigwv2.HttpMethod.PUT],
+            integration: integ("AchPin", achPin),
             authorizer: jwtAuth,
         });
 

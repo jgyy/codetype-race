@@ -149,6 +149,12 @@ export const xpLedgerSK = (epochMs: number, eventId: string) => {
     return `EV#${String(inv).padStart(13, "0")}#${eventId}`;
 };
 export const xpSummarySK = () => "XP#SUMMARY";
+export const unlockedSK = (achievementId: string) => `ACH#${achievementId}`;
+export const unlockedGSI1PK = (achievementId: string) =>
+    `ACH#${achievementId}`;
+export const unlockedGSI1SK = (unlockedAt: string) => unlockedAt;
+export const pinnedSK = (slot: number) =>
+    `ACHPIN#${String(slot).padStart(2, "0")}`;
 
 const CODE_ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
 
