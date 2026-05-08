@@ -8,7 +8,11 @@
     "./wpm": "./src/services/wpm.ts",
     "./streak": "./src/services/streak.ts",
     "./elo": "./src/services/elo.ts",
-    "./anticheat": "./src/services/anticheat.ts"
+    "./anticheat": "./src/services/anticheat.ts",
+    "./entities/Room": "./src/entities/Room.ts",
+    "./ports": "./src/ports/index.ts",
+    "./errors": "./src/errors.ts",
+    "./valueObjects": "./src/valueObjects/index.ts"
   },
   "scripts": {
     "test": "bun test"
