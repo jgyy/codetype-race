@@ -13,6 +13,40 @@
         "tsx": "^4.19.0",
       },
     },
+    "adapters-aws": {
+      "name": "@codetype/adapters-aws",
+      "version": "0.0.0",
+      "dependencies": {
+        "@aws-sdk/client-apigatewaymanagementapi": "^3.658.0",
+        "@aws-sdk/client-dynamodb": "^3.658.0",
+        "@aws-sdk/client-s3": "^3.658.0",
+        "@aws-sdk/lib-dynamodb": "^3.658.0",
+        "@codetype/domain": "workspace:*",
+      },
+      "devDependencies": {
+        "@types/bun": "latest",
+        "typescript": "^5.6.0",
+      },
+    },
+    "app": {
+      "name": "@codetype/app",
+      "version": "0.0.0",
+      "dependencies": {
+        "@codetype/domain": "workspace:*",
+      },
+      "devDependencies": {
+        "@types/bun": "latest",
+        "typescript": "^5.6.0",
+      },
+    },
+    "domain": {
+      "name": "@codetype/domain",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@types/bun": "latest",
+        "typescript": "^5.6.0",
+      },
+    },
     "infra": {
       "name": "@codetype/infra",
       "dependencies": {
@@ -224,6 +258,12 @@
     "@aws/lambda-invoke-store": ["@aws/lambda-invoke-store@0.2.4", "", {}, "sha512-iY8yvjE0y651BixKNPgmv1WrQc+GZ142sb0z4gYnChDDY2YqI4P/jsSopBWrKfAt7LOJAkOXt7rC/hms+WclQQ=="],
 
     "@balena/dockerignore": ["@balena/dockerignore@1.0.2", "", {}, "sha512-wMue2Sy4GAVTk6Ic4tJVcnfdau+gx2EnG7S+uAEe+TWJFqE4YoWN4/H8MSLj4eYJKxGg26lZwboEniNiNwZQ6Q=="],
+
+    "@codetype/adapters-aws": ["@codetype/adapters-aws@workspace:adapters-aws"],
+
+    "@codetype/app": ["@codetype/app@workspace:app"],
+
+    "@codetype/domain": ["@codetype/domain@workspace:domain"],
 
     "@codetype/infra": ["@codetype/infra@workspace:infra"],
 

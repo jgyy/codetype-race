@@ -25,6 +25,64 @@ jobs:
       - run: bun --filter @codetype/shared exec tsc --noEmit
         continue-on-error: true
 
+  domain:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with: { bun-version: latest }
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ hashFiles('**/bun.lock') }}
+      - run: bun install --frozen-lockfile
+      - run: bun --filter @codetype/domain test
+      - run: bun --filter @codetype/domain exec tsc --noEmit
+        continue-on-error: true
+
+  app:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with: { bun-version: latest }
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ hashFiles('**/bun.lock') }}
+      - run: bun install --frozen-lockfile
+      - run: bun --filter @codetype/app test
+      - run: bun --filter @codetype/app exec tsc --noEmit
+        continue-on-error: true
+
+  adapters-aws:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with: { bun-version: latest }
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ hashFiles('**/bun.lock') }}
+      - run: bun install --frozen-lockfile
+      - run: bun --filter @codetype/adapters-aws test
+      - run: bun --filter @codetype/adapters-aws exec tsc --noEmit
+        continue-on-error: true
+
+  hex-deps-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with: { bun-version: latest }
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ hashFiles('**/bun.lock') }}
+      - run: bun install --frozen-lockfile
+      - run: bun run check:deps
+
   lambdas:
     runs-on: ubuntu-latest
     steps:
@@ -72,7 +130,7 @@ jobs:
       - run: bun --filter @codetype/infra cdk synth
 
   merge-gate:
-    needs: [shared, lambdas, web, infra]
+    needs: [shared, domain, app, adapters-aws, hex-deps-gate, lambdas, web, infra]
     runs-on: ubuntu-latest
     steps:
       - run: echo "All required jobs passed."

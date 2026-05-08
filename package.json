@@ -1,7 +1,7 @@
 {
   "name": "codetype-race",
   "private": true,
-  "workspaces": ["shared", "lambdas", "web", "infra"],
+  "workspaces": ["shared", "domain", "app", "adapters-aws", "lambdas", "web", "infra"],
   "scripts": {
     "dev": "bun --filter @codetype/web dev",
     "build": "bun --filter @codetype/web build",
@@ -9,7 +9,8 @@
     "lint": "bun --filter @codetype/web lint",
     "test": "bun --filter '*' test",
     "cdk": "cd infra && bunx cdk",
-    "seed": "bun scripts/seed-snippets.ts"
+    "seed": "bun scripts/seed-snippets.ts",
+    "check:deps": "bun scripts/check-deps.ts"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.658.0",
