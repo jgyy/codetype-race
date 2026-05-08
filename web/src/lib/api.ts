@@ -307,6 +307,115 @@ export async function uploadReplay(uploadUrl: string, replay: unknown) {
   if (!r.ok) throw new Error(`replay upload failed: ${r.status}`);
 }
 
+// ─── Phase 09 — tournaments + seasons ────────────────────────────────────────
+
+export interface TournamentSummary {
+  id: string;
+  name: string;
+  size: number;
+  language: string;
+  difficulty: string;
+  status: string;
+  startsAt: string;
+  registrationClosesAt: string;
+  seasonId: string;
+  hostId: string;
+  createdAt: string;
+  winnerId: string | null;
+}
+
+export interface TournamentDetail extends TournamentSummary {
+  entrantCount: number;
+}
+
+export interface BracketMatch {
+  tournId: string;
+  round: number;
+  slot: number;
+  status: "pending" | "live" | "done" | "bye" | "flagged";
+  players: [string | null, string | null];
+  winnerId: string | null;
+  roomId: string | null;
+  scheduledAt: string | null;
+  completedAt: string | null;
+  flagged: boolean;
+}
+
+export async function listTournaments(status = "registering") {
+  const r = await req(`/tournaments?status=${encodeURIComponent(status)}`);
+  if (!r.ok) await failWith(r);
+  return r.json() as Promise<{ tournaments: TournamentSummary[] }>;
+}
+
+export async function getTournament(id: string) {
+  const r = await req(`/tournaments/${encodeURIComponent(id)}`);
+  if (!r.ok) await failWith(r);
+  return r.json() as Promise<TournamentDetail>;
+}
+
+export async function getTournamentBracket(id: string) {
+  const r = await req(`/tournaments/${encodeURIComponent(id)}/bracket`);
+  if (!r.ok) await failWith(r);
+  return r.json() as Promise<{
+    tournId: string;
+    size: number;
+    matches: BracketMatch[];
+  }>;
+}
+
+export async function registerForTournament(id: string) {
+  const r = await req(`/tournaments/${encodeURIComponent(id)}/register`, {
+    method: "POST",
+    auth: true,
+    body: JSON.stringify({}),
+  });
+  if (!r.ok) await failWith(r);
+  return r.json() as Promise<{ ok: true; seedSnapshot: number }>;
+}
+
+export async function withdrawFromTournament(id: string) {
+  const r = await req(`/tournaments/${encodeURIComponent(id)}/register`, {
+    method: "DELETE",
+    auth: true,
+  });
+  if (!r.ok) await failWith(r);
+  return r.json();
+}
+
+export async function getCurrentSeason() {
+  const r = await req("/seasons/current");
+  if (!r.ok) await failWith(r);
+  return r.json() as Promise<{
+    season: {
+      id: string;
+      status: string;
+      startsAt: string;
+      endsAt: string;
+    } | null;
+    daysRemaining: number | null;
+  }>;
+}
+
+export async function getSeasonLeaderboard(id: string, lang = "*") {
+  const r = await req(
+    `/seasons/${encodeURIComponent(id)}/leaderboard?lang=${encodeURIComponent(lang)}`,
+  );
+  if (!r.ok) await failWith(r);
+  return r.json() as Promise<{
+    seasonId: string;
+    language: string;
+    rows: Array<{
+      seasonId: string;
+      language: string;
+      rank: number;
+      userId: string;
+      displayName: string;
+      rating: number;
+      racesPlayed: number;
+    }>;
+  }>;
+}
+
 export async function listHistory() {
   const r = await req("/history", { auth: true });
   if (!r.ok) await failWith(r);

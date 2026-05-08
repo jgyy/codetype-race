@@ -11,6 +11,7 @@ const links = [
   { href: "/practice", label: "Practice" },
   { href: "/daily", label: "Daily" },
   { href: "/leaderboard", label: "Leaderboard" },
+  { href: "/tournaments", label: "Tournaments" },
   { href: "/history", label: "History" },
 ];
 
