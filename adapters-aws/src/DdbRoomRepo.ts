@@ -3,6 +3,7 @@ import {
     GetCommand,
     PutCommand,
     QueryCommand,
+    UpdateCommand,
 } from "@aws-sdk/lib-dynamodb";
 import { ConditionalCheckFailedException } from "@aws-sdk/client-dynamodb";
 import {
@@ -16,6 +17,7 @@ import {
     type Room,
     type RoomRepo,
     type RoomSnapshot,
+    type RoomStatus,
     type SeedPlayer,
 } from "@codetype/domain";
 
@@ -131,5 +133,49 @@ export class DdbRoomRepo implements RoomRepo {
             }),
         );
         return (r.Items as SeedPlayer[] | undefined) ?? [];
+    }
+
+    async startCountdown(roomId: string, startedAt: number): Promise<void> {
+        try {
+            await this.cfg.client.send(
+                new UpdateCommand({
+                    TableName: this.cfg.table,
+                    Key: { PK: roomPK(roomId), SK: roomMetaSK() },
+                    UpdateExpression:
+                        "SET #s = :countdown, started_at = :ts, version = version + :one",
+                    ConditionExpression: "#s = :lobby",
+                    ExpressionAttributeNames: { "#s": "status" },
+                    ExpressionAttributeValues: {
+                        ":countdown": "countdown" satisfies RoomStatus,
+                        ":lobby": "lobby" satisfies RoomStatus,
+                        ":ts": startedAt,
+                        ":one": 1,
+                    },
+                }),
+            );
+        } catch (e) {
+            if (e instanceof ConditionalCheckFailedException) {
+                throw new DomainError("room.already_started", 409);
+            }
+            throw e;
+        }
+    }
+
+    async markPlayerDnf(roomId: string, displayName: string): Promise<void> {
+        try {
+            await this.cfg.client.send(
+                new UpdateCommand({
+                    TableName: this.cfg.table,
+                    Key: { PK: roomPK(roomId), SK: playerSK(displayName) },
+                    UpdateExpression: "SET is_dnf = :t",
+                    ConditionExpression:
+                        "attribute_exists(SK) AND attribute_not_exists(finished_at)",
+                    ExpressionAttributeValues: { ":t": true },
+                }),
+            );
+        } catch (e) {
+            if (e instanceof ConditionalCheckFailedException) return;
+            throw e;
+        }
     }
 }

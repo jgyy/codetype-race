@@ -11,6 +11,8 @@
     "./anticheat": "./src/services/anticheat.ts",
     "./entities/Room": "./src/entities/Room.ts",
     "./ports": "./src/ports/index.ts",
+    "./ports/Broadcaster": "./src/ports/Broadcaster.ts",
+    "./ports/ConnectionRepo": "./src/ports/ConnectionRepo.ts",
     "./errors": "./src/errors.ts",
     "./valueObjects": "./src/valueObjects/index.ts"
   },

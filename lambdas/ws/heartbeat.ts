@@ -1,9 +1,14 @@
-import { Errors } from "../src/AppError";
-import { connections } from "../src/repos/ConnectionRepo";
+import { DomainError } from "@codetype/domain";
+import { AppError } from "../src/AppError";
+import { commandBus, HeartbeatCommand } from "./_container";
 
 export async function applyHeartbeat(connectionId: string): Promise<void> {
-  const conn = await connections.byConnectionId(connectionId);
-  if (!conn) throw Errors.NotFound("connection");
-  const roomId = conn.PK.slice("ROOM#".length);
-  await connections.touch(roomId, connectionId);
+    try {
+        await commandBus.dispatch(new HeartbeatCommand({ connectionId }));
+    } catch (e) {
+        if (e instanceof DomainError) {
+            throw new AppError(e.code, e.status, e.message, e.details);
+        }
+        throw e;
+    }
 }

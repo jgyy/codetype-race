@@ -17,4 +17,7 @@ export type {
     SnippetRepo,
     SnippetFilters,
     SnippetRef,
+    ConnectionRepo,
+    ConnectionRecord,
+    Broadcaster,
 } from "./ports";

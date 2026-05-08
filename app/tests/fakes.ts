@@ -1,5 +1,8 @@
 import type {
+    Broadcaster,
     Clock,
+    ConnectionRecord,
+    ConnectionRepo,
     Random,
     Room,
     RoomRepo,
@@ -73,6 +76,87 @@ export class InMemoryRoomRepo implements RoomRepo {
 
     async listPlayers(roomId: string): Promise<SeedPlayer[]> {
         return this.players.get(roomId) ?? [];
+    }
+
+    async startCountdown(roomId: string, startedAt: number): Promise<void> {
+        const snap = this.snapshots.get(roomId);
+        if (!snap) throw new Error(`unknown room ${roomId}`);
+        if (snap.status !== "lobby") {
+            throw new Error("startCountdown: not lobby");
+        }
+        this.snapshots.set(roomId, {
+            ...snap,
+            status: "countdown",
+            started_at: startedAt,
+            version: snap.version + 1,
+        });
+    }
+
+    public dnf: Array<{ roomId: string; displayName: string }> = [];
+    async markPlayerDnf(roomId: string, displayName: string): Promise<void> {
+        this.dnf.push({ roomId, displayName });
+    }
+}
+
+export class InMemoryConnectionRepo implements ConnectionRepo {
+    public readonly rows = new Map<string, ConnectionRecord>();
+    public chatTokensConsumed: Array<{ roomId: string; connectionId: string }> = [];
+    public touched: Array<{ roomId: string; connectionId: string }> = [];
+
+    async put(
+        roomId: string,
+        connectionId: string,
+        displayName: string,
+        role: "racer" | "spectator",
+        opts: { cursor_lite?: boolean },
+    ): Promise<void> {
+        this.rows.set(connectionId, {
+            connection_id: connectionId,
+            display_name: displayName,
+            role,
+            cursor_lite: opts.cursor_lite,
+            PK: `ROOM#${roomId}`,
+            SK: `CONN#${connectionId}`,
+        });
+    }
+
+    async byConnectionId(connectionId: string) {
+        return this.rows.get(connectionId) ?? null;
+    }
+
+    async listByRoom(roomId: string): Promise<string[]> {
+        const pk = `ROOM#${roomId}`;
+        return [...this.rows.values()]
+            .filter((r) => r.PK === pk)
+            .map((r) => r.connection_id);
+    }
+
+    async delete(pk: string, sk: string): Promise<void> {
+        for (const [id, row] of this.rows) {
+            if (row.PK === pk && row.SK === sk) {
+                this.rows.delete(id);
+                return;
+            }
+        }
+    }
+
+    async touch(roomId: string, connectionId: string): Promise<void> {
+        this.touched.push({ roomId, connectionId });
+    }
+
+    async consumeChatToken(
+        roomId: string,
+        connectionId: string,
+    ): Promise<void> {
+        this.chatTokensConsumed.push({ roomId, connectionId });
+    }
+}
+
+export class FakeBroadcaster implements Broadcaster {
+    public sent: Array<{ connectionId: string; payload: unknown }> = [];
+    async postTo(connectionId: string, payload: unknown): Promise<boolean> {
+        this.sent.push({ connectionId, payload });
+        return true;
     }
 }
 
