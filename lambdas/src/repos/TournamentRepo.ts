@@ -24,7 +24,7 @@ import { ddb, TABLE } from "../ddb";
 import { Errors } from "../AppError";
 
 export class TournamentRepo {
-    constructor(private readonly client: DynamoDBDocumentClient = ddb) {}
+    constructor(private readonly client: DynamoDBDocumentClient = ddb) { }
 
     async create(t: Tournament): Promise<void> {
         try {
@@ -121,7 +121,6 @@ export class TournamentRepo {
                     Item: {
                         PK: tournPK(entrant.tournId),
                         SK: tournEntrantSK(entrant.userId),
-                        // user-side GSI1 for "my tournaments"
                         GSI1PK: userPK(entrant.userId),
                         GSI1SK: tournUserGSI1SK(entrant.registeredAt),
                         ...entrant,

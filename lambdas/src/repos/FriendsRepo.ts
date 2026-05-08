@@ -159,7 +159,7 @@ export class FriendsRepo {
         if (existing.status === "blocked") {
             throw Errors.Forbidden();
         }
-        if (existing.status === "accepted") return; // idempotent
+        if (existing.status === "accepted") return;
         if (existing.status !== "pending") {
             throw Errors.Conflict("not a pending request");
         }

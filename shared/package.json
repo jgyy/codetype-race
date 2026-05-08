@@ -14,7 +14,9 @@
     "./seeding": "./src/seeding.ts",
     "./decay": "./src/decay.ts",
     "./tournaments": "./src/tournaments.ts",
-    "./social": "./src/social.ts"
+    "./social": "./src/social.ts",
+    "./team-scoring": "./src/team-scoring.ts",
+    "./team-elo": "./src/team-elo.ts"
   },
   "scripts": {
     "test": "bun test"

@@ -14,10 +14,10 @@ import { ddb, TABLE } from "../ddb";
 const TTL_SECONDS = 60;
 
 export interface TournConnRow {
-    PK: string; // TOURN#<id>
-    SK: string; // CONN#<connId>
-    GSI1PK: string; // CONN#<connId>
-    GSI1SK: string; // TOURN#<id>
+    PK: string;
+    SK: string;
+    GSI1PK: string;
+    GSI1SK: string;
     connection_id: string;
     tourn_id: string;
     user_id?: string;

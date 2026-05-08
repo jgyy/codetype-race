@@ -9,6 +9,12 @@ import { connections } from "../src/repos/ConnectionRepo";
 import { rooms } from "../src/repos/RoomRepo";
 import { snippets } from "../src/repos/SnippetRepo";
 import { users } from "../src/repos/UserRepo";
+import { teamRatings } from "../src/repos/TeamRatingRepo";
+import { teamRooms } from "../src/repos/TeamRoomRepo";
+import { computeTeamRatingDeltas } from "@codetype/shared/team-elo";
+import { rankTeams, type TeamPlayerResult } from "@codetype/shared/team-scoring";
+import { userPK, userRaceSK } from "@codetype/shared/ddb-keys";
+import { TABLE } from "../src/ddb";
 import { postTo } from "../src/wsClient";
 
 type FinishMsg = z.infer<typeof WsFinishSchema>;
@@ -41,8 +47,6 @@ export async function applyFinish(
     const acc = accuracy(input.chars_typed, input.errors);
     const scaled = scaledWpm(input.chars_typed, input.errors, elapsedMs);
 
-    // Anti-cheat lite: only duration + char count are on the wire today;
-    // variance/paste signals fire when B5 wires keystroke samples.
     const flags = evaluateStats({
         snippetLength: snippet.length,
         durationMs: elapsedMs,
@@ -67,10 +71,12 @@ export async function applyFinish(
         flags,
     });
 
-    // Flagged runs don't trigger rating updates so a cheating racer
-    // can't move the leaderboard.
     if (!flagged) {
-        await maybeApplyRatings(roomId, snippet.language);
+        if ((room as { mode?: string }).mode === "team") {
+            await maybeApplyTeamRatings(roomId, snippet.language);
+        } else {
+            await maybeApplyRatings(roomId, snippet.language);
+        }
     }
 }
 
@@ -149,6 +155,160 @@ async function maybeApplyRatings(
             display_name: a.displayName,
             delta: a.delta,
             rating_after: a.newRating,
+        })),
+    };
+    await Promise.all(conns.map((id) => postTo(id, payload).catch(() => false)));
+}
+
+async function maybeApplyTeamRatings(
+    roomId: string,
+    language: string,
+): Promise<void> {
+    const [allPlayers, teams] = await Promise.all([
+        rooms.listPlayers(roomId),
+        teamRooms.listTeams(roomId),
+    ]);
+    const racers = allPlayers.filter((p) => (p.role ?? "racer") === "racer");
+    if (racers.length === 0 || teams.length < 2) return;
+    const finished = racers.filter(
+        (p) => p.finished_at !== undefined && !p.is_dnf,
+    );
+    if (finished.length !== racers.length) return;
+
+    const teamOf = new Map<string, string>();
+    for (const t of teams) {
+        for (const m of t.members) teamOf.set(m, t.id);
+    }
+    const rated = finished.filter(
+        (p): p is typeof p & { user_id: string } =>
+            !!p.user_id && teamOf.has(p.user_id),
+    );
+    if (rated.length === 0) return;
+
+    const results: TeamPlayerResult[] = rated.map((p) => ({
+        userId: p.user_id,
+        teamId: teamOf.get(p.user_id)!,
+        wpm: p.scaled_wpm ?? 0,
+        accuracy: p.accuracy ?? 0,
+        finishedAt: p.finished_at ?? 0,
+    }));
+    const ranking = rankTeams(teams, results);
+    const winnerId = ranking[0]!.teamId;
+
+    const now = Date.now();
+    const historyItems = rated.map((p) => ({
+        Put: {
+            TableName: TABLE,
+            Item: {
+                PK: userPK(p.user_id),
+                SK: userRaceSK(now, roomId),
+                room_id: roomId,
+                finished_at: now,
+                display_name: p.display_name,
+                language,
+                scaled_wpm: p.scaled_wpm ?? 0,
+                net_wpm: p.net_wpm ?? 0,
+                gross_wpm: p.gross_wpm ?? 0,
+                accuracy: p.accuracy ?? 0,
+                mode: "team",
+                team_id: teamOf.get(p.user_id),
+                won: teamOf.get(p.user_id) === winnerId,
+            },
+        },
+    }));
+
+    let txItems: any[] = [
+        {
+            Update: {
+                TableName: TABLE,
+                Key: { PK: `ROOM#${roomId}`, SK: "META" },
+                UpdateExpression: "SET team_elo_applied = :t",
+                ConditionExpression: "attribute_not_exists(team_elo_applied)",
+                ExpressionAttributeValues: { ":t": true },
+            },
+        },
+        ...historyItems,
+    ];
+
+    let appliedDeltas: Array<{
+        userId: string;
+        displayName: string;
+        delta: number;
+        ratingAfter: number;
+    }> = [];
+
+    if (teams.length === 2) {
+        const winnerTeam = teams.find((t) => t.id === winnerId)!;
+        const loserTeam = teams.find((t) => t.id !== winnerId)!;
+        const fetchMembers = async (memberIds: string[]) =>
+            Promise.all(
+                memberIds
+                    .filter((m) => rated.some((r) => r.user_id === m))
+                    .map(async (m) => {
+                        const row = await teamRatings.getOrInit(
+                            m,
+                            rated.find((r) => r.user_id === m)!.display_name,
+                            language,
+                        );
+                        return { userId: m, rating: row.rating };
+                    }),
+            );
+        const [wMembers, lMembers] = await Promise.all([
+            fetchMembers(winnerTeam.members),
+            fetchMembers(loserTeam.members),
+        ]);
+        if (wMembers.length > 0 && lMembers.length > 0) {
+            const deltas = computeTeamRatingDeltas(
+                { teamId: winnerTeam.id, members: wMembers },
+                { teamId: loserTeam.id, members: lMembers },
+            );
+            const oldRatingFor = (uid: string) =>
+                [...wMembers, ...lMembers].find((m) => m.userId === uid)!.rating;
+            const ratingItems = teamRatings.buildApplyItems(
+                roomId,
+                deltas.map((d) => ({
+                    userId: d.userId,
+                    displayName: rated.find((r) => r.user_id === d.userId)!
+                        .display_name,
+                    language,
+                    delta: d.delta,
+                    oldRating: oldRatingFor(d.userId),
+                })),
+            );
+            // buildApplyItems pushes its own idempotency Update first;
+            // drop it because we already added one above.
+            txItems = [...txItems, ...ratingItems.slice(1)];
+            appliedDeltas = deltas.map((d) => ({
+                userId: d.userId,
+                displayName: rated.find((r) => r.user_id === d.userId)!
+                    .display_name,
+                delta: d.delta,
+                ratingAfter: oldRatingFor(d.userId) + d.delta,
+            }));
+        }
+    }
+
+    try {
+        await teamRatings.sendTransaction(txItems);
+    } catch (e: any) {
+        if (e?.name === "TransactionCanceledException") return;
+        throw e;
+    }
+
+    const conns = await connections.listByRoom(roomId);
+    const payload = {
+        type: "team-result" as const,
+        winner_team_id: winnerId,
+        ranking: ranking.map((r) => ({
+            team_id: r.teamId,
+            score: r.score,
+            max_finished_at: r.maxFinishedAt,
+        })),
+        ratings: appliedDeltas.map((a) => ({
+            user_id: a.userId,
+            display_name: a.displayName,
+            delta: a.delta,
+            rating_after: a.ratingAfter,
         })),
     };
     await Promise.all(conns.map((id) => postTo(id, payload).catch(() => false)));

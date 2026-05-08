@@ -79,8 +79,6 @@ export class UserRepo {
                         PK: userPK(userId),
                         SK: userProfileSK(),
                         ...profile,
-                        // Denormalized handle index. Bucketed GSI1 partition
-                        // keyed on first 3 chars; supports begins_with autocomplete.
                         GSI1PK: userHandleGSI1PK(handleLower),
                         GSI1SK: userHandleGSI1SK(handleLower, userId),
                         handle_lower: handleLower,
@@ -265,11 +263,6 @@ export class UserRepo {
         return (r.Items as any[] | undefined) ?? [];
     }
 
-    /**
-     * Handle-prefix search. The 3-char bucket constraint means queries
-     * shorter than 3 chars are rejected upstream; queries 3+ chars hit
-     * exactly one GSI1 partition.
-     */
     async searchByHandlePrefix(
         prefix: string,
         limit = 25,

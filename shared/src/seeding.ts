@@ -22,11 +22,6 @@ export function isValidSize(n: number): n is SeedSize {
     return (VALID_SIZES as readonly number[]).includes(n);
 }
 
-/**
- * Stable seed ordering: highest rating → seed 1, lowest → seed N.
- * Ties broken deterministically by userId ascending so the same input
- * always produces the same bracket (acceptance criterion: golden test).
- */
 export function rankEntrants(entrants: readonly Entrant[]): Entrant[] {
     return [...entrants].sort((a, b) => {
         if (b.rating !== a.rating) return b.rating - a.rating;
@@ -34,13 +29,6 @@ export function rankEntrants(entrants: readonly Entrant[]): Entrant[] {
     });
 }
 
-/**
- * Standard single-elimination bracket pairing positions.
- * Returns an array of length `size` where index = bracket slot
- * and value = seed number that occupies it. Pairs (1,N), (2,N-1)
- * are kept on opposite halves so top seeds never meet before the
- * final.
- */
 export function bracketSeedOrder(size: SeedSize): number[] {
     let order: number[] = [1, 2];
     while (order.length < size) {
@@ -55,11 +43,6 @@ export function bracketSeedOrder(size: SeedSize): number[] {
     return order;
 }
 
-/**
- * Build first-round matches with byes given when entrants < size.
- * Bye policy: top seeds get byes (their opponent slot is null and
- * the match is auto-advanced).
- */
 export function seedFirstRound(
     entrants: readonly Entrant[],
     size: SeedSize,
@@ -95,10 +78,6 @@ export function seedFirstRound(
     return matches;
 }
 
-/**
- * Total rounds in a single-elimination bracket. Round 0 is the final.
- * For size 8: rounds 2,1,0 (quarter, semi, final). First round = log2(size) - 1.
- */
 export function totalRounds(size: SeedSize): number {
     return Math.log2(size);
 }

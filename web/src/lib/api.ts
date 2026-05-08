@@ -83,11 +83,20 @@ async function failWith(r: Response): Promise<never> {
   throw new ApiError(r.status, code, message, details);
 }
 
+export interface RoomTeamInput {
+  id: "A" | "B" | "C" | "D";
+  name: string;
+  color: string;
+  members: string[];
+}
+
 export interface CreateRoomOptions {
   snippet_id?: string;
   filters?: { language?: string; difficulty?: number };
   previous_room_id?: string;
   new_snippet?: boolean;
+  mode?: "solo" | "team";
+  teams?: RoomTeamInput[];
 }
 
 export async function createRoom(opts: string | CreateRoomOptions) {

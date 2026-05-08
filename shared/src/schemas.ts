@@ -105,16 +105,29 @@ export const SnippetFiltersSchema = z.object({
 });
 export type SnippetFilters = z.infer<typeof SnippetFiltersSchema>;
 
+export const RoomTeamSchema = z.object({
+    id: z.enum(["A", "B", "C", "D"]),
+    name: z.string().min(1).max(24),
+    color: z.string().regex(/^#[0-9a-f]{6}$/i),
+    members: z.array(z.string()).min(1).max(2),
+});
+
 export const CreateRoomRequestSchema = z
     .object({
         snippet_id: z.string().min(1).optional(),
         filters: SnippetFiltersSchema.optional(),
         previous_room_id: z.string().min(1).optional(),
         new_snippet: z.boolean().optional(),
+        mode: z.enum(["solo", "team"]).optional(),
+        teams: z.array(RoomTeamSchema).min(2).max(4).optional(),
     })
     .refine(
         (v) => v.snippet_id || v.filters || v.previous_room_id,
         { message: "snippet_id, filters, or previous_room_id is required" },
+    )
+    .refine(
+        (v) => v.mode !== "team" || (v.teams !== undefined && v.teams.length >= 2),
+        { message: "team mode requires teams[]", path: ["teams"] },
     );
 export type CreateRoomRequest = z.infer<typeof CreateRoomRequestSchema>;
 
@@ -167,30 +180,29 @@ export const HistoryEntrySchema = z.object({
 });
 
 export const ReplaySchema = z.object({
-  version: z.literal(1),
-  room_id: z.string(),
-  snippet_id: z.string(),
-  started_at: z.number(),
-  duration_ms: z.number(),
-  participants: z.array(
-    z.object({
-      display_name: z.string(),
-      user_id: z.string().optional(),
-      // Each sample is [t_relative_ms, progress 0..1].
-      samples: z.array(z.tuple([z.number(), z.number()])),
-    }),
-  ),
+    version: z.literal(1),
+    room_id: z.string(),
+    snippet_id: z.string(),
+    started_at: z.number(),
+    duration_ms: z.number(),
+    participants: z.array(
+        z.object({
+            display_name: z.string(),
+            user_id: z.string().optional(),
+            samples: z.array(z.tuple([z.number(), z.number()])),
+        }),
+    ),
 });
 export type Replay = z.infer<typeof ReplaySchema>;
 
 export const ReplayUploadUrlResponseSchema = z.object({
-  upload_url: z.string().url(),
-  key: z.string(),
+    upload_url: z.string().url(),
+    key: z.string(),
 });
 
 export const ReplayResponseSchema = z.object({
-  download_url: z.string().url(),
-  key: z.string(),
+    download_url: z.string().url(),
+    key: z.string(),
 });
 
 export const PracticeRunRequestSchema = z.object({
@@ -203,84 +215,84 @@ export const PracticeRunRequestSchema = z.object({
 export type PracticeRunRequest = z.infer<typeof PracticeRunRequestSchema>;
 
 export const UserProfileSchema = z.object({
-  user_id: z.string(),
-  display_name: z.string(),
-  rating: z.number().int(),
-  races_completed: z.number().int(),
-  races_won: z.number().int(),
-  best_wpm: z.record(z.string(), z.number()),
-  created_at: z.number(),
+    user_id: z.string(),
+    display_name: z.string(),
+    rating: z.number().int(),
+    races_completed: z.number().int(),
+    races_won: z.number().int(),
+    best_wpm: z.record(z.string(), z.number()),
+    created_at: z.number(),
 });
 export type UserProfile = z.infer<typeof UserProfileSchema>;
 
 export const RaceHistoryEntrySchema = z.object({
-  room_id: z.string(),
-  finished_at: z.number(),
-  display_name: z.string(),
-  language: z.string().optional(),
-  scaled_wpm: z.number(),
-  net_wpm: z.number(),
-  gross_wpm: z.number(),
-  accuracy: z.number(),
-  rating_delta: z.number(),
-  rating_after: z.number(),
+    room_id: z.string(),
+    finished_at: z.number(),
+    display_name: z.string(),
+    language: z.string().optional(),
+    scaled_wpm: z.number(),
+    net_wpm: z.number(),
+    gross_wpm: z.number(),
+    accuracy: z.number(),
+    rating_delta: z.number(),
+    rating_after: z.number(),
 });
 export type RaceHistoryEntry = z.infer<typeof RaceHistoryEntrySchema>;
 
 export const GetUserResponseSchema = z.object({
-  profile: UserProfileSchema,
-  recent: z.array(RaceHistoryEntrySchema.passthrough()),
-  groups: z.array(z.string()).optional(),
+    profile: UserProfileSchema,
+    recent: z.array(RaceHistoryEntrySchema.passthrough()),
+    groups: z.array(z.string()).optional(),
 });
 
 export const LeaderboardEntrySchema = z.object({
-  user_id: z.string(),
-  display_name: z.string(),
-  rating: z.number(),
+    user_id: z.string(),
+    display_name: z.string(),
+    rating: z.number(),
 });
 export type LeaderboardEntry = z.infer<typeof LeaderboardEntrySchema>;
 
 export const GetLeaderboardResponseSchema = z.object({
-  entries: z.array(LeaderboardEntrySchema),
+    entries: z.array(LeaderboardEntrySchema),
 });
 
 export const DailyMetaSchema = z.object({
-  date: z.string(),
-  snippet_id: z.string(),
-  selected_at: z.number(),
+    date: z.string(),
+    snippet_id: z.string(),
+    selected_at: z.number(),
 });
 export type DailyMeta = z.infer<typeof DailyMetaSchema>;
 
 export const GetDailyResponseSchema = z.object({
-  date: z.string(),
-  snippet: SnippetSchema,
+    date: z.string(),
+    snippet: SnippetSchema,
 });
 
 export const DailySubmitRequestSchema = z.object({
-  date: z.string(),
-  snippet_id: z.string(),
-  chars_typed: z.number().int().min(1),
-  errors: z.number().int().min(0),
-  duration_ms: z.number().int().min(1),
+    date: z.string(),
+    snippet_id: z.string(),
+    chars_typed: z.number().int().min(1),
+    errors: z.number().int().min(0),
+    duration_ms: z.number().int().min(1),
 });
 export type DailySubmitRequest = z.infer<typeof DailySubmitRequestSchema>;
 
 export const DailySubmitResponseSchema = z.object({
-  improved: z.boolean(),
-  best_wpm: z.number(),
-  rank: z.number().int().min(1),
+    improved: z.boolean(),
+    best_wpm: z.number(),
+    rank: z.number().int().min(1),
 });
 export type DailySubmitResponse = z.infer<typeof DailySubmitResponseSchema>;
 
 export const DailyLeaderboardEntrySchema = z.object({
-  user_id: z.string(),
-  display_name: z.string(),
-  scaled_wpm: z.number(),
-  finished_at: z.number(),
+    user_id: z.string(),
+    display_name: z.string(),
+    scaled_wpm: z.number(),
+    finished_at: z.number(),
 });
 export const GetDailyLeaderboardResponseSchema = z.object({
-  date: z.string(),
-  entries: z.array(DailyLeaderboardEntrySchema),
+    date: z.string(),
+    entries: z.array(DailyLeaderboardEntrySchema),
 });
 
 export const PracticeRunResponseSchema = z.object({
@@ -362,15 +374,15 @@ export const WsServerChatSchema = z.object({
 });
 
 export const WsServerRatingsSchema = z.object({
-  type: z.literal("ratings"),
-  entries: z.array(
-    z.object({
-      user_id: z.string(),
-      display_name: z.string(),
-      delta: z.number().int(),
-      rating_after: z.number().int(),
-    }),
-  ),
+    type: z.literal("ratings"),
+    entries: z.array(
+        z.object({
+            user_id: z.string(),
+            display_name: z.string(),
+            delta: z.number().int(),
+            rating_after: z.number().int(),
+        }),
+    ),
 });
 
 export const WsServerKickedSchema = z.object({ type: z.literal("kicked") });

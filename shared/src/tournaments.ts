@@ -139,8 +139,6 @@ export const BracketWsClientSchema = z.object({
 });
 export type BracketWsClientMessage = z.infer<typeof BracketWsClientSchema>;
 
-// HTTP request/response schemas
-
 export const CreateTournamentRequestSchema = z.object({
     name: z.string().min(3).max(64),
     size: TournamentSizeSchema,
@@ -182,7 +180,6 @@ export const CurrentSeasonResponseSchema = z.object({
     daysRemaining: z.number().int().nonnegative().nullable(),
 });
 
-// WS connect query
 export const TournWsConnectQuerySchema = z.object({
     tournId: z.string().uuid(),
     userId: z.string().optional(),

@@ -465,7 +465,6 @@ export class GuildRepo {
         );
         const row = r.Items?.[0] as GuildInviteRow | undefined;
         if (!row) return null;
-        // Defensive: TTL deletion isn't immediate; check expiry ourselves.
         if (Date.parse(row.expiresAt) < Date.now()) return null;
         return row;
     }

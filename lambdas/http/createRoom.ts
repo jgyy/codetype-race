@@ -10,6 +10,7 @@ import { withHttp } from "../src/middleware";
 import { Errors } from "../src/AppError";
 import { rooms } from "../src/repos/RoomRepo";
 import { snippets } from "../src/repos/SnippetRepo";
+import { teamRooms } from "../src/repos/TeamRoomRepo";
 
 const MAX_CODE_TRIES = 5;
 
@@ -82,7 +83,8 @@ export const handler = withHttp(
 
         const { snippet_id, seedPlayers } = await resolveSetup(input);
 
-        const room: Room = {
+        const isTeam = input.mode === "team";
+        const room: Room & { mode?: string } = {
             room_id: uuidv7(),
             code: await uniqueCode(),
             host_id: ctx.userId,
@@ -90,8 +92,12 @@ export const handler = withHttp(
             status: "lobby",
             created_at: Date.now(),
             version: 0,
+            ...(isTeam ? { mode: "team" } : {}),
         };
         await rooms.create(room, seedPlayers);
+        if (isTeam && input.teams) {
+            await teamRooms.putTeams(room.room_id, input.teams);
+        }
 
         return CreateRoomResponseSchema.parse({
             room_id: room.room_id,

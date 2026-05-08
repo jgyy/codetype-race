@@ -8,6 +8,7 @@ import {
   signUp,
 } from "@/lib/aws/cognito";
 import { createRoom, friendlyMessage } from "@/lib/api";
+import { TeamSetup, type TeamSetupValue } from "@/components/team/TeamSetup";
 import { useRouter } from "next/navigation";
 import snippets from "@/data/snippets.json";
 
@@ -56,6 +57,8 @@ export default function HostPage() {
     snippetId: defaultSnippet,
   });
   const [err, setErr] = useState<string | null>(null);
+  const [team, setTeam] = useState<TeamSetupValue>({ enabled: false, teams: [] });
+  const [hostUserId, setHostUserId] = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -64,7 +67,12 @@ export default function HostPage() {
 
   useEffect(() => {
     configureAuth();
-    getCurrentUser().then(() => setMode("ready")).catch(() => {});
+    getCurrentUser()
+      .then((u) => {
+        setMode("ready");
+        setHostUserId((u as { userId?: string }).userId ?? null);
+      })
+      .catch(() => {});
   }, []);
 
   const languages = useMemo(
@@ -101,15 +109,20 @@ export default function HostPage() {
   async function onCreate() {
     setErr(null);
     try {
-      const r =
+      const teamOpts =
+        team.enabled && team.teams.length >= 2
+          ? { mode: "team" as const, teams: team.teams }
+          : {};
+      const base =
         filters.mode === "specific"
-          ? await createRoom({ snippet_id: filters.snippetId })
-          : await createRoom({
+          ? { snippet_id: filters.snippetId }
+          : {
               filters: {
                 language: filters.language || undefined,
                 difficulty: filters.difficulty,
               },
-            });
+            };
+      const r = await createRoom({ ...base, ...teamOpts });
       sessionStorage.setItem("is_host", "1");
       sessionStorage.setItem("display_name", "host");
       router.push(`/room/?code=${r.code}`);
@@ -258,6 +271,12 @@ export default function HostPage() {
               </select>
             </label>
           )}
+
+          <TeamSetup
+            value={team}
+            onChange={setTeam}
+            hostUserId={hostUserId}
+          />
 
           <button
             onClick={onCreate}

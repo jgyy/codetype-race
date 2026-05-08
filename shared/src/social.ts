@@ -1,8 +1,5 @@
 import { z } from "zod";
 
-// Phase 10 — Social graph (friends + presence). Guilds, feed, and team
-// races land in later slices and add to this module.
-
 export const FriendStatusSchema = z.enum(["pending", "accepted", "blocked"]);
 export type FriendStatus = z.infer<typeof FriendStatusSchema>;
 
@@ -15,8 +12,6 @@ export const FriendEdgeSchema = z.object({
 });
 export type FriendEdge = z.infer<typeof FriendEdgeSchema>;
 
-// Presence is intentionally minimal: we never expose lastSeenAt to peers
-// (anti-stalking). Public surface is just "online | offline".
 export const PresenceStateSchema = z.enum(["online", "offline"]);
 export type PresenceState = z.infer<typeof PresenceStateSchema>;
 
@@ -63,8 +58,6 @@ export const FriendActionResponseSchema = z.object({
     status: FriendStatusSchema.or(z.literal("removed")),
 });
 
-// WebSocket schema additions for the presence channel. Independent from
-// the room WS — see lambdas/ws/presence/*.
 export const WsPresencePingSchema = z.object({ action: z.literal("ping") });
 export const WsPresenceClientMsgSchema = z.discriminatedUnion("action", [
     WsPresencePingSchema,
@@ -84,7 +77,6 @@ export const WsServerPresenceMsgSchema = z.discriminatedUnion("type", [
 ]);
 export type WsServerPresenceMsg = z.infer<typeof WsServerPresenceMsgSchema>;
 
-// ─── Guilds ─────────────────────────────────────────────────────────
 export const GuildVisibilitySchema = z.enum(["public", "private"]);
 export type GuildVisibility = z.infer<typeof GuildVisibilitySchema>;
 
@@ -195,3 +187,33 @@ export const RedeemInviteResponseSchema = z.object({
 export const GUILD_MIN_MEMBERS = 1;
 export const GUILD_MAX_MEMBERS = 50;
 export const INVITE_TTL_SECONDS = 7 * 24 * 3600;
+
+export const TeamIdSchema = z.enum(["A", "B", "C", "D"]);
+export type TeamId = z.infer<typeof TeamIdSchema>;
+
+export const TeamSchema = z.object({
+    id: TeamIdSchema,
+    name: z.string().min(1).max(24),
+    color: z.string().regex(/^#[0-9a-f]{6}$/i),
+    members: z.array(z.string()).min(1).max(2),
+});
+export type Team = z.infer<typeof TeamSchema>;
+
+export const TeamRoomConfigSchema = z.object({
+    mode: z.literal("team"),
+    teams: z.array(TeamSchema).min(2).max(4),
+    rated: z.boolean().default(true),
+});
+export type TeamRoomConfig = z.infer<typeof TeamRoomConfigSchema>;
+
+export const TeamRatingSchema = z.object({
+    user_id: z.string(),
+    language: z.string(),
+    rating: z.number().int(),
+    games: z.number().int().nonnegative(),
+});
+export type TeamRating = z.infer<typeof TeamRatingSchema>;
+
+export const TEAM_STARTING_RATING = 1000;
+export const TEAM_ELO_K = 24;
+export const TEAM_SIZE_BONUS = 50;
