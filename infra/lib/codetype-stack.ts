@@ -109,6 +109,7 @@ export class CodetypeStack extends Stack {
         const getRoom = fn("GetRoom", "http/getRoom.ts");
         const listHistory = fn("ListHistory", "http/listHistory.ts");
         const randomSnippet = fn("RandomSnippet", "http/randomSnippet.ts");
+        const getStarterPack = fn("GetStarterPack", "http/getStarterPack.ts");
         const practiceRun = fn("PracticeRun", "http/practiceRun.ts");
         const getUser = fn("GetUser", "http/getUser.ts");
         const getLeaderboard = fn("GetLeaderboard", "http/getLeaderboard.ts");
@@ -158,6 +159,7 @@ export class CodetypeStack extends Stack {
             getRoom,
             listHistory,
             randomSnippet,
+            getStarterPack,
             practiceRun,
             getUser,
             getLeaderboard,
@@ -215,6 +217,14 @@ export class CodetypeStack extends Stack {
             integration: new apigwv2Integ.HttpLambdaIntegration(
                 "RandomSnippet",
                 randomSnippet,
+            ),
+        });
+        httpApi.addRoutes({
+            path: "/snippets/starter-pack",
+            methods: [apigwv2.HttpMethod.GET],
+            integration: new apigwv2Integ.HttpLambdaIntegration(
+                "GetStarterPack",
+                getStarterPack,
             ),
         });
         httpApi.addRoutes({

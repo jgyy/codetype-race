@@ -110,6 +110,30 @@ export async function createRoom(opts: string | CreateRoomOptions) {
   return r.json() as Promise<{ room_id: string; code: string }>;
 }
 
+export async function getSnippetsStarterPack(opts: {
+  languages?: string[];
+  n?: number;
+} = {}) {
+  const qs = new URLSearchParams();
+  if (opts.languages?.length) qs.set("languages", opts.languages.join(","));
+  if (opts.n !== undefined) qs.set("n", String(opts.n));
+  const path = qs.toString()
+    ? `/snippets/starter-pack?${qs.toString()}`
+    : "/snippets/starter-pack";
+  const r = await req(path);
+  if (!r.ok) await failWith(r);
+  return r.json() as Promise<{
+    snippets: Array<{
+      snippet_id: string;
+      language: string;
+      title: string;
+      code: string;
+      length: number;
+      difficulty?: number;
+    }>;
+  }>;
+}
+
 export async function getRandomSnippet(filters: {
   language?: string;
   difficulty?: number;
