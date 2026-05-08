@@ -4,6 +4,8 @@ import * as apigwv2 from "aws-cdk-lib/aws-apigatewayv2";
 import * as apigwv2Auth from "aws-cdk-lib/aws-apigatewayv2-authorizers";
 import * as apigwv2Integ from "aws-cdk-lib/aws-apigatewayv2-integrations";
 import * as ddb from "aws-cdk-lib/aws-dynamodb";
+import * as events from "aws-cdk-lib/aws-events";
+import * as eventsTargets from "aws-cdk-lib/aws-events-targets";
 import * as firehose from "aws-cdk-lib/aws-kinesisfirehose";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as lambdaSources from "aws-cdk-lib/aws-lambda-event-sources";
@@ -126,8 +128,37 @@ export class ProgressionFeature extends Construct {
             "http/progression/pin.ts",
             this.env,
         );
-        const httpLambdas = [meXp, achCatalog, achListMine, achListPublic, achPin];
+        const questsList = lambdaFactory(
+            "QuestsList",
+            "http/progression/listQuests.ts",
+            this.env,
+        );
+        const questClaim = lambdaFactory(
+            "QuestClaim",
+            "http/progression/claimQuest.ts",
+            this.env,
+        );
+        const rotateQuests = lambdaFactory(
+            "RotateQuests",
+            "cron/rotateQuests.ts",
+            this.env,
+        );
+        const httpLambdas = [
+            meXp,
+            achCatalog,
+            achListMine,
+            achListPublic,
+            achPin,
+            questsList,
+            questClaim,
+        ];
         httpLambdas.forEach((f) => table.grantReadWriteData(f));
+        table.grantReadWriteData(rotateQuests);
+
+        new events.Rule(this, "RotateQuestsCron", {
+            schedule: events.Schedule.cron({ minute: "0", hour: "0" }),
+            targets: [new eventsTargets.LambdaFunction(rotateQuests)],
+        });
 
         const authedGet = (
             path: string,
@@ -159,6 +190,13 @@ export class ProgressionFeature extends Construct {
             path: "/me/achievements/pin",
             methods: [apigwv2.HttpMethod.PUT],
             integration: integFactory("AchPin", achPin),
+            authorizer: jwtAuth,
+        });
+        authedGet("/me/quests", "QuestsList", questsList);
+        httpApi.addRoutes({
+            path: "/me/quests/{questId}/claim",
+            methods: [apigwv2.HttpMethod.POST],
+            integration: integFactory("QuestClaim", questClaim),
             authorizer: jwtAuth,
         });
     }

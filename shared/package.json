@@ -20,7 +20,8 @@
     "./eventlog": "./src/eventlog.ts",
     "./progression/xp": "./src/progression/xp.ts",
     "./progression/achievements": "./src/progression/achievements.ts",
-    "./progression/rules": "./src/progression/rules/index.ts"
+    "./progression/rules": "./src/progression/rules/index.ts",
+    "./progression/quests": "./src/progression/quests.ts"
   },
   "scripts": {
     "test": "bun test"

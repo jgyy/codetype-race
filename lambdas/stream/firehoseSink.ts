@@ -7,6 +7,7 @@ import { withStream } from "../src/middleware";
 import { recordsToEnvelopes } from "../src/eventlog-map";
 import { awardForEnvelope } from "../src/progression/awardXp";
 import { runAchievementsForEnvelope } from "../src/progression/runAchievements";
+import { runQuestsForEnvelope } from "../src/progression/runQuests";
 
 const STREAM_NAME = process.env.FIREHOSE_STREAM_NAME ?? "";
 const ENABLE_PROGRESSION =
@@ -39,6 +40,7 @@ export const handler: DynamoDBStreamHandler = withStream(async (event) => {
         await Promise.all(
             envelopes.map((e) => runAchievementsForEnvelope(e)),
         );
+        await Promise.all(envelopes.map((e) => runQuestsForEnvelope(e)));
     }
 
     for (const batch of chunk(envelopes, FIREHOSE_BATCH_LIMIT)) {

@@ -155,6 +155,11 @@ export const unlockedGSI1PK = (achievementId: string) =>
 export const unlockedGSI1SK = (unlockedAt: string) => unlockedAt;
 export const pinnedSK = (slot: number) =>
     `ACHPIN#${String(slot).padStart(2, "0")}`;
+export const questActivePK = (period: "daily" | "weekly", rotationId: string) =>
+    `QUEST#ACTIVE#${period}#${rotationId}`;
+export const questActiveSK = (questId: string) => `Q#${questId}`;
+export const questProgressSK = (rotationId: string, questId: string) =>
+    `QPROG#${rotationId}#${questId}`;
 
 const CODE_ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
 
