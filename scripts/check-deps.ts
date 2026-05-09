@@ -26,12 +26,17 @@ const rules: Rule[] = [
   {
     packageName: "@codetype/domain",
     rootDir: join(repoRoot, "domain/src"),
-    forbiddenPatterns: [/@aws-sdk\//, /aws-cdk-lib/, /aws-lambda/],
+    forbiddenPatterns: [
+      /@aws-sdk\//,
+      /aws-cdk-lib/,
+      /aws-lambda/,
+      /@opentelemetry\//,
+    ],
   },
   {
     packageName: "@codetype/app",
     rootDir: join(repoRoot, "app/src"),
-    forbiddenPatterns: [/@aws-sdk\//, /aws-cdk-lib/],
+    forbiddenPatterns: [/@aws-sdk\//, /aws-cdk-lib/, /@opentelemetry\//],
   },
 ];
 

@@ -1,0 +1,16 @@
+{
+  "name": "codetype-otel-layer",
+  "version": "0.1.0",
+  "private": true,
+  "description": "OpenTelemetry SDK Lambda layer (Phase 15 / slice-1: sampler=always_off, no exporters wired)",
+  "main": "bootstrap.js",
+  "dependencies": {
+    "@opentelemetry/api": "1.9.0",
+    "@opentelemetry/sdk-node": "0.52.1",
+    "@opentelemetry/auto-instrumentations-node": "0.49.1",
+    "@opentelemetry/propagator-aws-xray": "1.26.0",
+    "@opentelemetry/id-generator-aws-xray": "1.2.2",
+    "@opentelemetry/resources": "1.25.1",
+    "@opentelemetry/semantic-conventions": "1.25.1"
+  }
+}
