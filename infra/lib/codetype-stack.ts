@@ -912,10 +912,24 @@ export class CodetypeStack extends Stack {
             props?.siteDomainName && props.certificate
                 ? { domainNames: [props.siteDomainName], certificate: props.certificate }
                 : {};
+        // Phase 16.14 — pin the HTML cache policy in source.
+        // CDK's Distribution default is already CachingOptimized (strips
+        // query strings, forwards no headers, no cookies — exactly what
+        // the spec wants for HTML routes), but making it explicit means a
+        // future "let's forward Cookie/Authorization for personalization"
+        // PR shows up in code review instead of slipping through as an
+        // implicit-default change.
+        //
+        // The spec's /api/* cache-key rules don't apply here: this
+        // distribution only fronts the S3 static site. The HTTP API goes
+        // directly to API Gateway, so /api caching is governed by the
+        // Cache-Control response headers set by handlers (slice 16.15).
         const distribution = new cloudfront.Distribution(this, "Cdn", {
             defaultBehavior: {
                 origin: origins.S3BucketOrigin.withOriginAccessControl(siteBucket),
                 viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+                cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
+                originRequestPolicy: cloudfront.OriginRequestPolicy.CORS_S3_ORIGIN,
             },
             defaultRootObject: "index.html",
             errorResponses: [
