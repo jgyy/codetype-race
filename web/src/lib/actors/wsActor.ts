@@ -2,123 +2,111 @@ import { fromCallback } from "xstate";
 import { WS_API } from "../config";
 
 export interface WsActorInput {
-  code: string;
-  displayName: string;
-  role?: "racer" | "spectator";
+    code: string;
+    displayName: string;
+    role?: "racer" | "spectator";
 }
 
 export type WsParentEvent =
-  | { type: "WS_OPEN" }
-  | { type: "WS_CLOSE" }
-  | { type: "WS_ERROR"; message: string }
-  | { type: "WS_MSG"; msg: any };
+    | { type: "WS_OPEN" }
+    | { type: "WS_CLOSE" }
+    | { type: "WS_ERROR"; message: string }
+    | { type: "WS_MSG"; msg: any };
 
 export type WsActorEvent =
-  | { type: "SEND_CURSOR"; progress: number; chars_typed: number; errors: number }
-  | { type: "SEND_START" }
-  | { type: "SEND_FINISH"; chars_typed: number; errors: number }
-  | { type: "SEND_CHAT"; text: string }
-  | { type: "CLOSE" };
+    | { type: "SEND_CURSOR"; progress: number; chars_typed: number; errors: number }
+    | { type: "SEND_START" }
+    | { type: "SEND_FINISH"; chars_typed: number; errors: number }
+    | { type: "SEND_CHAT"; text: string }
+    | { type: "CLOSE" };
 
-/**
- * Lifetime-scoped WebSocket actor. The parent invokes this in
- * `connecting`/`lobby`/`countdown`/`racing`. When the state node owning
- * the invoke exits, XState calls cleanup → socket closes. Reconnection is
- * driven by the parent re-invoking this actor from `reconnecting`.
- */
 export const wsActor = fromCallback<WsActorEvent, WsActorInput>(
-  ({ input, sendBack, receive }) => {
-    if (!WS_API) {
-      sendBack({ type: "WS_ERROR", message: "WS_API not configured" });
-      return () => {};
-    }
-    const role = input.role ?? "racer";
-    const url = `${WS_API}?code=${encodeURIComponent(
-      input.code,
-    )}&display_name=${encodeURIComponent(
-      input.displayName,
-    )}&role=${encodeURIComponent(role)}`;
-    const ws = new WebSocket(url);
-    let heartbeat: ReturnType<typeof setInterval> | null = null;
-    let closed = false;
-
-    ws.onopen = () => {
-      sendBack({ type: "WS_OPEN" });
-      heartbeat = setInterval(() => {
-        if (ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({ action: "ping" }));
+    ({ input, sendBack, receive }) => {
+        if (!WS_API) {
+            sendBack({ type: "WS_ERROR", message: "WS_API not configured" });
+            return () => { };
         }
-      }, 5000);
-    };
-    ws.onmessage = (e) => {
-      try {
-        sendBack({ type: "WS_MSG", msg: JSON.parse(e.data) });
-      } catch {
-        // ignore non-JSON frames
-      }
-    };
-    ws.onerror = () => {
-      sendBack({ type: "WS_ERROR", message: "socket error" });
-    };
-    ws.onclose = () => {
-      if (heartbeat) clearInterval(heartbeat);
-      heartbeat = null;
-      if (!closed) sendBack({ type: "WS_CLOSE" });
-    };
+        const role = input.role ?? "racer";
+        const url = `${WS_API}?code=${encodeURIComponent(
+            input.code,
+        )}&display_name=${encodeURIComponent(
+            input.displayName,
+        )}&role=${encodeURIComponent(role)}`;
+        const ws = new WebSocket(url);
+        let heartbeat: ReturnType<typeof setInterval> | null = null;
+        let closed = false;
 
-    receive((event) => {
-      if (ws.readyState !== WebSocket.OPEN) return;
-      switch (event.type) {
-        case "SEND_CURSOR":
-          ws.send(
-            JSON.stringify({
-              action: "cursor",
-              progress: event.progress,
-              chars_typed: event.chars_typed,
-              errors: event.errors,
-            }),
-          );
-          return;
-        case "SEND_START":
-          ws.send(JSON.stringify({ action: "start" }));
-          return;
-        case "SEND_FINISH":
-          ws.send(
-            JSON.stringify({
-              action: "finish",
-              chars_typed: event.chars_typed,
-              errors: event.errors,
-            }),
-          );
-          return;
-        case "SEND_CHAT":
-          ws.send(JSON.stringify({ action: "chat", text: event.text }));
-          return;
-        case "CLOSE":
-          closed = true;
-          ws.close();
-          return;
-      }
-    });
-
-    return () => {
-      closed = true;
-      if (heartbeat) clearInterval(heartbeat);
-      // Closing a socket that is still in CONNECTING aborts the
-      // handshake, which Firefox surfaces as "connection interrupted
-      // while loading". React StrictMode's mount→cleanup→mount cycle
-      // hits exactly this case in dev. Defer the close until the
-      // socket finishes opening so the handshake completes cleanly.
-      if (ws.readyState === WebSocket.CONNECTING) {
         ws.onopen = () => {
-          try { ws.close(); } catch { /* ignore */ }
+            sendBack({ type: "WS_OPEN" });
+            heartbeat = setInterval(() => {
+                if (ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({ action: "ping" }));
+                }
+            }, 5000);
         };
-        ws.onmessage = null;
-        ws.onerror = null;
-        ws.onclose = null;
-        return;
-      }
-      try { ws.close(); } catch { /* ignore */ }
-    };
-  },
+        ws.onmessage = (e) => {
+            try {
+                sendBack({ type: "WS_MSG", msg: JSON.parse(e.data) });
+            } catch {
+            }
+        };
+        ws.onerror = () => {
+            sendBack({ type: "WS_ERROR", message: "socket error" });
+        };
+        ws.onclose = () => {
+            if (heartbeat) clearInterval(heartbeat);
+            heartbeat = null;
+            if (!closed) sendBack({ type: "WS_CLOSE" });
+        };
+
+        receive((event) => {
+            if (ws.readyState !== WebSocket.OPEN) return;
+            switch (event.type) {
+                case "SEND_CURSOR":
+                    ws.send(
+                        JSON.stringify({
+                            action: "cursor",
+                            progress: event.progress,
+                            chars_typed: event.chars_typed,
+                            errors: event.errors,
+                        }),
+                    );
+                    return;
+                case "SEND_START":
+                    ws.send(JSON.stringify({ action: "start" }));
+                    return;
+                case "SEND_FINISH":
+                    ws.send(
+                        JSON.stringify({
+                            action: "finish",
+                            chars_typed: event.chars_typed,
+                            errors: event.errors,
+                        }),
+                    );
+                    return;
+                case "SEND_CHAT":
+                    ws.send(JSON.stringify({ action: "chat", text: event.text }));
+                    return;
+                case "CLOSE":
+                    closed = true;
+                    ws.close();
+                    return;
+            }
+        });
+
+        return () => {
+            closed = true;
+            if (heartbeat) clearInterval(heartbeat);
+            if (ws.readyState === WebSocket.CONNECTING) {
+                ws.onopen = () => {
+                    try { ws.close(); } catch { }
+                };
+                ws.onmessage = null;
+                ws.onerror = null;
+                ws.onclose = null;
+                return;
+            }
+            try { ws.close(); } catch { }
+        };
+    },
 );
