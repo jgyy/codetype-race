@@ -14,7 +14,6 @@ import * as cognito from "aws-cdk-lib/aws-cognito";
 import * as ddb from "aws-cdk-lib/aws-dynamodb";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as lambda from "aws-cdk-lib/aws-lambda";
-import * as nodejs from "aws-cdk-lib/aws-lambda-nodejs";
 import * as lambdaSources from "aws-cdk-lib/aws-lambda-event-sources";
 import * as events from "aws-cdk-lib/aws-events";
 import * as eventsTargets from "aws-cdk-lib/aws-events-targets";
@@ -27,6 +26,8 @@ import * as route53 from "aws-cdk-lib/aws-route53";
 import * as route53Targets from "aws-cdk-lib/aws-route53-targets";
 import { Construct } from "constructs";
 import { ProgressionFeature } from "./constructs/progression-feature";
+import { OtelLayer } from "./constructs/otel-layer";
+import { LambdaFactory } from "./constructs/lambda-factory";
 
 export interface CodetypeStackProps extends StackProps {
     siteDomainName?: string;
@@ -37,20 +38,6 @@ export interface CodetypeStackProps extends StackProps {
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const LAMBDA_DIR = path.resolve(__dirname, "../../lambdas");
 const WEB_OUT_DIR = path.resolve(__dirname, "../../web/out");
-const OTEL_LAYER_DIR = path.resolve(__dirname, "../layers/otel");
-
-// Phase 15 / slice-1: pinned externals so esbuild does NOT inline OTel deps —
-// they must be loaded from the layer at /opt/nodejs/node_modules so the
-// --require preload and the handler share a single SDK instance.
-const OTEL_EXTERNALS = [
-    "@opentelemetry/api",
-    "@opentelemetry/sdk-node",
-    "@opentelemetry/auto-instrumentations-node",
-    "@opentelemetry/propagator-aws-xray",
-    "@opentelemetry/id-generator-aws-xray",
-    "@opentelemetry/resources",
-    "@opentelemetry/semantic-conventions",
-];
 
 export class CodetypeStack extends Stack {
     constructor(scope: Construct, id: string, props?: CodetypeStackProps) {
@@ -93,101 +80,25 @@ export class CodetypeStack extends Stack {
             description: "Tournament moderation",
         });
 
-        // Phase 15 / slice-1 — OTel layer. Built from infra/layers/otel via a
-        // local bundling step that runs `bun install --production` so the
-        // dependency tree lives at /opt/nodejs/node_modules in the layer.
-        const otelLayer = new lambda.LayerVersion(this, "OtelLayer", {
-            description:
-                "OpenTelemetry SDK + auto-instrumentations (Phase 15 / slice-1: sampler=always_off)",
-            compatibleArchitectures: [
-                lambda.Architecture.ARM_64,
-                lambda.Architecture.X86_64,
-            ],
-            compatibleRuntimes: [lambda.Runtime.NODEJS_20_X],
-            removalPolicy: RemovalPolicy.DESTROY,
-            code: lambda.Code.fromAsset(OTEL_LAYER_DIR, {
-                bundling: {
-                    image: lambda.Runtime.NODEJS_20_X.bundlingImage,
-                    local: {
-                        tryBundle(outputDir: string) {
-                            // Static-args spawnSync only — no shell, no user input.
-                            const { spawnSync } =
-                                require("node:child_process") as typeof import("node:child_process");
-                            const fs =
-                                require("node:fs") as typeof import("node:fs");
-                            const p =
-                                require("node:path") as typeof import("node:path");
-                            const probe = spawnSync("bun", ["--version"], {
-                                stdio: "ignore",
-                            });
-                            if (probe.status !== 0) return false;
-                            const nodejsDir = p.join(outputDir, "nodejs");
-                            fs.mkdirSync(nodejsDir, { recursive: true });
-                            fs.copyFileSync(
-                                p.join(OTEL_LAYER_DIR, "package.json"),
-                                p.join(nodejsDir, "package.json"),
-                            );
-                            fs.copyFileSync(
-                                p.join(OTEL_LAYER_DIR, "bootstrap.js"),
-                                p.join(outputDir, "bootstrap.js"),
-                            );
-                            const install = spawnSync(
-                                "bun",
-                                ["install", "--production"],
-                                { cwd: nodejsDir, stdio: "inherit" },
-                            );
-                            return install.status === 0;
-                        },
-                    },
-                    command: [
-                        "bash",
-                        "-c",
-                        [
-                            "mkdir -p /asset-output/nodejs",
-                            "cp /asset-input/package.json /asset-output/nodejs/package.json",
-                            "cp /asset-input/bootstrap.js /asset-output/bootstrap.js",
-                            "cd /asset-output/nodejs && npm install --omit=dev --no-audit --no-fund",
-                        ].join(" && "),
-                    ],
-                },
-            }),
-        });
+        const otelLayer = new OtelLayer(this, "OtelLayer");
 
         const deployEnv =
             (this.node.tryGetContext("deployEnv") as string) ||
             process.env.DEPLOY_ENV ||
             "dev";
 
+        const lambdaFactory = new LambdaFactory(this, {
+            lambdaDir: LAMBDA_DIR,
+            depsLockFilePath: path.join(LAMBDA_DIR, "bun.lock"),
+            table,
+            otelLayer: otelLayer.version,
+            deployEnv,
+        });
         const fn = (
             id: string,
             entry: string,
             env: Record<string, string> = {},
-        ) =>
-            new nodejs.NodejsFunction(this, id, {
-                entry: path.join(LAMBDA_DIR, entry),
-                projectRoot: LAMBDA_DIR,
-                depsLockFilePath: path.join(LAMBDA_DIR, "bun.lock"),
-                runtime: lambda.Runtime.NODEJS_20_X,
-                architecture: lambda.Architecture.ARM_64,
-                memorySize: 256,
-                timeout: Duration.seconds(10),
-                layers: [otelLayer],
-                bundling: {
-                    format: nodejs.OutputFormat.ESM,
-                    mainFields: ["module", "main"],
-                    target: "node20",
-                    externalModules: OTEL_EXTERNALS,
-                },
-                environment: {
-                    TABLE_NAME: table.tableName,
-                    // Phase 15 / slice-1 — instrumentation hot, exporters off.
-                    NODE_OPTIONS: "--require /opt/bootstrap.js",
-                    OTEL_TRACES_SAMPLER: "always_off",
-                    OTEL_SERVICE_NAME: `codetype-${id}`,
-                    DEPLOY_ENV: deployEnv,
-                    ...env,
-                },
-            });
+        ) => lambdaFactory.create(id, entry, env);
 
         const integ = (id: string, f: lambda.IFunction) =>
             new apigwv2Integ.HttpLambdaIntegration(id, f);
