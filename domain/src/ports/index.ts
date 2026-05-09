@@ -28,3 +28,8 @@ export type {
     OutboxClaim,
     OutboxDispatcher,
 } from "./OutboxStore";
+export type {
+    RaceEventStore,
+    AppendCommandArgs,
+} from "./RaceEventStore";
+export { TransactionConflictError } from "./RaceEventStore";

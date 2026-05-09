@@ -15,6 +15,7 @@
     "./OutboxPublisher": "./src/services/OutboxPublisher.ts",
     "./ports/IdempotencyStore": "./src/ports/IdempotencyStore.ts",
     "./ports/OutboxStore": "./src/ports/OutboxStore.ts",
+    "./ports/RaceEventStore": "./src/ports/RaceEventStore.ts",
     "./entities/Room": "./src/entities/Room.ts",
     "./ports": "./src/ports/index.ts",
     "./ports/Broadcaster": "./src/ports/Broadcaster.ts",

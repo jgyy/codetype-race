@@ -21,3 +21,7 @@ export {
     DdbOutboxStore,
     type DdbOutboxStoreConfig,
 } from "./DdbOutboxStore";
+export {
+    DdbRaceEventStore,
+    type DdbRaceEventStoreConfig,
+} from "./DdbRaceEventStore";
