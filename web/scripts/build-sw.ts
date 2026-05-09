@@ -1,32 +1,36 @@
 import { writeFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
-const SW_VERSION = "v2"; // Phase 16.13 — bump cache-key version on shell change.
+const SW_VERSION = "v2";
 
-// Phase 16.13 — App-shell precache list. Three routes that constitute
-// "the shell users land on": home, host, practice. Their root chunks +
-// the /layout chunks (every route shares them). Hashes change on any
-// shell rebuild, so the precache cache-key effectively bumps with the
-// content. Other routes (room, daily, leaderboard, etc.) cache lazily
-// via cacheFirst on first visit — same as before this slice.
 const SHELL_ROUTES = ["/", "/host/", "/practice/"];
-const SHELL_PAGE_KEYS = ["/layout", "/page", "/host/page", "/practice/page"];
+const SHELL_MANIFEST_DIRS = ["page", "host/page", "practice/page"];
 
 function readShellChunks(): string[] {
-    const manifestPath = join(import.meta.dir, "..", ".next", "app-build-manifest.json");
-    if (!existsSync(manifestPath)) {
-        console.warn("build-sw: app-build-manifest.json not found, skipping precache list");
-        return [];
-    }
-    const m = JSON.parse(readFileSync(manifestPath, "utf8")) as {
-        pages: Record<string, string[]>;
-    };
     const seen = new Set<string>();
-    for (const k of SHELL_PAGE_KEYS) {
-        for (const c of m.pages[k] ?? []) {
-            // Drop CSS — small, lazily fetched on first paint anyway.
+    let any = false;
+    for (const dir of SHELL_MANIFEST_DIRS) {
+        const manifestPath = join(
+            import.meta.dir,
+            "..",
+            ".next",
+            "server",
+            "app",
+            dir,
+            "build-manifest.json",
+        );
+        if (!existsSync(manifestPath)) continue;
+        any = true;
+        const m = JSON.parse(readFileSync(manifestPath, "utf8")) as {
+            rootMainFiles?: string[];
+            polyfillFiles?: string[];
+        };
+        for (const c of [...(m.rootMainFiles ?? []), ...(m.polyfillFiles ?? [])]) {
             if (c.endsWith(".js")) seen.add("/_next/" + c);
         }
+    }
+    if (!any) {
+        console.warn("build-sw: no per-route build-manifest.json found, skipping precache list");
     }
     return [...seen];
 }
@@ -44,15 +48,10 @@ const PRECACHE_URLS = ${JSON.stringify(PRECACHE_URLS)};
 
 self.addEventListener('install', (e) => {
   e.waitUntil((async () => {
-    // Phase 16.13 — slim precache: 3 shell HTML routes + their root JS
-    // chunks only. ~80-150 kB total. Other routes cache lazily on visit.
-    // addAll is atomic — if any URL fails we keep the previous SW alive.
     try {
       const cache = await caches.open(STATIC_CACHE);
       await cache.addAll(PRECACHE_URLS);
     } catch (err) {
-      // Don't block activation on precache failure (e.g. CDN burp during
-      // SW install). Lazy fetches still work on first navigation.
       console.warn('[sw] precache failed', err);
     }
     await self.skipWaiting();

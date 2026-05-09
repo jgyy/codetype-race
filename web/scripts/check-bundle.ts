@@ -24,11 +24,12 @@ export function evaluateBudget(sizes: Map<string, number>): BudgetReport {
     return { total, overChunks, ok };
 }
 
-interface Manifest {
-    pages: Record<string, string[]>;
+interface RouteManifest {
+    rootMainFiles?: string[];
+    polyfillFiles?: string[];
 }
 
-function readManifest(manifestPath: string): Manifest {
+function readRouteManifest(manifestPath: string): RouteManifest {
     let raw: string;
     try {
         raw = readFileSync(manifestPath, "utf8");
@@ -39,7 +40,7 @@ function readManifest(manifestPath: string): Manifest {
         );
         process.exit(2);
     }
-    return JSON.parse(raw) as Manifest;
+    return JSON.parse(raw) as RouteManifest;
 }
 
 function gzipSize(filePath: string): number {
@@ -53,14 +54,25 @@ function fmtKB(bytes: number): string {
 function main(): void {
     const __dirname = path.dirname(fileURLToPath(import.meta.url));
     const NEXT_DIR = path.resolve(__dirname, "..", ".next");
-    const MANIFEST_PATH = path.join(NEXT_DIR, "app-build-manifest.json");
+    // Next 16 / Turbopack: per-route manifest replaces the legacy
+    // top-level app-build-manifest.json. TARGET_ROUTE "/page" maps to
+    // .next/server/app/page/build-manifest.json (the home route).
+    const MANIFEST_PATH = path.join(
+        NEXT_DIR,
+        "server",
+        "app",
+        TARGET_ROUTE.replace(/^\//, ""),
+        "build-manifest.json",
+    );
 
-    const manifest = readManifest(MANIFEST_PATH);
-    const homeChunks = manifest.pages[TARGET_ROUTE];
-    if (!homeChunks) {
+    const manifest = readRouteManifest(MANIFEST_PATH);
+    const homeChunks = [
+        ...(manifest.rootMainFiles ?? []),
+        ...(manifest.polyfillFiles ?? []),
+    ];
+    if (homeChunks.length === 0) {
         console.error(
-            `check-bundle: route ${TARGET_ROUTE} not found in app-build-manifest.json.\n` +
-                `  Available routes: ${Object.keys(manifest.pages).join(", ")}`,
+            `check-bundle: ${TARGET_ROUTE} manifest has no rootMainFiles/polyfillFiles.`,
         );
         process.exit(2);
     }
