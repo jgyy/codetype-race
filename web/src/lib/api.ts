@@ -1,5 +1,12 @@
 import { HTTP_API } from "./config";
-import { getIdToken } from "./aws/cognito";
+
+// Phase 16.10 — lazy-load the Cognito/Amplify SDK so the ~40 kB gzipped
+// chunk only enters the bundle on authenticated requests, not at first
+// paint of every route. Anonymous routes (the home page) never pay for it.
+async function getIdToken(): Promise<string | null> {
+    const { getIdToken: get } = await import("./aws/cognito");
+    return get();
+}
 
 export class ApiError extends Error {
     constructor(

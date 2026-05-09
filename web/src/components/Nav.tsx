@@ -3,7 +3,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { getMe } from "@/lib/api";
-import { getCurrentUser } from "@/lib/aws/cognito";
 
 const links = [
   { href: "/", label: "Join" },
@@ -27,6 +26,10 @@ export function Nav() {
     let cancelled = false;
     (async () => {
       try {
+        // Phase 16.10 — dynamic-import the Amplify SDK; Nav is on every
+        // page but most visitors are anonymous (home/practice/leaderboard).
+        // Defer the chunk until after first paint instead of blocking it.
+        const { getCurrentUser } = await import("@/lib/aws/cognito");
         await getCurrentUser();
         const r = await getMe();
         if (!cancelled) {
