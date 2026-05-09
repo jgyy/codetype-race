@@ -9,6 +9,7 @@
     "lint": "bun --filter @codetype/web lint",
     "test": "bun --filter '*' test",
     "cdk": "cd infra && bunx cdk",
+    "deploy:all": "bun --filter @codetype/web build && bunx cdk deploy --all --require-approval never",
     "seed": "bun scripts/seed-snippets.ts",
     "check:deps": "bun scripts/check-deps.ts",
     "check:runbooks": "bun scripts/check-runbooks.ts",

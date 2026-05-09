@@ -146,36 +146,35 @@ git clone <this-repo>
 cd codetype-race
 bun install
 
-# 2. (one-time per AWS account+region) bootstrap CDK
-bunx cdk bootstrap --profile your_profile
+# 2. (one-time per AWS account+region) bootstrap CDK in BOTH regions
+#    us-east-1 is required for the CloudFront ACM certificate stack.
+bunx cdk bootstrap aws://<account-id>/ap-southeast-1 --profile your_profile
+bunx cdk bootstrap aws://<account-id>/us-east-1     --profile your_profile
 
-# 3. Deploy the certificate stack (us-east-1, required by CloudFront)
-bun run cdk deploy CodetypeCertificateStack --profile your_profile
+# 3. First-pass deploy: cert + app + monitoring + observability, all stacks at once.
+#    On the very first run web/.env.local does not exist yet, so the built site will
+#    have empty API URLs — that's fine; we re-run after wiring outputs in step 5.
+ALARM_EMAIL=you@example.com AWS_PROFILE=your_profile bun run deploy:all
 
-# 4. First-pass deploy of the app stack (creates the S3 site bucket + CloudFront distribution)
-bun run cdk deploy CodetypeStack --profile your_profile
+# 4. Wire up the web app with CDK outputs (see env-var table below)
+cp web/.env.local.example web/.env.local
 
-# 5. Wire up the web app with CDK outputs, then build the static export
-cp web/.env.local.example web/.env.local   # fill from CDK outputs (table below)
-bun --filter @codetype/web build           # produces web/out/
-
-# 6. Re-deploy the app stack — this time CDK uploads web/out/ to S3 and invalidates CloudFront
-bun run cdk deploy CodetypeStack --profile your_profile
-
-# 7. Monitoring stack
-ALARM_EMAIL=you@example.com bun run cdk deploy CodetypeMonitoringStack --profile your_profile
+# 5. Second pass: rebuild web with the real env vars and redeploy everything in one shot.
+ALARM_EMAIL=you@example.com AWS_PROFILE=your_profile bun run deploy:all
 
 # The CodetypeStack provisions race.codephase.dev (CloudFront alias + Route53 ARecord/AAAARecord
 # in the codephase.dev hosted zone). Override SITE_DOMAIN/HOSTED_ZONE in infra/bin/app.ts if forking.
 
-# 8. Seed the snippet table
+# 6. Seed the snippet table
 AWS_PROFILE=your_profile TABLE_NAME=codetype bun scripts/seed-snippets.ts
 
-# 9. Run locally
+# 7. Run locally
 bun --filter @codetype/web dev    # http://localhost:3000
 ```
 
-> **Note:** `web/out/` must exist before `cdk synth`/`cdk deploy CodetypeStack` runs — the stack's `BucketDeployment` zips it as a CDK asset. If it's missing, run `bun --filter @codetype/web build` first. That's why steps 4 and 6 are both present on the very first deploy: step 4 creates the API Gateway / Cognito outputs that `web/.env.local` needs, step 6 ships the built site.
+> **What `deploy:all` does:** runs `bun --filter @codetype/web build` (so `web/out/` exists for `BucketDeployment`) then `bunx cdk deploy --all --require-approval never`. CDK walks the dependency graph and deploys `CodetypeCertificateStack` (us-east-1) → `CodetypeStack` → `CodetypeMonitoringStack` → `CodetypeObservabilityStack` in order. `ALARM_EMAIL` is only consumed by the monitoring/observability stacks; omit it on subsequent deploys if you've already confirmed the SNS subscription.
+>
+> **Why the two passes on first deploy:** `web/.env.local` is filled from CDK outputs (HTTP API URL, WS API URL, Cognito IDs), but those outputs don't exist until the app stack has been created once. Pass 1 produces the outputs; pass 2 ships a build that points at them. After that, every further deploy is a single `bun run deploy:all`.
 
 ### Redeploying just the web app
 For frontend-only changes you don't need a full `cdk deploy` — sync the build output to S3 and invalidate CloudFront directly:
@@ -238,6 +237,9 @@ bun --filter @codetype/web build
 bun run cdk synth
 bun run cdk deploy CodetypeStack --profile your_profile
 bun run cdk deploy CodetypeMonitoringStack --profile your_profile
+
+# One-shot: build web + deploy every stack (cert → app → monitoring → observability)
+ALARM_EMAIL=you@example.com AWS_PROFILE=your_profile bun run deploy:all
 
 # Seed snippets after first deploy
 AWS_PROFILE=your_profile TABLE_NAME=codetype bun scripts/seed-snippets.ts
