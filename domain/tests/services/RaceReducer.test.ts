@@ -82,7 +82,6 @@ describe("reduce — per event type", () => {
         s = reduce(s, ev("CURSOR_PROGRESS", "u1", {
             userId: "u1", charsTyped: 25, errors: 1, accuracy: 0.96,
         }));
-        // Out-of-order regression — should be ignored.
         s = reduce(s, ev("CURSOR_PROGRESS", "u1", {
             userId: "u1", charsTyped: 5, errors: 0, accuracy: 1,
         }));
@@ -195,7 +194,6 @@ describe("reduce — commutativity property (non-overlapping per-player events)"
         perPlayer: Map<string, RaceEvent[]>,
         rng: () => number,
     ): RaceEvent[] {
-        // Preserve per-player order; arbitrarily interleave across players.
         const queues = new Map<string, RaceEvent[]>();
         for (const [k, v] of perPlayer) queues.set(k, v.slice());
         const out: RaceEvent[] = [];
@@ -228,8 +226,6 @@ describe("reduce — commutativity property (non-overlapping per-player events)"
 
     test("1000 random orderings of non-overlapping player events converge to the same final state", () => {
         const { setup, perPlayer, teardown } = buildRace();
-        // Re-seq every interleaving so reducer treats them as fresh monotonic events
-        // (the property under test is on event *contents* commuting, not on seq).
         function reseq(events: RaceEvent[]): RaceEvent[] {
             return events.map((e, i) => ({ ...e, seq: i }));
         }

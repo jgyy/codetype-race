@@ -120,7 +120,6 @@ describe("drainOnce", () => {
 
     test("dead-letters after MAX_OUTBOX_ATTEMPTS - 1 prior failures", async () => {
         const entry = makeEntry({ id: "y" });
-        // Simulate already-retried entry one shy of the cap
         const seeded = { ...entry, attempts: MAX_OUTBOX_ATTEMPTS - 1 };
         const store = new InMemoryOutbox([seeded]);
         const disp = new CountingDispatcher(new Set(["y"]));

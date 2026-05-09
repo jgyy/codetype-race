@@ -14,6 +14,7 @@
     "./events/OutboxEntry": "./src/events/OutboxEntry.ts",
     "./OutboxPublisher": "./src/services/OutboxPublisher.ts",
     "./RoutingDispatcher": "./src/services/RoutingDispatcher.ts",
+    "./CommandBus": "./src/services/CommandBus.ts",
     "./ports/IdempotencyStore": "./src/ports/IdempotencyStore.ts",
     "./ports/OutboxStore": "./src/ports/OutboxStore.ts",
     "./ports/RaceEventStore": "./src/ports/RaceEventStore.ts",
