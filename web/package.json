@@ -4,13 +4,14 @@
   "type": "module",
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "next build && bun run scripts/build-sw.ts",
+    "build": "next build && bun run scripts/build-sw.ts && bun run check:bundle",
     "start": "next start",
     "lint": "next lint",
     "test": "bun test",
     "e2e": "playwright test",
     "icons:gen": "bun run scripts/generate-icons.ts",
-    "audit:contrast": "bun run scripts/audit-contrast.ts"
+    "audit:contrast": "bun run scripts/audit-contrast.ts",
+    "check:bundle": "bun run scripts/check-bundle.ts"
   },
   "dependencies": {
     "@aws-amplify/auth": "^6.5.0",
