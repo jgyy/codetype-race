@@ -74,22 +74,49 @@ type HttpEvent =
     | APIGatewayProxyEventV2
     | APIGatewayProxyEventV2WithJWTAuthorizer<Record<string, unknown>>;
 
+export interface WithHttpOptions<I, O> {
+    /**
+     * Phase 16.15 — Cache-Control header for 200 responses. Either a
+     * static string (use the presets in src/cacheControl.ts) or a
+     * function that picks one based on the response, e.g. live vs
+     * finished tournaments. Mutating methods always emit no-store
+     * regardless. Errors are never cached.
+     */
+    cacheControl?:
+        | string
+        | ((output: O, input: I, ctx: HttpCtx) => string | undefined);
+}
+
 export function withHttp<I, O>(
     inputSchema: ZodSchema<I>,
     handler: (input: I, ctx: HttpCtx) => Promise<O>,
+    options: WithHttpOptions<I, O> = {},
 ): (event: HttpEvent) => Promise<APIGatewayProxyResultV2> {
     return async (event) => {
         const requestId = event.requestContext.requestId;
-        const route = event.routeKey ?? `${event.requestContext.http?.method ?? "?"} ${event.requestContext.http?.path ?? "?"}`;
+        const route =
+            event.routeKey ??
+            `${event.requestContext.http?.method ?? "?"} ${event.requestContext.http?.path ?? "?"}`;
+        const method = event.requestContext.http?.method?.toUpperCase() ?? "";
+        const isMutating =
+            method === "POST" ||
+            method === "PUT" ||
+            method === "PATCH" ||
+            method === "DELETE";
         const start = Date.now();
         try {
             const raw = event.body ? JSON.parse(event.body) : {};
             const input = inputSchema.parse(raw);
-            const claims = (event as APIGatewayProxyEventV2WithJWTAuthorizer<Record<string, unknown>>)
-                .requestContext?.authorizer?.jwt?.claims as Record<string, unknown> | undefined;
+            const claims = (
+                event as APIGatewayProxyEventV2WithJWTAuthorizer<
+                    Record<string, unknown>
+                >
+            ).requestContext?.authorizer?.jwt?.claims as
+                | Record<string, unknown>
+                | undefined;
             const userId = claims?.sub as string | undefined;
             const groups = extractGroups(claims);
-            const out = await handler(input, {
+            const ctx: HttpCtx = {
                 requestId,
                 route,
                 userId,
@@ -97,11 +124,19 @@ export function withHttp<I, O>(
                 claims: claims ?? {},
                 pathParameters: event.pathParameters ?? {},
                 queryStringParameters: event.queryStringParameters ?? {},
-            });
+            };
+            const out = await handler(input, ctx);
+            const cc = isMutating
+                ? "private, no-store"
+                : typeof options.cacheControl === "function"
+                  ? options.cacheControl(out, input, ctx)
+                  : options.cacheControl;
             log({ requestId, route, status: 200, ms: Date.now() - start });
             return {
                 statusCode: 200,
-                headers: CORS_HEADERS,
+                headers: cc
+                    ? { ...CORS_HEADERS, "Cache-Control": cc }
+                    : CORS_HEADERS,
                 body: JSON.stringify(out),
             };
         } catch (err) {
@@ -116,6 +151,9 @@ export function withHttp<I, O>(
             });
             return {
                 statusCode: appErr.status,
+                // Errors must never enter a shared cache — no Cache-Control
+                // here on purpose; CDN/browser default is no-store for
+                // 4xx/5xx in absence of explicit caching headers.
                 headers: CORS_HEADERS,
                 body: JSON.stringify(errorBody(appErr)),
             };

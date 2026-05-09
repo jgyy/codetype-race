@@ -84,6 +84,73 @@ describe("withHttp", () => {
     expect(seen).toBe("u-1");
   });
 
+  // Phase 16.15 — Cache-Control header tests.
+  test("cacheControl static string emitted on 200", async () => {
+    const h = withHttp(Body, async () => ({ ok: true }), {
+      cacheControl: "public, s-maxage=10",
+    });
+    const res: any = await h({
+      ...httpEvent({ body: JSON.stringify({ name: "x" }) }),
+      requestContext: {
+        requestId: "req-1",
+        http: { method: "GET", path: "/x" },
+      },
+    });
+    expect(res.headers["Cache-Control"]).toBe("public, s-maxage=10");
+  });
+
+  test("cacheControl function picks based on response", async () => {
+    const h = withHttp(
+      Body,
+      async (input) => ({ status: input.name === "live" ? "running" : "finished" }),
+      {
+        cacheControl: (out) =>
+          out.status === "finished" ? "public, max-age=86400, immutable" : "public, s-maxage=2",
+      },
+    );
+    const liveEvt = {
+      body: JSON.stringify({ name: "live" }),
+      requestContext: { requestId: "r", http: { method: "GET", path: "/x" } },
+    } as any;
+    const live: any = await h(liveEvt);
+    expect(live.headers["Cache-Control"]).toBe("public, s-maxage=2");
+    const finishedEvt = {
+      body: JSON.stringify({ name: "done" }),
+      requestContext: { requestId: "r", http: { method: "GET", path: "/x" } },
+    } as any;
+    const finished: any = await h(finishedEvt);
+    expect(finished.headers["Cache-Control"]).toBe("public, max-age=86400, immutable");
+  });
+
+  test("mutating method overrides cacheControl with no-store", async () => {
+    const h = withHttp(Body, async () => ({ ok: true }), {
+      cacheControl: "public, max-age=86400, immutable",
+    });
+    const res: any = await h({
+      body: JSON.stringify({ name: "x" }),
+      requestContext: { requestId: "r", http: { method: "POST", path: "/x" } },
+    } as any);
+    expect(res.headers["Cache-Control"]).toBe("private, no-store");
+  });
+
+  test("error responses never carry Cache-Control", async () => {
+    const h = withHttp(Body, async () => {
+      throw Errors.NotFound("widget");
+    }, { cacheControl: "public, max-age=86400, immutable" });
+    const res: any = await h(httpEvent({ body: JSON.stringify({ name: "x" }) }));
+    expect(res.statusCode).toBe(404);
+    expect(res.headers["Cache-Control"]).toBeUndefined();
+  });
+
+  test("absent cacheControl + GET method emits no Cache-Control header", async () => {
+    const h = withHttp(Body, async () => ({ ok: true }));
+    const res: any = await h({
+      body: JSON.stringify({ name: "x" }),
+      requestContext: { requestId: "r", http: { method: "GET", path: "/x" } },
+    } as any);
+    expect(res.headers["Cache-Control"]).toBeUndefined();
+  });
+
   test("logs include requestId/route/status/ms", async () => {
     const lines: string[] = [];
     const orig = console.log;
