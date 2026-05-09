@@ -93,6 +93,22 @@ describe("logger (Phase 15 / slice-3)", () => {
         expect(cap.lines[1]!.parsed.route).toBe("/y");
     });
 
+    it("sanitises sensitive fields before emit (Phase 15 / slice-8)", () => {
+        const log = createLogger("codetype-test");
+        log.info({
+            msg: "incoming",
+            Authorization: "Bearer abc",
+            nested: { cookie: "session=x" },
+        });
+        const parsed = cap.lines[0]!.parsed;
+        expect(parsed.Authorization).toBe("[REDACTED]");
+        expect((parsed.nested as Record<string, unknown>).cookie).toBe(
+            "[REDACTED]",
+        );
+        // Non-sensitive fields survive.
+        expect(parsed.msg).toBe("incoming");
+    });
+
     it("survives a malformed OTel api shape", () => {
         (globalThis as { __codetypeOtel?: unknown }).__codetypeOtel = {
             api: { trace: { getActiveSpan: () => null } },

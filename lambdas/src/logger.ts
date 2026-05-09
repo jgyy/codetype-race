@@ -1,3 +1,5 @@
+import { sanitise } from "./sanitiser";
+
 export type Level = "info" | "warn" | "error";
 
 export interface LogFields {
@@ -51,7 +53,7 @@ function emit(
     fields: LogFields,
 ): void {
     const ctx = activeSpanContext();
-    const line: Record<string, unknown> = {
+    const raw: Record<string, unknown> = {
         ts: new Date().toISOString(),
         level,
         service,
@@ -59,9 +61,12 @@ function emit(
         ...fields,
     };
     if (ctx) {
-        line.trace_id = ctx.traceId;
-        line.span_id = ctx.spanId;
+        raw.trace_id = ctx.traceId;
+        raw.span_id = ctx.spanId;
     }
+    // Phase 15 / slice-8 — scrub Authorization, Cookie, JWT-shaped strings,
+    // and DDB Item payloads before they reach CloudWatch Logs.
+    const line = sanitise(raw);
     const sink = level === "error" ? console.error : console.log;
     sink(JSON.stringify(line));
 }
