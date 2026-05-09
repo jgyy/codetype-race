@@ -2,6 +2,11 @@ import { setup, assign, sendTo, type AnyEventObject } from "xstate";
 import { wsActor } from "../actors/wsActor";
 import { countdownActor } from "../actors/countdownActor";
 import { cursorThrottleActor } from "../actors/cursorThrottleActor";
+import {
+    cursorIntervalMs,
+    cursorRateHz,
+    type RoomKind,
+} from "@codetype/domain/cursorRate";
 
 export interface PlayerState {
     display_name: string;
@@ -46,6 +51,10 @@ export interface RoomContext {
     replayBuffer: Record<string, ReplaySample[]>;
     error: { code: string; message: string } | null;
     retryCount: number;
+    /** Phase 16.5 — drives cursor flush rate. */
+    kind: RoomKind;
+    /** Phase 16.5 — mobile/low-bandwidth opt-in caps cursor flush at 5 Hz. */
+    lite: boolean;
 }
 
 export interface RoomInput {
@@ -56,6 +65,8 @@ export interface RoomInput {
     snippetCode: string;
     status?: "lobby" | "countdown" | "running" | "finished";
     startedAt?: number | null;
+    kind?: RoomKind;
+    lite?: boolean;
 }
 
 export type RoomEvent =
@@ -306,6 +317,8 @@ export const roomMachine = setup({
         replayBuffer: {},
         error: null,
         retryCount: 0,
+        kind: input.kind ?? "race",
+        lite: input.lite ?? false,
     }),
     entry: "seedSelf",
     on: {
@@ -399,7 +412,21 @@ export const roomMachine = setup({
                         displayName: context.displayName,
                     }),
                 },
-                { id: "cursorThrottle", src: "cursorThrottle" },
+                {
+                    id: "cursorThrottle",
+                    src: "cursorThrottle",
+                    input: ({ context }) => ({
+                        intervalMs: cursorIntervalMs(
+                            cursorRateHz({
+                                kind: context.kind,
+                                playerCount: Object.values(context.players).filter(
+                                    (p) => (p.role ?? "racer") === "racer",
+                                ).length,
+                                lite: context.lite,
+                            }),
+                        ),
+                    }),
+                },
             ],
             always: { guard: "raceFinished", target: "finished" },
             on: {
