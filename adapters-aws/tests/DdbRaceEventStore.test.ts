@@ -169,6 +169,36 @@ describe("DdbRaceEventStore.appendCommand", () => {
 });
 
 describe("DdbRaceEventStore.listEvents", () => {
+    test("sinceSeq < 0 uses begins_with(SK, 'EV#') so the full log is returned", async () => {
+        const client = new MockClient(async () => ({
+            Items: [
+                {
+                    PK: `RACE#${RID}`,
+                    SK: "EV#0000000000",
+                    raceId: RID,
+                    seq: 0,
+                    type: "RACE_CREATED",
+                    occurredAt: "2026-05-09T00:00:00.000Z",
+                    actorId: null,
+                    payload: {},
+                    commandId: null,
+                    causationId: null,
+                    correlationId: CORR,
+                },
+            ],
+        }));
+        const store = new DdbRaceEventStore({ table: "T", client: client as any });
+        const events = await store.listEvents({ raceId: RID, sinceSeq: -1, limit: 100 });
+        expect(events).toHaveLength(1);
+        expect(events[0].seq).toBe(0);
+        const input = client.calls[0].input;
+        expect(input.KeyConditionExpression).toBe(
+            "PK = :pk AND begins_with(SK, :prefix)",
+        );
+        expect(input.ExpressionAttributeValues[":prefix"]).toBe("EV#");
+        expect(input.ExpressionAttributeValues[":sk"]).toBeUndefined();
+    });
+
     test("queries by PK + SK > sinceSeq and hydrates events", async () => {
         const client = new MockClient(async () => ({
             Items: [
