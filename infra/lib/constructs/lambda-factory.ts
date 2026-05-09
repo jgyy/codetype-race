@@ -15,6 +15,46 @@ export interface LambdaFactoryOptions {
     readonly otlpEndpoint?: string;
     readonly sampleRatio?: number;
     readonly snapStart?: boolean;
+    /**
+     * Phase 16.3 — apply per-tier reserved concurrency. Off by default;
+     * opt in once load tests have validated that the per-tier ceilings
+     * don't throttle real traffic. AWS requires the unreserved pool to
+     * stay >= 100, so all tier values combined target a budget under 900
+     * out of the default 1000-per-account.
+     */
+    readonly reservedConcurrency?: boolean;
+}
+
+/**
+ * Per-tier reserved concurrency ceilings. Each value is per-handler;
+ * `LambdaFactory.totalReserved` exposes the running sum so the stack can
+ * surface it as a CfnOutput for review during cdk diff.
+ */
+export const RESERVED_CONCURRENCY: Record<ConcurrencyTier, number> = {
+    http_hot: 30,
+    http_warm: 12,
+    http_default: 12,
+    ws: 20,
+    stream: 10,
+    cron: 2,
+};
+
+export type ConcurrencyTier =
+    | "http_hot"
+    | "http_warm"
+    | "http_default"
+    | "ws"
+    | "stream"
+    | "cron";
+
+function classify(id: string, entry: string): ConcurrencyTier {
+    if (entry.startsWith("ws/")) return "ws";
+    if (entry.startsWith("stream/")) return "stream";
+    if (entry.startsWith("cron/")) return "cron";
+    if (/Room|Race/.test(id)) return "http_hot";
+    if (/Snippet|Leaderboard|Daily|User|Profile|Friend|Feed|Guild|Tourn|Season|Presence|Replay/.test(id))
+        return "http_warm";
+    return "http_default";
 }
 
 export class LambdaFactory {
@@ -22,11 +62,21 @@ export class LambdaFactory {
         lambda.IFunction,
         lambda.Alias
     >();
+    private _totalReserved = 0;
+    private readonly reservedByTier: Partial<Record<ConcurrencyTier, number>> = {};
 
     constructor(
         private readonly scope: Construct,
         private readonly opts: LambdaFactoryOptions,
     ) { }
+
+    get totalReserved(): number {
+        return this._totalReserved;
+    }
+
+    get reservedBreakdown(): Readonly<Partial<Record<ConcurrencyTier, number>>> {
+        return this.reservedByTier;
+    }
 
     create(
         id: string,
@@ -43,6 +93,7 @@ export class LambdaFactory {
             otlpEndpoint,
             sampleRatio = 0.05,
             snapStart = false,
+            reservedConcurrency = false,
         } = this.opts;
 
         const otelEnv: Record<string, string> = otlpEndpoint
@@ -55,6 +106,15 @@ export class LambdaFactory {
 
         const isHttp = entry.startsWith("http/");
         const enableSnapStart = snapStart && isHttp;
+        const tier = classify(id, entry);
+        const reservedConcurrentExecutions = reservedConcurrency
+            ? RESERVED_CONCURRENCY[tier]
+            : undefined;
+        if (reservedConcurrentExecutions !== undefined) {
+            this._totalReserved += reservedConcurrentExecutions;
+            this.reservedByTier[tier] =
+                (this.reservedByTier[tier] ?? 0) + reservedConcurrentExecutions;
+        }
 
         const fn = new nodejs.NodejsFunction(this.scope, id, {
             entry: path.join(lambdaDir, entry),
@@ -81,6 +141,9 @@ export class LambdaFactory {
             },
             ...(enableSnapStart
                 ? { snapStart: lambda.SnapStartConf.ON_PUBLISHED_VERSIONS }
+                : {}),
+            ...(reservedConcurrentExecutions !== undefined
+                ? { reservedConcurrentExecutions }
                 : {}),
             ...overrides,
         });

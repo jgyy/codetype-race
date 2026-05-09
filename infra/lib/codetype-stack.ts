@@ -96,6 +96,9 @@ export class CodetypeStack extends Stack {
         const snapStart =
             this.node.tryGetContext("snapStart") === true ||
             this.node.tryGetContext("snapStart") === "true";
+        const reservedConcurrency =
+            this.node.tryGetContext("reservedConcurrency") === true ||
+            this.node.tryGetContext("reservedConcurrency") === "true";
         const lambdaFactory = new LambdaFactory(this, {
             lambdaDir: LAMBDA_DIR,
             depsLockFilePath: path.join(LAMBDA_DIR, "bun.lock"),
@@ -105,6 +108,7 @@ export class CodetypeStack extends Stack {
             otlpEndpoint,
             sampleRatio: otelSampleRatio,
             snapStart,
+            reservedConcurrency,
         });
         const fn = (
             id: string,
@@ -948,5 +952,15 @@ export class CodetypeStack extends Stack {
         new CfnOutput(this, "CdnDomain", { value: distribution.distributionDomainName });
         new CfnOutput(this, "DistributionId", { value: distribution.distributionId });
         new CfnOutput(this, "TableName", { value: table.tableName });
+        if (reservedConcurrency) {
+            new CfnOutput(this, "ReservedConcurrencyTotal", {
+                value: String(lambdaFactory.totalReserved),
+                description:
+                    "Phase 16.3 — sum of reservedConcurrentExecutions across handlers. Account default is 1000; AWS requires unreserved >= 100, so this should stay <= 900.",
+            });
+            new CfnOutput(this, "ReservedConcurrencyByTier", {
+                value: JSON.stringify(lambdaFactory.reservedBreakdown),
+            });
+        }
     }
 }
