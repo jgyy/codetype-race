@@ -161,6 +161,27 @@ export const questActiveSK = (questId: string) => `Q#${questId}`;
 export const questProgressSK = (rotationId: string, questId: string) =>
     `QPROG#${rotationId}#${questId}`;
 
+// Phase 14 — Event sourcing for races
+const RACE_SEQ_PAD = 10;
+export function formatRaceSeq(seq: number): string {
+    if (!Number.isInteger(seq) || seq < 0) {
+        throw new Error(`invalid race seq: ${seq}`);
+    }
+    return String(seq).padStart(RACE_SEQ_PAD, "0");
+}
+export const racePK = (raceId: string) => `RACE#${raceId}`;
+export const raceEventSK = (seq: number) => `EV#${formatRaceSeq(seq)}`;
+export const raceCounterSK = () => "COUNTER";
+export const raceProjectionSK = () => "PROJ#STATE";
+export const raceEventTypeGSI1PK = (type: string) => `EV#TYPE#${type}`;
+
+export const outboxPK = () => "OUTBOX";
+export const outboxSK = (ulid: string) => ulid;
+export const outboxDlqPK = () => "OUTBOX_DLQ";
+
+export const idempotencyPK = (userId: string) => `IDEM#${userId}`;
+export const idempotencySK = (commandId: string) => `CMD#${commandId}`;
+
 const CODE_ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
 
 export function generateRoomCode(rand: () => number = Math.random): string {

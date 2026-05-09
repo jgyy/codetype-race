@@ -9,6 +9,8 @@
     "./streak": "./src/services/streak.ts",
     "./elo": "./src/services/elo.ts",
     "./anticheat": "./src/services/anticheat.ts",
+    "./RaceReducer": "./src/services/RaceReducer.ts",
+    "./events/RaceEvent": "./src/events/RaceEvent.ts",
     "./entities/Room": "./src/entities/Room.ts",
     "./ports": "./src/ports/index.ts",
     "./ports/Broadcaster": "./src/ports/Broadcaster.ts",
