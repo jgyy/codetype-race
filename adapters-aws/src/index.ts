@@ -13,3 +13,11 @@ export {
     DdbLeaderboardProjection,
     type DdbLeaderboardProjectionConfig,
 } from "./DdbLeaderboardProjection";
+export {
+    DdbIdempotencyStore,
+    type DdbIdempotencyStoreConfig,
+} from "./DdbIdempotencyStore";
+export {
+    DdbOutboxStore,
+    type DdbOutboxStoreConfig,
+} from "./DdbOutboxStore";
