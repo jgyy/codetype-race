@@ -1,4 +1,2 @@
-# Scope `bun test` to the tests/ directory so Playwright spec files
-# under e2e/ aren't pulled into the unit-test run.
 [test]
 root = "tests"
