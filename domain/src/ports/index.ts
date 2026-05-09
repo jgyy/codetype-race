@@ -33,3 +33,5 @@ export type {
     AppendCommandArgs,
 } from "./RaceEventStore";
 export { TransactionConflictError } from "./RaceEventStore";
+export type { RaceProjectionStore } from "./RaceProjectionStore";
+export { ProjectionConflictError } from "./RaceProjectionStore";

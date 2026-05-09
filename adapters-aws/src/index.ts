@@ -25,3 +25,7 @@ export {
     DdbRaceEventStore,
     type DdbRaceEventStoreConfig,
 } from "./DdbRaceEventStore";
+export {
+    DdbRaceProjectionStore,
+    type DdbRaceProjectionStoreConfig,
+} from "./DdbRaceProjectionStore";

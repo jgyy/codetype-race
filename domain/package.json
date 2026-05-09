@@ -16,6 +16,8 @@
     "./ports/IdempotencyStore": "./src/ports/IdempotencyStore.ts",
     "./ports/OutboxStore": "./src/ports/OutboxStore.ts",
     "./ports/RaceEventStore": "./src/ports/RaceEventStore.ts",
+    "./ports/RaceProjectionStore": "./src/ports/RaceProjectionStore.ts",
+    "./RaceProjectionHandler": "./src/services/RaceProjectionHandler.ts",
     "./entities/Room": "./src/entities/Room.ts",
     "./ports": "./src/ports/index.ts",
     "./ports/Broadcaster": "./src/ports/Broadcaster.ts",

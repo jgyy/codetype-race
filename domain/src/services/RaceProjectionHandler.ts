@@ -1,0 +1,57 @@
+import { reduce, type RaceState } from "./RaceReducer";
+import type { RaceEvent } from "../events/RaceEvent";
+
+export class ProjectionGapError extends Error {
+    constructor(
+        public readonly raceId: string,
+        public readonly expectedSeq: number,
+        public readonly receivedSeq: number,
+    ) {
+        super(
+            `projection gap for race ${raceId}: expected seq ${expectedSeq}, got ${receivedSeq}`,
+        );
+        this.name = "ProjectionGapError";
+    }
+}
+
+export interface ApplyBatchResult {
+    state: RaceState;
+    appliedSeqs: number[];
+    skippedSeqs: number[];
+}
+
+/**
+ * Apply a batch of events to a projection state. Pure — no I/O.
+ *
+ * Semantics:
+ *   - Events with `seq <= state.lastSeq` are skipped (already applied);
+ *     this makes the function idempotent under at-least-once stream delivery.
+ *   - The first un-applied event must be exactly `state.lastSeq + 1`.
+ *     Otherwise we throw ProjectionGapError so the caller can backfill via
+ *     RaceEventStore.listEvents before retrying.
+ *   - Events within the batch must be strictly increasing in seq.
+ */
+export function applyEventBatch(
+    prev: RaceState,
+    events: readonly RaceEvent[],
+): ApplyBatchResult {
+    const sorted = [...events].sort((a, b) => a.seq - b.seq);
+    const appliedSeqs: number[] = [];
+    const skippedSeqs: number[] = [];
+    let state = prev;
+
+    for (const ev of sorted) {
+        if (ev.seq <= state.lastSeq) {
+            skippedSeqs.push(ev.seq);
+            continue;
+        }
+        const expected = state.lastSeq + 1;
+        if (ev.seq !== expected) {
+            throw new ProjectionGapError(ev.raceId, expected, ev.seq);
+        }
+        state = reduce(state, ev);
+        appliedSeqs.push(ev.seq);
+    }
+
+    return { state, appliedSeqs, skippedSeqs };
+}
