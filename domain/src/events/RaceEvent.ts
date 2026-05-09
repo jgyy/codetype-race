@@ -9,6 +9,7 @@ export const RACE_EVENT_TYPES = [
     "RACE_FINISHED",
     "RACE_CANCELLED",
     "PLAYER_FLAGGED",
+    "CURSOR_DIGEST",
 ] as const;
 
 export type RaceEventType = (typeof RACE_EVENT_TYPES)[number];

@@ -139,6 +139,10 @@ export function reduce(
             };
         case "RACE_CANCELLED":
             return { ...s, status: "cancelled", lastSeq };
+        case "CURSOR_DIGEST":
+            // Replay-only event — projection state ignores it. We still bump
+            // lastSeq so projection writes don't loop on the digest insert.
+            return { ...s, lastSeq };
         case "PLAYER_FLAGGED": {
             const userId = String(ev.actorId ?? ev.payload.userId ?? "");
             const p = s.players[userId];
