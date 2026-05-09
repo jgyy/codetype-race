@@ -12,11 +12,13 @@ import {
 import { RaceCommandBus } from "@codetype/domain/RaceCommandBus";
 import type {
     RaceEventStore,
+    Tracer,
 } from "@codetype/domain/ports";
 import type { RaceEvent } from "@codetype/domain/events/RaceEvent";
 
 import { ddb, TABLE } from "../ddb";
 import { withStream } from "../middleware";
+import { tracer as otelTracer } from "../otel";
 import { recordsToRaceEvents } from "./raceEventParse";
 
 const ANTICHEAT_NAMESPACE = "8d3f0c12-7e4a-4b6f-a91c-2f6b5a4e9d10";
@@ -32,13 +34,9 @@ export interface AntiCheatDeps {
     bus: RaceCommandBus;
     clock: { epochMs(): number };
     newOutboxId: () => string;
+    tracer?: Tracer;
 }
 
-/**
- * Evaluate one player against their event log and emit PLAYER_FLAGGED if any
- * heuristic trips. The event's commandId is deterministic on (raceId,
- * playerId) so the bus's idempotency cache (slice 8) catches re-deliveries.
- */
 export async function evaluatePlayerAndFlag(
     raceId: string,
     playerId: string,
@@ -50,7 +48,7 @@ export async function evaluatePlayerAndFlag(
         limit: BACKFILL_LIMIT,
     });
     const stats = aggregateForPlayer(events, playerId);
-    const signals = evaluatePlayer(stats);
+    const signals = evaluatePlayer(stats, { tracer: deps.tracer });
     if (signals.length === 0) {
         return { flagged: false, signals: [] };
     }
@@ -78,9 +76,6 @@ export async function evaluatePlayerAndFlag(
                     },
                 },
             ],
-            // Suppress outbox fan-out for system-emitted flags — moderators
-            // pick them up via the event log; broadcasting them to all WS
-            // subscribers would leak detection logic to clients.
             outboxChannelsFor: () => [],
             result: { flagged: true, signals: signals.map((s) => s.code) },
         }),
@@ -106,9 +101,9 @@ export const handler = withStream(async (event: DynamoDBStreamEvent) => {
             clock,
             newOutboxId: () =>
                 `ac-${ev.raceId}-${playerId}-${ev.seq}`,
+            tracer: otelTracer,
         });
     }
 });
 
-// Surfaced for tests; types only.
 export type { RaceEvent };

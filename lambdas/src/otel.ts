@@ -83,6 +83,19 @@ class OtelTracer implements Tracer {
             }),
         );
     }
+    startActiveSpanSync<T>(name: string, fn: (span: Span) => T): T {
+        return this.inner.startActiveSpan(name, (raw) => {
+            const span = new OtelSpan(
+                raw as ConstructorParameters<typeof OtelSpan>[0],
+                this.statusCodes,
+            );
+            try {
+                return fn(span);
+            } finally {
+                span.end();
+            }
+        }) as T;
+    }
 }
 
 class OtelCounter implements Counter {

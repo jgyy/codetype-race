@@ -68,7 +68,6 @@ export async function compactRace(
                     payload: digest as unknown as Record<string, unknown>,
                 },
             ],
-            // Replay-only — no need to fan out to broadcast subscribers.
             outboxChannelsFor: () => [],
             result: { compacted: true, samples: sampleCount },
         }),

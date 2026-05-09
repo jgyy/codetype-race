@@ -18,12 +18,6 @@ export interface CompareDeps {
     roomRepo: RoomRepo;
 }
 
-/**
- * Compare one (raceId, roomId) pair. Reads both stores in parallel and
- * delegates to the pure comparator. The Lambda harness emits the report as
- * structured JSON so a CloudWatch metric filter can fire an alarm on
- * `divergent=true`.
- */
 export async function compareRace(
     raceId: string,
     roomId: string,
@@ -49,12 +43,6 @@ export interface ComparatorEvent {
     races: { raceId: string; roomId: string }[];
 }
 
-/**
- * EventBridge-scheduled Lambda. The schedule rule (defined in CDK in slice 15)
- * is responsible for picking which (raceId, roomId) pairs to inspect — typically
- * the active set since the last invocation. This handler just iterates and
- * compares; the divergence-rate metric drives the Phase B -> C cutover gate.
- */
 export const handler = async (event: ComparatorEvent): Promise<{
     compared: number;
     divergent: number;
@@ -70,8 +58,6 @@ export const handler = async (event: ComparatorEvent): Promise<{
         });
         if (report.oneSidedMissing !== "none") oneSidedMissing++;
         if (report.divergent) divergent++;
-        // Structured single-line log — CloudWatch metric filter keys on
-        // "comparator.divergence" + divergent=true.
         console.log(
             JSON.stringify({
                 tag: "comparator.divergence",

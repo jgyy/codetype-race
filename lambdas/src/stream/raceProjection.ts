@@ -15,11 +15,13 @@ import {
 import type {
     RaceEventStore,
     RaceProjectionStore,
+    Tracer,
 } from "@codetype/domain/ports";
 import type { RaceEvent } from "@codetype/domain/events/RaceEvent";
 
 import { ddb, TABLE } from "../ddb";
 import { withStream } from "../middleware";
+import { tracer as otelTracer } from "../otel";
 import { groupByRace, recordsToRaceEvents } from "./raceEventParse";
 
 const MAX_RETRIES = 3;
@@ -28,6 +30,7 @@ const BACKFILL_LIMIT = 1000;
 export interface ProjectRaceDeps {
     eventStore: RaceEventStore;
     projectionStore: RaceProjectionStore;
+    tracer?: Tracer;
 }
 
 export interface ProjectRaceOutcome {
@@ -52,7 +55,7 @@ export async function projectRace(
         const expectedLastSeq = stored ? prev.lastSeq : null;
 
         try {
-            const result = applyEventBatch(prev, pending);
+            const result = applyEventBatch(prev, pending, deps.tracer);
             if (result.appliedSeqs.length === 0) {
                 return {
                     raceId,
@@ -117,6 +120,10 @@ export const handler = withStream(async (event: DynamoDBStreamEvent) => {
     if (events.length === 0) return;
     const grouped = groupByRace(events);
     for (const [raceId, batch] of grouped) {
-        await projectRace(raceId, batch, { eventStore, projectionStore });
+        await projectRace(raceId, batch, {
+            eventStore,
+            projectionStore,
+            tracer: otelTracer,
+        });
     }
 });

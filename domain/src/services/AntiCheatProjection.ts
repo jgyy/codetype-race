@@ -1,4 +1,5 @@
 import type { RaceEvent } from "../events/RaceEvent";
+import type { Tracer } from "../ports/Tracer";
 import {
     evaluateStats,
     type CheatSignal,
@@ -92,18 +93,32 @@ export function aggregateForPlayer(
  */
 export function evaluatePlayer(
     stats: PlayerAntiCheatStats,
-    opts: { snippetLength?: number; thresholds?: Partial<Thresholds> } = {},
+    opts: {
+        snippetLength?: number;
+        thresholds?: Partial<Thresholds>;
+        tracer?: Tracer;
+    } = {},
 ): CheatSignal[] {
-    if (!stats.startedAt || !stats.finishedAt) return [];
-    const durationMs =
-        Date.parse(stats.finishedAt) - Date.parse(stats.startedAt);
-    if (!Number.isFinite(durationMs) || durationMs <= 0) return [];
-    const run: RunStats = {
-        snippetLength: opts.snippetLength ?? stats.finalCharsTyped,
-        durationMs,
-        charsTyped: stats.finalCharsTyped,
-        maxPosAdvance: stats.maxPosAdvance,
-        totalKeystrokes: stats.cursorEventCount,
+    const work = (): CheatSignal[] => {
+        if (!stats.startedAt || !stats.finishedAt) return [];
+        const durationMs =
+            Date.parse(stats.finishedAt) - Date.parse(stats.startedAt);
+        if (!Number.isFinite(durationMs) || durationMs <= 0) return [];
+        const run: RunStats = {
+            snippetLength: opts.snippetLength ?? stats.finalCharsTyped,
+            durationMs,
+            charsTyped: stats.finalCharsTyped,
+            maxPosAdvance: stats.maxPosAdvance,
+            totalKeystrokes: stats.cursorEventCount,
+        };
+        return evaluateStats(run, opts.thresholds);
     };
-    return evaluateStats(run, opts.thresholds);
+    if (!opts.tracer) return work();
+    return opts.tracer.startActiveSpanSync("domain.anticheat.evaluate", (span) => {
+        span.setAttribute("playerId", stats.playerId);
+        const signals = work();
+        span.setAttribute("signalCount", signals.length);
+        span.setStatus({ code: "ok" });
+        return signals;
+    });
 }

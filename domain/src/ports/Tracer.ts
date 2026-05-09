@@ -9,6 +9,7 @@ export interface Span {
 
 export interface Tracer {
     startActiveSpan<T>(name: string, fn: (span: Span) => Promise<T>): Promise<T>;
+    startActiveSpanSync<T>(name: string, fn: (span: Span) => T): T;
 }
 
 class NoopSpanImpl implements Span {
@@ -24,6 +25,9 @@ export class NoopTracer implements Tracer {
         _name: string,
         fn: (span: Span) => Promise<T>,
     ): Promise<T> {
+        return fn(this.span);
+    }
+    startActiveSpanSync<T>(_name: string, fn: (span: Span) => T): T {
         return fn(this.span);
     }
 }
