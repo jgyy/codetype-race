@@ -38,15 +38,6 @@ export interface ProjectRaceOutcome {
     finalLastSeq: number;
 }
 
-/**
- * Reconcile one race's projection against an event batch from DDB Streams.
- *
- *   1. Fetch the current projection (or initial state if none).
- *   2. applyEventBatch — skips already-applied, throws on gap.
- *   3. On gap: backfill via listEvents from current lastSeq, prepend missing
- *      events, retry. Bounded by MAX_RETRIES so a malformed log can't loop.
- *   4. On projection conflict (concurrent writer): refetch and retry.
- */
 export async function projectRace(
     raceId: string,
     streamEvents: readonly RaceEvent[],

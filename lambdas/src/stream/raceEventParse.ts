@@ -41,11 +41,6 @@ function maybeNullableString(image: Image, key: string): string | null {
     return String(v);
 }
 
-/**
- * Returns a RaceEvent if the stream record represents an INSERT of an EV# row
- * under a RACE# partition. Returns null for unrelated records (counter rows,
- * projection rows, modifications, removals, non-race partitions).
- */
 export function recordToRaceEvent(record: DynamoDBRecord): RaceEvent | null {
     if (record.eventName !== "INSERT") return null;
     const keys = (record.dynamodb?.Keys ?? {}) as Image;

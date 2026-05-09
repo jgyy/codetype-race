@@ -390,6 +390,18 @@ export const WsServerRatingsSchema = z.object({
     ),
 });
 
+export const WsServerEventAppendSchema = z.object({
+    type: z.literal("event-append"),
+    raceId: z.string().uuid(),
+    seq: z.number().int().nonnegative(),
+    eventType: z.string(),
+    occurredAt: z.string().datetime(),
+    actorId: z.string().nullable(),
+    payload: z.record(z.unknown()),
+    correlationId: z.string().uuid(),
+});
+export type WsServerEventAppend = z.infer<typeof WsServerEventAppendSchema>;
+
 export const WsServerKickedSchema = z.object({ type: z.literal("kicked") });
 export const WsServerErrorSchema = z.object({
     type: z.literal("error"),
@@ -406,5 +418,6 @@ export const WsServerMsgSchema = z.discriminatedUnion("type", [
     WsServerRatingsSchema,
     WsServerKickedSchema,
     WsServerErrorSchema,
+    WsServerEventAppendSchema,
 ]);
 export type WsServerMsg = z.infer<typeof WsServerMsgSchema>;

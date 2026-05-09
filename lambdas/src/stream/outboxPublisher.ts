@@ -1,5 +1,10 @@
 import type { DynamoDBStreamEvent } from "aws-lambda";
-import { DdbOutboxStore } from "@codetype/adapters-aws";
+import {
+    ApiGwBroadcaster,
+    DdbConnectionRepo,
+    DdbOutboxStore,
+    SystemClock,
+} from "@codetype/adapters-aws";
 import {
     drainOnce,
     type PublishOutcome,
@@ -11,18 +16,13 @@ import {
 } from "@codetype/domain/RoutingDispatcher";
 import type { Clock } from "@codetype/domain/ports";
 import type { OutboxStore, OutboxDispatcher } from "@codetype/domain/ports";
-import { SystemClock } from "@codetype/adapters-aws";
 
 import { ddb, TABLE } from "../ddb";
 import { withStream } from "../middleware";
+import { BroadcastEventDispatcher } from "./broadcastEventDispatcher";
 
 const STREAM_DRAIN_BATCH = 25;
 
-/**
- * Returns true if the stream batch contains *any* outbox INSERT.
- * Used to skip drain runs when the stream batch is purely race-event /
- * projection traffic — keeps Lambda invocations cheap.
- */
 export function streamHasOutboxInsert(event: DynamoDBStreamEvent): boolean {
     for (const r of event.Records ?? []) {
         if (r.eventName !== "INSERT") continue;
@@ -44,12 +44,17 @@ export async function publishOnce(deps: PublishDeps): Promise<PublishOutcome> {
     });
 }
 
+const connections = new DdbConnectionRepo({ table: TABLE, client: ddb });
+const broadcaster = new ApiGwBroadcaster({
+    endpoint: process.env.WS_ENDPOINT ?? "",
+});
+const broadcastDispatcher = new BroadcastEventDispatcher({
+    connections,
+    broadcaster,
+});
+
 const channelHandlers: Partial<Record<"broadcast" | "progression" | "analytics", ChannelHandler>> = {
-    // Slice 7 ships LoggingDispatcher per channel; concrete dispatchers
-    // (ApiGw broadcast, EventBridge progression, Firehose analytics) land as
-    // their own slices once each channel's payload shape is finalised.
-    broadcast: (entry) =>
-        new LoggingDispatcher("outbox.broadcast").dispatch("broadcast", entry),
+    broadcast: (entry) => broadcastDispatcher.dispatch(entry),
     progression: (entry) =>
         new LoggingDispatcher("outbox.progression").dispatch(
             "progression",

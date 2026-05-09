@@ -129,7 +129,9 @@ export class RaceCommandBus {
                     eventSeq: events[i].seq,
                     eventType: events[i].type,
                     channel,
-                    payload: events[i].payload,
+                    // Full event so dispatchers can reconstruct the broadcast
+                    // frame without an extra event-store read.
+                    payload: events[i] as unknown as Record<string, unknown>,
                     attempts: 0,
                     enqueuedAt,
                     nextAttemptAt: enqueuedAt,
