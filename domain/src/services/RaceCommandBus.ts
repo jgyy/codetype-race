@@ -57,7 +57,7 @@ export interface DispatchOutput<T> {
     events: RaceEvent[];
 }
 
-export interface CommandBusDeps {
+export interface RaceCommandBusDeps {
     eventStore: RaceEventStore;
     idempotencyStore: IdempotencyStore;
 }
@@ -68,8 +68,8 @@ function defaultChannelsFor(): readonly OutboxChannel[] {
     return ["broadcast"];
 }
 
-export class CommandBus {
-    constructor(private readonly deps: CommandBusDeps) { }
+export class RaceCommandBus {
+    constructor(private readonly deps: RaceCommandBusDeps) { }
 
     async dispatch<T>(input: DispatchInput<T>): Promise<DispatchOutput<T>> {
         const cached = await this.deps.idempotencyStore.get(

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { CommandBus } from "../../src/services/CommandBus";
+import { RaceCommandBus } from "../../src/services/RaceCommandBus";
 import {
     IdempotencyConflictError,
     type IdempotencyRecord,
@@ -82,12 +82,12 @@ class FakeEventStore implements RaceEventStore {
 let outboxCounter = 0;
 function newOutboxId() { return `ob-${++outboxCounter}`; }
 
-describe("CommandBus.dispatch", () => {
+describe("RaceCommandBus.dispatch", () => {
     test("happy path: handler runs, seqs allocated, events + outbox + idempotency written together", async () => {
         outboxCounter = 0;
         const idem = new FakeIdem();
         const events = new FakeEventStore();
-        const bus = new CommandBus({ eventStore: events, idempotencyStore: idem });
+        const bus = new RaceCommandBus({ eventStore: events, idempotencyStore: idem });
         const clock = new FixedClock(Date.parse("2026-05-09T00:00:00.000Z"));
 
         const out = await bus.dispatch({
@@ -128,7 +128,7 @@ describe("CommandBus.dispatch", () => {
             ttl: 3600,
         });
         const events = new FakeEventStore();
-        const bus = new CommandBus({ eventStore: events, idempotencyStore: idem });
+        const bus = new RaceCommandBus({ eventStore: events, idempotencyStore: idem });
         const clock = new FixedClock(Date.parse("2026-05-09T00:00:00.000Z"));
 
         let handlerRan = false;
@@ -158,7 +158,7 @@ describe("CommandBus.dispatch", () => {
         events.failNextAppendWith = new TransactionConflictError(
             "appendCommand transaction cancelled: ConditionalCheckFailed",
         );
-        const bus = new CommandBus({ eventStore: events, idempotencyStore: idem });
+        const bus = new RaceCommandBus({ eventStore: events, idempotencyStore: idem });
         const clock = new FixedClock(Date.parse("2026-05-09T00:00:00.000Z"));
 
         const out = await bus.dispatch({
@@ -183,7 +183,7 @@ describe("CommandBus.dispatch", () => {
         events.failNextAppendWith = new TransactionConflictError(
             "appendCommand transaction cancelled: SomethingElse",
         );
-        const bus = new CommandBus({ eventStore: events, idempotencyStore: idem });
+        const bus = new RaceCommandBus({ eventStore: events, idempotencyStore: idem });
         const clock = new FixedClock(Date.parse("2026-05-09T00:00:00.000Z"));
 
         await expect(
@@ -205,7 +205,7 @@ describe("CommandBus.dispatch", () => {
         outboxCounter = 0;
         const idem = new FakeIdem();
         const events = new FakeEventStore();
-        const bus = new CommandBus({ eventStore: events, idempotencyStore: idem });
+        const bus = new RaceCommandBus({ eventStore: events, idempotencyStore: idem });
         const clock = new FixedClock(Date.parse("2026-05-09T00:00:00.000Z"));
 
         const out = await bus.dispatch({
@@ -235,7 +235,7 @@ describe("CommandBus.dispatch", () => {
     test("uses event's occurredAt if provided, otherwise clock", async () => {
         const idem = new FakeIdem();
         const events = new FakeEventStore();
-        const bus = new CommandBus({ eventStore: events, idempotencyStore: idem });
+        const bus = new RaceCommandBus({ eventStore: events, idempotencyStore: idem });
         const clock = new FixedClock(Date.parse("2026-05-09T00:00:05.000Z"));
 
         await bus.dispatch({
@@ -261,7 +261,7 @@ describe("CommandBus.dispatch", () => {
         const idem = new FakeIdem();
         const events = new FakeEventStore();
         events.idemSink = idem;
-        const bus = new CommandBus({ eventStore: events, idempotencyStore: idem });
+        const bus = new RaceCommandBus({ eventStore: events, idempotencyStore: idem });
         const clock = new FixedClock(Date.parse("2026-05-09T00:00:00.000Z"));
 
         const out = await bus.dispatch({
