@@ -12,21 +12,17 @@ export interface LambdaFactoryOptions {
     readonly table: ddb.ITable;
     readonly otelLayer: lambda.ILayerVersion;
     readonly deployEnv: string;
-    /**
-     * OTLP/HTTP endpoint base URL (no trailing /v1/traces). When set, the
-     * layer's bootstrap wires a BatchSpanProcessor and the sampler defaults
-     * flip from `always_off` to `parentbased_traceidratio`. When undefined
-     * (default), the SDK stays hot-but-silent — same as Phase 15 / slice-1.
-     */
     readonly otlpEndpoint?: string;
-    /**
-     * Head-sample ratio in [0..1]. Only consulted when `otlpEndpoint` is
-     * set. Defaults to 0.05 per the Phase 15 spec sampling table.
-     */
     readonly sampleRatio?: number;
+    readonly snapStart?: boolean;
 }
 
 export class LambdaFactory {
+    private readonly snapStartAliases = new Map<
+        lambda.IFunction,
+        lambda.Alias
+    >();
+
     constructor(
         private readonly scope: Construct,
         private readonly opts: LambdaFactoryOptions,
@@ -46,17 +42,21 @@ export class LambdaFactory {
             deployEnv,
             otlpEndpoint,
             sampleRatio = 0.05,
+            snapStart = false,
         } = this.opts;
 
         const otelEnv: Record<string, string> = otlpEndpoint
             ? {
-                  OTEL_TRACES_SAMPLER: "parentbased_traceidratio",
-                  OTEL_TRACES_SAMPLER_ARG: String(sampleRatio),
-                  OTEL_EXPORTER_OTLP_ENDPOINT: otlpEndpoint,
-              }
+                OTEL_TRACES_SAMPLER: "parentbased_traceidratio",
+                OTEL_TRACES_SAMPLER_ARG: String(sampleRatio),
+                OTEL_EXPORTER_OTLP_ENDPOINT: otlpEndpoint,
+            }
             : { OTEL_TRACES_SAMPLER: "always_off" };
 
-        return new nodejs.NodejsFunction(this.scope, id, {
+        const isHttp = entry.startsWith("http/");
+        const enableSnapStart = snapStart && isHttp;
+
+        const fn = new nodejs.NodejsFunction(this.scope, id, {
             entry: path.join(lambdaDir, entry),
             projectRoot: lambdaDir,
             depsLockFilePath,
@@ -79,7 +79,24 @@ export class LambdaFactory {
                 DEPLOY_ENV: deployEnv,
                 ...extraEnv,
             },
+            ...(enableSnapStart
+                ? { snapStart: lambda.SnapStartConf.ON_PUBLISHED_VERSIONS }
+                : {}),
             ...overrides,
         });
+
+        if (enableSnapStart) {
+            const alias = new lambda.Alias(this.scope, `${id}LiveAlias`, {
+                aliasName: "live",
+                version: fn.currentVersion,
+            });
+            this.snapStartAliases.set(fn, alias);
+        }
+
+        return fn;
+    }
+
+    wrapForIntegration(fn: lambda.IFunction): lambda.IFunction {
+        return this.snapStartAliases.get(fn) ?? fn;
     }
 }

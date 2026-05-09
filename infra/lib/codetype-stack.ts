@@ -87,16 +87,15 @@ export class CodetypeStack extends Stack {
             process.env.DEPLOY_ENV ||
             "dev";
 
-        // Phase 15 / slice-9 — opt-in OTLP exporter via CDK context.
-        // `cdk deploy -c otelExporterEndpoint=https://collector.example`
-        // flips every Lambda's sampler from always_off to
-        // parentbased_traceidratio at the configured rate.
         const otlpEndpoint = this.node.tryGetContext("otelExporterEndpoint") as
             | string
             | undefined;
         const otelSampleRatio = Number(
             this.node.tryGetContext("otelSampleRatio") ?? "0.05",
         );
+        const snapStart =
+            this.node.tryGetContext("snapStart") === true ||
+            this.node.tryGetContext("snapStart") === "true";
         const lambdaFactory = new LambdaFactory(this, {
             lambdaDir: LAMBDA_DIR,
             depsLockFilePath: path.join(LAMBDA_DIR, "bun.lock"),
@@ -105,6 +104,7 @@ export class CodetypeStack extends Stack {
             deployEnv,
             otlpEndpoint,
             sampleRatio: otelSampleRatio,
+            snapStart,
         });
         const fn = (
             id: string,
@@ -113,7 +113,10 @@ export class CodetypeStack extends Stack {
         ) => lambdaFactory.create(id, entry, env);
 
         const integ = (id: string, f: lambda.IFunction) =>
-            new apigwv2Integ.HttpLambdaIntegration(id, f);
+            new apigwv2Integ.HttpLambdaIntegration(
+                id,
+                lambdaFactory.wrapForIntegration(f),
+            );
 
         const createRoom = fn("CreateRoom", "http/createRoom.ts");
         const joinRoom = fn("JoinRoom", "http/joinRoom.ts");
@@ -203,153 +206,108 @@ export class CodetypeStack extends Stack {
         httpApi.addRoutes({
             path: "/rooms",
             methods: [apigwv2.HttpMethod.POST],
-            integration: new apigwv2Integ.HttpLambdaIntegration("CreateRoom", createRoom),
+            integration: integ("CreateRoom", createRoom),
             authorizer: jwtAuth,
         });
         httpApi.addRoutes({
             path: "/rooms/join",
             methods: [apigwv2.HttpMethod.POST],
-            integration: new apigwv2Integ.HttpLambdaIntegration("JoinRoom", joinRoom),
+            integration: integ("JoinRoom", joinRoom),
         });
         httpApi.addRoutes({
             path: "/rooms/{code}",
             methods: [apigwv2.HttpMethod.GET],
-            integration: new apigwv2Integ.HttpLambdaIntegration("GetRoom", getRoom),
+            integration: integ("GetRoom", getRoom),
         });
         httpApi.addRoutes({
             path: "/history",
             methods: [apigwv2.HttpMethod.GET],
-            integration: new apigwv2Integ.HttpLambdaIntegration("History", listHistory),
+            integration: integ("History", listHistory),
             authorizer: jwtAuth,
         });
         httpApi.addRoutes({
             path: "/snippets/random",
             methods: [apigwv2.HttpMethod.GET],
-            integration: new apigwv2Integ.HttpLambdaIntegration(
-                "RandomSnippet",
-                randomSnippet,
-            ),
+            integration: integ("RandomSnippet", randomSnippet),
         });
         httpApi.addRoutes({
             path: "/snippets/starter-pack",
             methods: [apigwv2.HttpMethod.GET],
-            integration: new apigwv2Integ.HttpLambdaIntegration(
-                "GetStarterPack",
-                getStarterPack,
-            ),
+            integration: integ("GetStarterPack", getStarterPack),
         });
         httpApi.addRoutes({
             path: "/history/practice",
             methods: [apigwv2.HttpMethod.POST],
-            integration: new apigwv2Integ.HttpLambdaIntegration(
-                "PracticeRun",
-                practiceRun,
-            ),
+            integration: integ("PracticeRun", practiceRun),
             authorizer: jwtAuth,
         });
         httpApi.addRoutes({
             path: "/users/me",
             methods: [apigwv2.HttpMethod.GET],
-            integration: new apigwv2Integ.HttpLambdaIntegration(
-                "GetUserMe",
-                getUser,
-            ),
+            integration: integ("GetUserMe", getUser),
             authorizer: jwtAuth,
         });
         httpApi.addRoutes({
             path: "/users/{userId}",
             methods: [apigwv2.HttpMethod.GET],
-            integration: new apigwv2Integ.HttpLambdaIntegration(
-                "GetUser",
-                getUser,
-            ),
+            integration: integ("GetUser", getUser),
         });
         httpApi.addRoutes({
             path: "/leaderboard",
             methods: [apigwv2.HttpMethod.GET],
-            integration: new apigwv2Integ.HttpLambdaIntegration(
-                "GetLeaderboard",
-                getLeaderboard,
-            ),
+            integration: integ("GetLeaderboard", getLeaderboard),
         });
         httpApi.addRoutes({
             path: "/daily",
             methods: [apigwv2.HttpMethod.GET],
-            integration: new apigwv2Integ.HttpLambdaIntegration(
-                "GetDaily",
-                getDaily,
-            ),
+            integration: integ("GetDaily", getDaily),
         });
         httpApi.addRoutes({
             path: "/daily/submit",
             methods: [apigwv2.HttpMethod.POST],
-            integration: new apigwv2Integ.HttpLambdaIntegration(
-                "DailySubmit",
-                dailySubmit,
-            ),
+            integration: integ("DailySubmit", dailySubmit),
             authorizer: jwtAuth,
         });
         httpApi.addRoutes({
             path: "/daily/leaderboard",
             methods: [apigwv2.HttpMethod.GET],
-            integration: new apigwv2Integ.HttpLambdaIntegration(
-                "GetDailyLeaderboard",
-                getDailyLeaderboard,
-            ),
+            integration: integ("GetDailyLeaderboard", getDailyLeaderboard),
         });
 
         httpApi.addRoutes({
             path: "/snippets",
             methods: [apigwv2.HttpMethod.POST],
-            integration: new apigwv2Integ.HttpLambdaIntegration(
-                "SubmitSnippet",
-                submitSnippet,
-            ),
+            integration: integ("SubmitSnippet", submitSnippet),
             authorizer: jwtAuth,
         });
         httpApi.addRoutes({
             path: "/admin/snippets/pending",
             methods: [apigwv2.HttpMethod.GET],
-            integration: new apigwv2Integ.HttpLambdaIntegration(
-                "ListPendingSnippets",
-                listPendingSnippets,
-            ),
+            integration: integ("ListPendingSnippets", listPendingSnippets),
             authorizer: jwtAuth,
         });
         httpApi.addRoutes({
             path: "/admin/snippets/{snippetId}/approve",
             methods: [apigwv2.HttpMethod.POST],
-            integration: new apigwv2Integ.HttpLambdaIntegration(
-                "ApproveSnippet",
-                reviewSnippet,
-            ),
+            integration: integ("ApproveSnippet", reviewSnippet),
             authorizer: jwtAuth,
         });
         httpApi.addRoutes({
             path: "/admin/snippets/{snippetId}/reject",
             methods: [apigwv2.HttpMethod.POST],
-            integration: new apigwv2Integ.HttpLambdaIntegration(
-                "RejectSnippet",
-                reviewSnippet,
-            ),
+            integration: integ("RejectSnippet", reviewSnippet),
             authorizer: jwtAuth,
         });
 
         httpApi.addRoutes({
             path: "/rooms/{roomId}/replay/upload-url",
             methods: [apigwv2.HttpMethod.GET],
-            integration: new apigwv2Integ.HttpLambdaIntegration(
-                "GetReplayUploadUrl",
-                getReplayUploadUrl,
-            ),
+            integration: integ("GetReplayUploadUrl", getReplayUploadUrl),
         });
         httpApi.addRoutes({
             path: "/rooms/{roomId}/replay",
             methods: [apigwv2.HttpMethod.GET],
-            integration: new apigwv2Integ.HttpLambdaIntegration(
-                "GetReplay",
-                getReplay,
-            ),
+            integration: integ("GetReplay", getReplay),
         });
 
         new events.Rule(this, "DailySnippetCron", {

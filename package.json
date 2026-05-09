@@ -12,7 +12,8 @@
     "seed": "bun scripts/seed-snippets.ts",
     "check:deps": "bun scripts/check-deps.ts",
     "check:runbooks": "bun scripts/check-runbooks.ts",
-    "check": "bun run check:deps && bun run check:runbooks"
+    "check:snapstart": "bun scripts/check-snapstart-safe.ts",
+    "check": "bun run check:deps && bun run check:runbooks && bun run check:snapstart"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.658.0",
