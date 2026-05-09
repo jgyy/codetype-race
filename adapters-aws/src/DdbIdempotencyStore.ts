@@ -22,7 +22,7 @@ export interface DdbIdempotencyStoreConfig {
 interface IdempotencyItem extends IdempotencyRecord {
     PK: string;
     SK: string;
-    expiresAt: number; // DDB TTL attribute (epoch seconds)
+    expiresAt: number;
 }
 
 function rowFromItem(item: Record<string, unknown>): IdempotencyRecord {

@@ -88,6 +88,70 @@ export class DdbConnectionRepo implements ConnectionRepo {
         return (r.Items ?? []).map((i) => i.connection_id as string);
     }
 
+    async listRowsByRoom(roomId: string): Promise<ConnectionRecord[]> {
+        const r = await this.cfg.client.send(
+            new QueryCommand({
+                TableName: this.cfg.table,
+                KeyConditionExpression: "PK = :pk AND begins_with(SK, :sk)",
+                ExpressionAttributeValues: {
+                    ":pk": roomPK(roomId),
+                    ":sk": "CONN#",
+                },
+            }),
+        );
+        return (r.Items ?? []) as ConnectionRecord[];
+    }
+
+    async recordAck(connectionId: string, seq: number): Promise<void> {
+        const conn = await this.byConnectionId(connectionId);
+        if (!conn) return;
+        try {
+            await this.cfg.client.send(
+                new UpdateCommand({
+                    TableName: this.cfg.table,
+                    Key: { PK: conn.PK, SK: conn.SK },
+                    UpdateExpression:
+                        "SET last_ack_seq = :seq, consecutive_drops = :zero",
+                    ConditionExpression:
+                        "attribute_not_exists(last_ack_seq) OR last_ack_seq < :seq",
+                    ExpressionAttributeValues: { ":seq": seq, ":zero": 0 },
+                }),
+            );
+        } catch (e) {
+            if (e instanceof ConditionalCheckFailedException) return;
+            throw e;
+        }
+    }
+
+    async incrementConsecutiveDrops(connectionId: string): Promise<number> {
+        const conn = await this.byConnectionId(connectionId);
+        if (!conn) return 0;
+        const r = await this.cfg.client.send(
+            new UpdateCommand({
+                TableName: this.cfg.table,
+                Key: { PK: conn.PK, SK: conn.SK },
+                UpdateExpression:
+                    "SET consecutive_drops = if_not_exists(consecutive_drops, :zero) + :one",
+                ExpressionAttributeValues: { ":one": 1, ":zero": 0 },
+                ReturnValues: "UPDATED_NEW",
+            }),
+        );
+        return Number(r.Attributes?.consecutive_drops ?? 0);
+    }
+
+    async resetConsecutiveDrops(connectionId: string): Promise<void> {
+        const conn = await this.byConnectionId(connectionId);
+        if (!conn) return;
+        await this.cfg.client.send(
+            new UpdateCommand({
+                TableName: this.cfg.table,
+                Key: { PK: conn.PK, SK: conn.SK },
+                UpdateExpression: "SET consecutive_drops = :zero",
+                ExpressionAttributeValues: { ":zero": 0 },
+            }),
+        );
+    }
+
     async delete(pk: string, sk: string): Promise<void> {
         await this.cfg.client.send(
             new DeleteCommand({

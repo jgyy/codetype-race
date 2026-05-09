@@ -145,9 +145,6 @@ export class DdbRaceEventStore implements RaceEventStore {
         sinceSeq: number;
         limit: number;
     }): Promise<RaceEvent[]> {
-        // sinceSeq < 0 means "no lower bound — return events from seq 0 onward".
-        // We use `begins_with(SK, "EV#")` to scope to event rows in that case;
-        // otherwise `SK > EV#<padded(sinceSeq)>` to skip already-seen events.
         const noLowerBound = args.sinceSeq < 0;
         const r = await this.cfg.client.send(
             new QueryCommand({

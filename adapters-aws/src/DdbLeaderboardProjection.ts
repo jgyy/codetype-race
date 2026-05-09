@@ -17,12 +17,6 @@ import type {
 export interface DdbLeaderboardProjectionConfig {
     table: string;
     client: DynamoDBDocumentClient;
-    /**
-     * Phase 16.1 — set of language codes that should be read in sharded mode.
-     * Use the literal "*" entry to enable sharded reads for the global
-     * leaderboard. Writers always dual-write shard rows, so flipping a
-     * language on/off here requires no backfill.
-     */
     shardedLanguages?: ReadonlySet<string>;
 }
 
@@ -109,10 +103,6 @@ export class DdbLeaderboardProjection implements LeaderboardProjection {
         const merged = responses.flatMap(
             (r) => (r.Items as RawLeaderboardItem[] | undefined) ?? [],
         );
-        // Each shard's SK already encodes inverted rating, so per-shard items
-        // arrive sorted high→low. Dedup by user_id (defensive — sharding hash
-        // is stable, so there should be at most one row per user across all
-        // shards) and re-sort the merged set.
         const byUser = new Map<string, RawLeaderboardItem>();
         for (const it of merged) {
             const prev = byUser.get(it.user_id);

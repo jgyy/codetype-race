@@ -55,11 +55,39 @@ class FakeConnections implements ConnectionRepo {
 
 class FakeBroadcaster implements Broadcaster {
     public sent: { connectionId: string; payload: unknown }[] = [];
+    public disconnected: string[] = [];
     constructor(private failIds: Set<string> = new Set()) { }
     async postTo(connectionId: string, payload: unknown) {
         this.sent.push({ connectionId, payload });
         return !this.failIds.has(connectionId);
     }
+    async disconnect(connectionId: string) {
+        this.disconnected.push(connectionId);
+    }
+}
+
+class FakeConnectionsWithRows implements ConnectionRepo {
+    public rows = new Map<string, ConnectionRecord[]>();
+    public dropCounters = new Map<string, number>();
+    constructor(seed: Record<string, ConnectionRecord[]> = {}) {
+        for (const [k, v] of Object.entries(seed)) this.rows.set(k, v);
+    }
+    async listByRoom(roomId: string) {
+        return (this.rows.get(roomId) ?? []).map((r) => r.connection_id);
+    }
+    async listRowsByRoom(roomId: string) {
+        return this.rows.get(roomId) ?? [];
+    }
+    async incrementConsecutiveDrops(connectionId: string) {
+        const next = (this.dropCounters.get(connectionId) ?? 0) + 1;
+        this.dropCounters.set(connectionId, next);
+        return next;
+    }
+    async put() { return; }
+    async byConnectionId(): Promise<ConnectionRecord | null> { return null; }
+    async delete() { return; }
+    async touch() { return; }
+    async consumeChatToken() { return; }
 }
 
 describe("frameFromOutbox", () => {
@@ -137,5 +165,61 @@ describe("BroadcastEventDispatcher.dispatch", () => {
         const d = new BroadcastEventDispatcher({ connections: conns, broadcaster: bc });
         const bad = fullEventOutbox({ payload: { wrong: true } });
         await expect(d.dispatch(bad)).rejects.toThrow(/malformed payload/);
+    });
+
+    // Phase 16.7 — drop-on-slow tests.
+    const conn = (
+        connection_id: string,
+        last_ack_seq?: number,
+        consecutive_drops?: number,
+    ): ConnectionRecord => ({
+        connection_id,
+        display_name: connection_id,
+        PK: `ROOM#${RID}`,
+        SK: `CONN#${connection_id}`,
+        last_ack_seq,
+        consecutive_drops,
+    });
+
+    test("drop-on-slow: stalled connection (lag > 100) is skipped, healthy ones get the frame", async () => {
+        const big = fullEventOutbox({ eventSeq: 500 });
+        const conns = new FakeConnectionsWithRows({
+            [RID]: [
+                conn("c-fresh", 499), // gap = 1
+                conn("c-stalled", 100), // gap = 400
+                conn("c-cold", undefined), // never acked
+            ],
+        });
+        const bc = new FakeBroadcaster();
+        const d = new BroadcastEventDispatcher({ connections: conns, broadcaster: bc });
+        await d.dispatch(big);
+        const sentIds = bc.sent.map((s) => s.connectionId).sort();
+        expect(sentIds).toEqual(["c-cold", "c-fresh"]);
+        expect(conns.dropCounters.get("c-stalled")).toBe(1);
+    });
+
+    test("drop-on-slow: 5 consecutive drops triggers force-disconnect", async () => {
+        const big = fullEventOutbox({ eventSeq: 500 });
+        const conns = new FakeConnectionsWithRows({
+            [RID]: [conn("c-stuck", 100, 4)], // already 4 drops; this one tips it
+        });
+        // Simulate the "already 4 drops" by pre-seeding the counter so the
+        // dispatcher's increment lands at exactly 5 (= threshold).
+        conns.dropCounters.set("c-stuck", 4);
+        const bc = new FakeBroadcaster();
+        const d = new BroadcastEventDispatcher({ connections: conns, broadcaster: bc });
+        await d.dispatch(big);
+        expect(bc.sent).toHaveLength(0);
+        expect(bc.disconnected).toEqual(["c-stuck"]);
+    });
+
+    test("drop-on-slow: drop-only round does not throw (acked outbox row)", async () => {
+        const big = fullEventOutbox({ eventSeq: 500 });
+        const conns = new FakeConnectionsWithRows({
+            [RID]: [conn("c-stalled", 100)],
+        });
+        const bc = new FakeBroadcaster();
+        const d = new BroadcastEventDispatcher({ connections: conns, broadcaster: bc });
+        await expect(d.dispatch(big)).resolves.toBeUndefined();
     });
 });

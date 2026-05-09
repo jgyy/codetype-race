@@ -8,6 +8,7 @@
     "./wpm": "./src/services/wpm.ts",
     "./streak": "./src/services/streak.ts",
     "./cursorRate": "./src/services/cursorRate.ts",
+    "./dropOnSlow": "./src/services/dropOnSlow.ts",
     "./elo": "./src/services/elo.ts",
     "./anticheat": "./src/services/anticheat.ts",
     "./RaceReducer": "./src/services/RaceReducer.ts",
