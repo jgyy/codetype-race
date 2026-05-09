@@ -25,9 +25,9 @@ import * as acm from "aws-cdk-lib/aws-certificatemanager";
 import * as route53 from "aws-cdk-lib/aws-route53";
 import * as route53Targets from "aws-cdk-lib/aws-route53-targets";
 import { Construct } from "constructs";
-import { ProgressionFeature } from "./constructs/progression-feature";
-import { OtelLayer } from "./constructs/otel-layer";
-import { LambdaFactory } from "./constructs/lambda-factory";
+import { ProgressionFeature } from "./constructs/progression-feature.js";
+import { OtelLayer } from "./constructs/otel-layer.js";
+import { LambdaFactory } from "./constructs/lambda-factory.js";
 
 export interface CodetypeStackProps extends StackProps {
     siteDomainName?: string;

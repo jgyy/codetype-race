@@ -3,6 +3,7 @@ import "source-map-support/register.js";
 import * as cdk from "aws-cdk-lib";
 import { CodetypeStack } from "../lib/codetype-stack.js";
 import { MonitoringStack } from "../lib/monitoring-stack.js";
+import { ObservabilityStack } from "../lib/observability-stack.js";
 import { CertificateStack } from "../lib/certificate-stack.js";
 
 const app = new cdk.App();
@@ -30,4 +31,11 @@ new CodetypeStack(app, "CodetypeStack", {
 new MonitoringStack(app, "CodetypeMonitoringStack", {
   env,
   alarmEmail: process.env.ALARM_EMAIL,
+});
+new ObservabilityStack(app, "CodetypeObservabilityStack", {
+  env,
+  alarmEmail: process.env.ALARM_EMAIL,
+  // Lambda env keeps OTEL_TRACES_SAMPLER=always_off until slice-5; the X-Ray
+  // sampling rule is the head-based safety net once exporters land.
+  xraySampleRate: 0.05,
 });

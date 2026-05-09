@@ -10,7 +10,9 @@
     "test": "bun --filter '*' test",
     "cdk": "cd infra && bunx cdk",
     "seed": "bun scripts/seed-snippets.ts",
-    "check:deps": "bun scripts/check-deps.ts"
+    "check:deps": "bun scripts/check-deps.ts",
+    "check:runbooks": "bun scripts/check-runbooks.ts",
+    "check": "bun run check:deps && bun run check:runbooks"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.658.0",
