@@ -18,3 +18,13 @@ export type {
     LeaderboardEntry,
 } from "./LeaderboardProjection";
 export type { UnitOfWork } from "./UnitOfWork";
+export type {
+    IdempotencyRecord,
+    IdempotencyStore,
+} from "./IdempotencyStore";
+export { IdempotencyConflictError } from "./IdempotencyStore";
+export type {
+    OutboxStore,
+    OutboxClaim,
+    OutboxDispatcher,
+} from "./OutboxStore";
