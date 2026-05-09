@@ -1,40 +1,17 @@
-/**
- * Phase 15 / slice-4 — single source of truth for the alarm catalogue.
- *
- * Every entry MUST have a matching runbook at `docs/runbooks/<id>.md`.
- * `scripts/check-runbooks.ts` enforces this in CI; new alarms without a
- * runbook fail the build.
- *
- * Alarms whose underlying metric is not yet emitting (e.g. anything
- * keyed off `app.command.duration_ms` from slice-2) are still listed
- * here so the runbooks exist before the alarm goes live; the
- * observability stack chooses which to instantiate via `enabled`.
- */
-
 export type Severity = "warn" | "page";
 
 export interface AlarmSpec {
-    /** Stable id used as the runbook filename and CloudFormation logical id. */
     readonly id: string;
-    /** Short human description used in runbook headers and SNS messages. */
     readonly description: string;
     readonly severity: Severity;
-    /**
-     * Group lets us instantiate alarms in batches as their feeding metrics
-     * come online across phases.
-     */
     readonly group:
-        | "lambda" // already-emitting AWS/Lambda metrics
-        | "apigw" // AWS/ApiGateway / AWS/ApiGatewayV2
-        | "ddb" // AWS/DynamoDB
-        | "stream" // AWS/Lambda iterator-age on stream consumers
-        | "app" // app-level metrics from slice-2 (sampler currently off)
-        | "infra"; // OTel / X-Ray internal health
-    /**
-     * Whether the observability stack should instantiate this alarm today.
-     * Some entries are catalogued for runbook coverage but only become live
-     * once exporters are wired in slice-5.
-     */
+    | "lambda"
+    | "apigw"
+    | "ddb"
+    | "stream"
+    | "app"
+    | "cost"
+    | "infra";
     readonly enabled: boolean;
 }
 
@@ -58,7 +35,7 @@ export const ALARMS: readonly AlarmSpec[] = [
         description: "Cold-start p99 >1.5s for 10m",
         severity: "warn",
         group: "lambda",
-        enabled: false, // needs cold-start metric emitter
+        enabled: false,
     },
     {
         id: "apigw-5xx",
@@ -86,35 +63,77 @@ export const ALARMS: readonly AlarmSpec[] = [
         description: "WS connections abrupt drop >30% in 1m",
         severity: "warn",
         group: "infra",
-        enabled: false, // needs gauge from slice-5
+        enabled: false,
     },
     {
         id: "outbox-pending",
         description: "Outbox pending depth >1000 for 5m",
         severity: "page",
         group: "app",
-        enabled: false, // needs app gauge
+        enabled: false,
     },
     {
         id: "route-p99-latency",
         description: "Per-route p99 over budget for 3 windows",
         severity: "page",
         group: "app",
-        enabled: false, // needs histogram exports
+        enabled: false,
     },
     {
         id: "route-error-rate",
         description: "Per-route command error_rate >1% for 5m",
         severity: "page",
         group: "app",
-        enabled: false, // needs counter exports
+        enabled: false,
     },
     {
         id: "xray-sampling-budget",
         description: "X-Ray sampled traces approaching free-tier budget",
         severity: "warn",
         group: "infra",
-        enabled: false, // needs slice-5 exporter live
+        enabled: false,
+    },
+    {
+        id: "cost-watch-ddb-reads",
+        description: "DDB ConsumedReadCapacityUnits up >50% week-over-week",
+        severity: "warn",
+        group: "cost",
+        enabled: false,
+    },
+    {
+        id: "cost-watch-ddb-writes",
+        description: "DDB ConsumedWriteCapacityUnits up >50% week-over-week",
+        severity: "warn",
+        group: "cost",
+        enabled: false,
+    },
+    {
+        id: "cost-watch-lambda-duration",
+        description: "Lambda Duration sum (GB-second proxy) up >50% week-over-week",
+        severity: "warn",
+        group: "cost",
+        enabled: false,
+    },
+    {
+        id: "cost-watch-apigw-requests",
+        description: "API Gateway request count up >50% week-over-week",
+        severity: "warn",
+        group: "cost",
+        enabled: false,
+    },
+    {
+        id: "cost-watch-cloudfront-bytes",
+        description: "CloudFront BytesDownloaded up >50% week-over-week",
+        severity: "warn",
+        group: "cost",
+        enabled: false,
+    },
+    {
+        id: "cost-watch-s3-requests",
+        description: "S3 GET+PUT request count up >50% week-over-week",
+        severity: "warn",
+        group: "cost",
+        enabled: false,
     },
 ] as const;
 

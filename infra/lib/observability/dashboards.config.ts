@@ -1,19 +1,7 @@
-/**
- * Phase 15 / slice-4 — declarative dashboard catalogue.
- *
- * Dashboards are generated from this single config so the runtime stack
- * stays a renderer of pure data. New dashboards: add an entry here.
- */
-
 export interface DashboardWidgetSpec {
     readonly title: string;
     readonly width: number;
     readonly height: number;
-    /**
-     * Metric source. `app` widgets are keyed off the OTel-emitted custom
-     * namespace; `aws` widgets reuse standard AWS/* namespaces. The widget
-     * factory in observability-stack.ts decides how to render each.
-     */
     readonly source: "app" | "aws";
     readonly namespace: string;
     readonly metricName: string;
@@ -88,10 +76,11 @@ export const DASHBOARDS: readonly DashboardSpec[] = [
     },
     {
         id: "cost-watch",
-        description: "DDB consumed RCU/WCU per table",
+        description:
+            "Daily cost-driving metrics across DDB, Lambda, API Gateway, CloudFront, and S3. Pair with the cost-watch-* alarms which fire on >50% week-over-week growth.",
         widgets: [
             {
-                title: "DDB consumed read units",
+                title: "DDB consumed read units (Sum)",
                 source: "aws",
                 namespace: "AWS/DynamoDB",
                 metricName: "ConsumedReadCapacityUnits",
@@ -100,10 +89,64 @@ export const DASHBOARDS: readonly DashboardSpec[] = [
                 height: 6,
             },
             {
-                title: "DDB consumed write units",
+                title: "DDB consumed write units (Sum)",
                 source: "aws",
                 namespace: "AWS/DynamoDB",
                 metricName: "ConsumedWriteCapacityUnits",
+                statistic: "Sum",
+                width: 12,
+                height: 6,
+            },
+            {
+                title: "Lambda invocations (Sum)",
+                source: "aws",
+                namespace: "AWS/Lambda",
+                metricName: "Invocations",
+                statistic: "Sum",
+                width: 12,
+                height: 6,
+            },
+            {
+                title: "Lambda duration (Sum, ms — proxy for GB-seconds)",
+                source: "aws",
+                namespace: "AWS/Lambda",
+                metricName: "Duration",
+                statistic: "Sum",
+                width: 12,
+                height: 6,
+            },
+            {
+                title: "API Gateway request count",
+                source: "aws",
+                namespace: "AWS/ApiGateway",
+                metricName: "Count",
+                statistic: "Sum",
+                width: 12,
+                height: 6,
+            },
+            {
+                title: "CloudFront bytes downloaded",
+                source: "aws",
+                namespace: "AWS/CloudFront",
+                metricName: "BytesDownloaded",
+                statistic: "Sum",
+                width: 12,
+                height: 6,
+            },
+            {
+                title: "S3 GET requests",
+                source: "aws",
+                namespace: "AWS/S3",
+                metricName: "GetRequests",
+                statistic: "Sum",
+                width: 12,
+                height: 6,
+            },
+            {
+                title: "S3 PUT requests",
+                source: "aws",
+                namespace: "AWS/S3",
+                metricName: "PutRequests",
                 statistic: "Sum",
                 width: 12,
                 height: 6,
