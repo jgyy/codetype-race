@@ -12,6 +12,18 @@ export interface LambdaFactoryOptions {
     readonly table: ddb.ITable;
     readonly otelLayer: lambda.ILayerVersion;
     readonly deployEnv: string;
+    /**
+     * OTLP/HTTP endpoint base URL (no trailing /v1/traces). When set, the
+     * layer's bootstrap wires a BatchSpanProcessor and the sampler defaults
+     * flip from `always_off` to `parentbased_traceidratio`. When undefined
+     * (default), the SDK stays hot-but-silent — same as Phase 15 / slice-1.
+     */
+    readonly otlpEndpoint?: string;
+    /**
+     * Head-sample ratio in [0..1]. Only consulted when `otlpEndpoint` is
+     * set. Defaults to 0.05 per the Phase 15 spec sampling table.
+     */
+    readonly sampleRatio?: number;
 }
 
 export class LambdaFactory {
@@ -26,8 +38,23 @@ export class LambdaFactory {
         extraEnv: Record<string, string> = {},
         overrides: Partial<nodejs.NodejsFunctionProps> = {},
     ): nodejs.NodejsFunction {
-        const { lambdaDir, depsLockFilePath, table, otelLayer, deployEnv } =
-            this.opts;
+        const {
+            lambdaDir,
+            depsLockFilePath,
+            table,
+            otelLayer,
+            deployEnv,
+            otlpEndpoint,
+            sampleRatio = 0.05,
+        } = this.opts;
+
+        const otelEnv: Record<string, string> = otlpEndpoint
+            ? {
+                  OTEL_TRACES_SAMPLER: "parentbased_traceidratio",
+                  OTEL_TRACES_SAMPLER_ARG: String(sampleRatio),
+                  OTEL_EXPORTER_OTLP_ENDPOINT: otlpEndpoint,
+              }
+            : { OTEL_TRACES_SAMPLER: "always_off" };
 
         return new nodejs.NodejsFunction(this.scope, id, {
             entry: path.join(lambdaDir, entry),
@@ -47,7 +74,7 @@ export class LambdaFactory {
             environment: {
                 TABLE_NAME: table.tableName,
                 NODE_OPTIONS: "--require /opt/bootstrap.js",
-                OTEL_TRACES_SAMPLER: "always_off",
+                ...otelEnv,
                 OTEL_SERVICE_NAME: `codetype-${id}`,
                 DEPLOY_ENV: deployEnv,
                 ...extraEnv,

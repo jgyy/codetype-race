@@ -1,80 +1,92 @@
-// Phase 15 / slice-1 bootstrap.
-//
-// Loaded via NODE_OPTIONS=--require /opt/otel/bootstrap.js BEFORE any handler
-// module evaluates. In this slice the SDK is constructed but the trace sampler
-// is forced to always_off and no exporters are wired, so initialisation is
-// hot but emits nothing. Slice-3 wires the OTLP/X-Ray exporter and slice-4
-// flips sampling on.
-//
-// Failure here MUST NOT take down the handler — wrap in try/catch and surface
-// a single log line per cold start.
 "use strict";
 
 try {
-  const { NodeSDK } = require("@opentelemetry/sdk-node");
-  const {
-    getNodeAutoInstrumentations,
-  } = require("@opentelemetry/auto-instrumentations-node");
-  const {
-    AWSXRayPropagator,
-  } = require("@opentelemetry/propagator-aws-xray");
-  const {
-    AWSXRayIdGenerator,
-  } = require("@opentelemetry/id-generator-aws-xray");
-  const { Resource } = require("@opentelemetry/resources");
-  const {
-    SemanticResourceAttributes,
-  } = require("@opentelemetry/semantic-conventions");
-  const api = require("@opentelemetry/api");
+    const { NodeSDK } = require("@opentelemetry/sdk-node");
+    const {
+        getNodeAutoInstrumentations,
+    } = require("@opentelemetry/auto-instrumentations-node");
+    const {
+        AWSXRayPropagator,
+    } = require("@opentelemetry/propagator-aws-xray");
+    const {
+        AWSXRayIdGenerator,
+    } = require("@opentelemetry/id-generator-aws-xray");
+    const { Resource } = require("@opentelemetry/resources");
+    const {
+        SemanticResourceAttributes,
+    } = require("@opentelemetry/semantic-conventions");
+    const api = require("@opentelemetry/api");
 
-  const serviceName = process.env.OTEL_SERVICE_NAME || "codetype-unknown";
-  const env = process.env.DEPLOY_ENV || "dev";
-  const version = process.env.SERVICE_VERSION || "unknown";
+    const serviceName = process.env.OTEL_SERVICE_NAME || "codetype-unknown";
+    const env = process.env.DEPLOY_ENV || "dev";
+    const version = process.env.SERVICE_VERSION || "unknown";
+    const otlpEndpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
 
-  const sdk = new NodeSDK({
-    resource: new Resource({
-      [SemanticResourceAttributes.SERVICE_NAME]: serviceName,
-      [SemanticResourceAttributes.SERVICE_VERSION]: version,
-      [SemanticResourceAttributes.DEPLOYMENT_ENVIRONMENT]: env,
-    }),
-    idGenerator: new AWSXRayIdGenerator(),
-    textMapPropagator: new AWSXRayPropagator(),
-    instrumentations: [
-      getNodeAutoInstrumentations({
-        // Disable noisy / irrelevant default instrumentations. We only need
-        // AWS SDK + http here. Re-enable in slice-3 once exporters exist.
-        "@opentelemetry/instrumentation-fs": { enabled: false },
-        "@opentelemetry/instrumentation-dns": { enabled: false },
-        "@opentelemetry/instrumentation-net": { enabled: false },
-      }),
-    ],
-  });
+    let traceExporter;
+    let spanProcessor;
+    if (otlpEndpoint) {
+        const {
+            OTLPTraceExporter,
+        } = require("@opentelemetry/exporter-trace-otlp-http");
+        const {
+            BatchSpanProcessor,
+        } = require("@opentelemetry/sdk-trace-base");
+        traceExporter = new OTLPTraceExporter({
+            url: `${otlpEndpoint.replace(/\/$/, "")}/v1/traces`,
+        });
+        spanProcessor = new BatchSpanProcessor(traceExporter, {
+            maxQueueSize: 512,
+            maxExportBatchSize: 64,
+            scheduledDelayMillis: 250,
+            exportTimeoutMillis: 2000,
+        });
+    }
 
-  sdk.start();
+    const sdk = new NodeSDK({
+        resource: new Resource({
+            [SemanticResourceAttributes.SERVICE_NAME]: serviceName,
+            [SemanticResourceAttributes.SERVICE_VERSION]: version,
+            [SemanticResourceAttributes.DEPLOYMENT_ENVIRONMENT]: env,
+        }),
+        idGenerator: new AWSXRayIdGenerator(),
+        textMapPropagator: new AWSXRayPropagator(),
+        traceExporter,
+        spanProcessor,
+        instrumentations: [
+            getNodeAutoInstrumentations({
+                "@opentelemetry/instrumentation-fs": { enabled: false },
+                "@opentelemetry/instrumentation-dns": { enabled: false },
+                "@opentelemetry/instrumentation-net": { enabled: false },
+            }),
+        ],
+    });
 
-  // Expose the global tracer/api so lambdas/src/otel.ts can grab it.
-  global.__codetypeOtel = { api, sampler: process.env.OTEL_TRACES_SAMPLER };
+    sdk.start();
 
-  // One-shot init log (per cold start) — useful for confirming layer load.
-  // Stays as console.log because the structured logger is in lambdas/, not here.
-  console.log(
-    JSON.stringify({
-      msg: "otel.bootstrap.ok",
-      service: serviceName,
-      env,
-      sampler: process.env.OTEL_TRACES_SAMPLER || "default",
-    }),
-  );
+    global.__codetypeOtel = {
+        api,
+        sampler: process.env.OTEL_TRACES_SAMPLER,
+        exporting: Boolean(otlpEndpoint),
+    };
 
-  // Graceful shutdown so spans flush on Lambda freeze (no-op in slice-1).
-  const shutdown = () => sdk.shutdown().catch(() => {});
-  process.once("SIGTERM", shutdown);
-  process.once("beforeExit", shutdown);
+    console.log(
+        JSON.stringify({
+            msg: "otel.bootstrap.ok",
+            service: serviceName,
+            env,
+            sampler: process.env.OTEL_TRACES_SAMPLER || "default",
+            exporting: Boolean(otlpEndpoint),
+        }),
+    );
+
+    const shutdown = () => sdk.shutdown().catch(() => { });
+    process.once("SIGTERM", shutdown);
+    process.once("beforeExit", shutdown);
 } catch (err) {
-  console.log(
-    JSON.stringify({
-      msg: "otel.bootstrap.failed",
-      err: err && err.message ? err.message : String(err),
-    }),
-  );
+    console.log(
+        JSON.stringify({
+            msg: "otel.bootstrap.failed",
+            err: err && err.message ? err.message : String(err),
+        }),
+    );
 }

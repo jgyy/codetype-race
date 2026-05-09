@@ -23,7 +23,25 @@ export interface TelemetryDeps {
     metrics?: Metrics;
     logger?: BusLogger;
     kind?: "command" | "query";
+    /**
+     * Phase 15 / slice-9 — command/query names that must always be sampled
+     * regardless of the head-based ratio. The middleware sets
+     * `sampling.priority="high"` on the span; downstream tail samplers
+     * (e.g. the OTel collector's `priority` policy) treat that as a
+     * keep-instruction. Defaults to {@link DEFAULT_CRITICAL_BUS_NAMES}.
+     */
+    criticalNames?: ReadonlySet<string>;
 }
+
+/**
+ * Spec § "Sampling — Critical commands always sampled". Adding a name
+ * here means it'll appear in 100% of traces regardless of the configured
+ * head-sample ratio, at the cost of one extra span attribute.
+ */
+export const DEFAULT_CRITICAL_BUS_NAMES: ReadonlySet<string> = new Set([
+    "FinishRaceCommand",
+    "RegisterForTournamentCommand",
+]);
 
 const consoleLogger: BusLogger = {
     info: (fields) => console.log(JSON.stringify(fields)),
@@ -37,6 +55,7 @@ export function createTelemetryMiddleware(
     const metrics = deps.metrics ?? new NoopMetrics();
     const logger = deps.logger ?? consoleLogger;
     const kind = deps.kind ?? "command";
+    const criticalNames = deps.criticalNames ?? DEFAULT_CRITICAL_BUS_NAMES;
     const plural = kind === "query" ? "queries" : "commands";
     const totalCounter = metrics.counter(`app.${plural}.total`);
     const durationHistogram = metrics.histogram(`app.${kind}.duration_ms`);
@@ -47,6 +66,9 @@ export function createTelemetryMiddleware(
             async (span) => {
                 span.setAttribute("bus.kind", kind);
                 span.setAttribute("bus.name", msg.kind);
+                if (criticalNames.has(msg.kind)) {
+                    span.setAttribute("sampling.priority", "high");
+                }
                 const started = Date.now();
                 try {
                     const result = await next(msg);

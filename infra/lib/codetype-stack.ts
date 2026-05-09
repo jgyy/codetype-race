@@ -87,12 +87,24 @@ export class CodetypeStack extends Stack {
             process.env.DEPLOY_ENV ||
             "dev";
 
+        // Phase 15 / slice-9 — opt-in OTLP exporter via CDK context.
+        // `cdk deploy -c otelExporterEndpoint=https://collector.example`
+        // flips every Lambda's sampler from always_off to
+        // parentbased_traceidratio at the configured rate.
+        const otlpEndpoint = this.node.tryGetContext("otelExporterEndpoint") as
+            | string
+            | undefined;
+        const otelSampleRatio = Number(
+            this.node.tryGetContext("otelSampleRatio") ?? "0.05",
+        );
         const lambdaFactory = new LambdaFactory(this, {
             lambdaDir: LAMBDA_DIR,
             depsLockFilePath: path.join(LAMBDA_DIR, "bun.lock"),
             table,
             otelLayer: otelLayer.version,
             deployEnv,
+            otlpEndpoint,
+            sampleRatio: otelSampleRatio,
         });
         const fn = (
             id: string,

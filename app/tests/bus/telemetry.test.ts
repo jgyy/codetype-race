@@ -178,6 +178,41 @@ describe("createTelemetryMiddleware (Phase 15 / slice-2)", () => {
         await expect(bus.dispatch(new EchoCommand("x"))).resolves.toBe("x");
     });
 
+    test("flags critical commands with sampling.priority=high (Phase 15 / slice-9)", async () => {
+        class FinishRaceCommand extends Command<string> {}
+        const { tracer, spans } = buildRecordingTracer();
+        const bus = new CommandBus()
+            .use(
+                createTelemetryMiddleware({
+                    tracer,
+                    kind: "command",
+                    criticalNames: new Set(["FinishRaceCommand"]),
+                }),
+            )
+            .register(FinishRaceCommand, {
+                async execute() {
+                    return "done";
+                },
+            });
+        await bus.dispatch(new FinishRaceCommand());
+        expect(spans[0]!.attrs["sampling.priority"]).toBe("high");
+    });
+
+    test("non-critical commands have no sampling.priority attribute", async () => {
+        const { tracer, spans } = buildRecordingTracer();
+        const bus = new CommandBus()
+            .use(
+                createTelemetryMiddleware({
+                    tracer,
+                    kind: "command",
+                    criticalNames: new Set(["FinishRaceCommand"]),
+                }),
+            )
+            .register(EchoCommand, new OkHandler());
+        await bus.dispatch(new EchoCommand("x"));
+        expect(spans[0]!.attrs["sampling.priority"]).toBeUndefined();
+    });
+
     test("routes log lines through the injected logger", async () => {
         const infoCalls: Record<string, unknown>[] = [];
         const errorCalls: Record<string, unknown>[] = [];

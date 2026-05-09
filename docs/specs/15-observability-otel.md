@@ -1,5 +1,13 @@
 # Phase 15 — Observability v2 (OpenTelemetry)
 
+> **Status (2026-05-09):** 9/9 code slices landed. All deploy-coupled
+> acceptance criteria — connected trace through browser → broadcast,
+> cold-start p99 delta, dashboard histograms, X-Ray cost <$10/mo,
+> frontend RUM endpoint p99 — pending real traffic on a deployment with
+> `cdk deploy -c otelExporterEndpoint=https://<collector>`. Move this
+> spec to `done/` only after those acceptance rows in the table below
+> are checked against production data.
+
 ## Goal
 
 Replace the current ad-hoc logging + EMF metrics with a coherent observability stack built around **OpenTelemetry**, giving:

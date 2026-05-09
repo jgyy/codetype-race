@@ -19,6 +19,7 @@ export {
     compose,
     telemetryMiddleware,
     createTelemetryMiddleware,
+    DEFAULT_CRITICAL_BUS_NAMES,
     type TelemetryDeps,
 } from "./bus";
 

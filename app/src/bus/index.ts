@@ -6,5 +6,6 @@ export { compose } from "./Middleware";
 export {
     telemetryMiddleware,
     createTelemetryMiddleware,
+    DEFAULT_CRITICAL_BUS_NAMES,
     type TelemetryDeps,
 } from "./middlewares/telemetry";
