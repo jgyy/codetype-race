@@ -157,7 +157,21 @@ const clock = new SystemClock();
 const random = new CryptoRandom();
 const rooms = new DdbRoomRepo({ table: TABLE, client: ddb });
 const snippets = new DdbSnippetRepo({ table: TABLE, client: ddb });
-const leaderboard = new DdbLeaderboardProjection({ table: TABLE, client: ddb });
+// Phase 16.1 — comma-separated list of language codes whose leaderboard reads
+// should fan out across 16 shard partitions. Use "*" to enable for the global
+// leaderboard. Writers always dual-write shard rows, so flipping languages on
+// or off here requires no backfill.
+const shardedLanguages = new Set(
+    (process.env.LEADERBOARD_SHARDED_LANGS ?? "")
+        .split(",")
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0),
+);
+const leaderboard = new DdbLeaderboardProjection({
+    table: TABLE,
+    client: ddb,
+    shardedLanguages,
+});
 
 const teamRoomSink: TeamRoomSink = {
     putTeams: (roomId, teams) => teamRooms.putTeams(roomId, teams),

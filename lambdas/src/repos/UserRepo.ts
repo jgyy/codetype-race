@@ -10,7 +10,10 @@ import {
 import { ConditionalCheckFailedException } from "@aws-sdk/client-dynamodb";
 import {
     leaderboardGlobalPK,
+    leaderboardGlobalShardPK,
     leaderboardLangPK,
+    leaderboardLangShardPK,
+    leaderboardShardIndex,
     ratingSortKey,
     userHandleGSI1PK,
     userHandleGSI1SK,
@@ -91,6 +94,19 @@ export class UserRepo {
                     TableName: TABLE,
                     Item: {
                         PK: leaderboardGlobalPK(),
+                        SK: ratingSortKey(profile.rating, userId),
+                        user_id: userId,
+                        display_name: displayName,
+                        rating: profile.rating,
+                    },
+                }),
+            );
+            const shard = leaderboardShardIndex(userId);
+            await this.client.send(
+                new PutCommand({
+                    TableName: TABLE,
+                    Item: {
+                        PK: leaderboardGlobalShardPK(shard),
                         SK: ratingSortKey(profile.rating, userId),
                         user_id: userId,
                         display_name: displayName,
@@ -211,6 +227,51 @@ export class UserRepo {
                     TableName: TABLE,
                     Item: {
                         PK: leaderboardLangPK(language),
+                        SK: ratingSortKey(newRating, p.userId),
+                        user_id: p.userId,
+                        display_name: p.displayName,
+                        rating: newRating,
+                    },
+                },
+            });
+            // Phase 16.1 — dual-write sharded leaderboard rows so the read flag
+            // can be flipped per-language without a backfill.
+            const shard = leaderboardShardIndex(p.userId);
+            items.push({
+                Delete: {
+                    TableName: TABLE,
+                    Key: {
+                        PK: leaderboardGlobalShardPK(shard),
+                        SK: ratingSortKey(p.profile.rating, p.userId),
+                    },
+                },
+            });
+            items.push({
+                Put: {
+                    TableName: TABLE,
+                    Item: {
+                        PK: leaderboardGlobalShardPK(shard),
+                        SK: ratingSortKey(newRating, p.userId),
+                        user_id: p.userId,
+                        display_name: p.displayName,
+                        rating: newRating,
+                    },
+                },
+            });
+            items.push({
+                Delete: {
+                    TableName: TABLE,
+                    Key: {
+                        PK: leaderboardLangShardPK(language, shard),
+                        SK: ratingSortKey(p.profile.rating, p.userId),
+                    },
+                },
+            });
+            items.push({
+                Put: {
+                    TableName: TABLE,
+                    Item: {
+                        PK: leaderboardLangShardPK(language, shard),
                         SK: ratingSortKey(newRating, p.userId),
                         user_id: p.userId,
                         display_name: p.displayName,

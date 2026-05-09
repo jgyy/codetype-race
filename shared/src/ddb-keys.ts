@@ -38,6 +38,27 @@ export const leaderboardGlobalPK = () => "LEADERBOARD#GLOBAL";
 export const leaderboardLangPK = (language: string) =>
     `LEADERBOARD#LANG#${language}`;
 
+// Phase 16.1 — leaderboard read sharding.
+// Writers always dual-write a sharded row; readers may opt-in per language
+// via LEADERBOARD_SHARDED_LANGS. The hash must be deterministic and pure-JS
+// (this module is also imported by the web bundle), so we use FNV-1a 32-bit.
+export const leaderboardShardCount = 16;
+export function leaderboardShardIndex(userId: string): number {
+    let h = 2166136261;
+    for (let i = 0; i < userId.length; i++) {
+        h ^= userId.charCodeAt(i);
+        h = Math.imul(h, 16777619);
+    }
+    return (h >>> 0) % leaderboardShardCount;
+}
+const SHARD_PAD = 2;
+const formatShard = (shard: number) =>
+    String(shard).padStart(SHARD_PAD, "0");
+export const leaderboardGlobalShardPK = (shard: number) =>
+    `LEADERBOARD#GLOBAL#SHARD#${formatShard(shard)}`;
+export const leaderboardLangShardPK = (language: string, shard: number) =>
+    `LEADERBOARD#LANG#${language}#SHARD#${formatShard(shard)}`;
+
 export const codeGSI1PK = (code: string) => `CODE#${code}`;
 export const connGSI1PK = (connectionId: string) => `CONN#${connectionId}`;
 export const langGSI1PK = (language: string) => `LANG#${language}`;
