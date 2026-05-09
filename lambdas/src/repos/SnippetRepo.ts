@@ -22,6 +22,7 @@ import type {
 } from "@codetype/shared/schemas";
 import { ddb, TABLE } from "../ddb";
 import { Errors } from "../AppError";
+import { queryGsiThenHydrate } from "./queryGsiThenHydrate";
 
 const RANDOM_PAGE_SIZE = 25;
 
@@ -61,26 +62,25 @@ export class SnippetRepo {
         }
         const exprValues: Record<string, unknown> = {
             ":pk": langGSI1PK(filters.language),
-            ":approved": "approved",
         };
         let keyExpr = "GSI1PK = :pk";
         if (filters.difficulty !== undefined) {
             keyExpr += " AND begins_with(GSI1SK, :diff)";
             exprValues[":diff"] = snippetDiffPrefix(filters.difficulty);
         }
-        const r = await this.client.send(
-            new QueryCommand({
+        return queryGsiThenHydrate<Snippet>(
+            this.client,
+            TABLE,
+            {
                 TableName: TABLE,
                 IndexName: "GSI1",
                 KeyConditionExpression: keyExpr,
-                FilterExpression:
-                    "attribute_not_exists(#status) OR #status = :approved",
-                ExpressionAttributeNames: { "#status": "status" },
                 ExpressionAttributeValues: exprValues,
                 Limit: limit,
-            }),
+            },
+            (s) => (s as { status?: string }).status === undefined ||
+                (s as { status?: string }).status === "approved",
         );
-        return (r.Items as Snippet[] | undefined) ?? [];
     }
 
     async submitPending(

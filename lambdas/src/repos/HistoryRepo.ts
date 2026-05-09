@@ -1,10 +1,10 @@
 import {
     DynamoDBDocumentClient,
     PutCommand,
-    QueryCommand,
 } from "@aws-sdk/lib-dynamodb";
 import { finishedGSI1SK, hostGSI1PK } from "@codetype/shared/ddb-keys";
 import { ddb, TABLE } from "../ddb";
+import { queryGsiThenHydrate } from "./queryGsiThenHydrate";
 
 export interface PracticeEntry {
     user_id: string;
@@ -26,17 +26,14 @@ export class HistoryRepo {
     constructor(private readonly client: DynamoDBDocumentClient = ddb) { }
 
     async listForHost(hostId: string, limit = 50): Promise<Record<string, unknown>[]> {
-        const r = await this.client.send(
-            new QueryCommand({
-                TableName: TABLE,
-                IndexName: "GSI1",
-                KeyConditionExpression: "GSI1PK = :pk",
-                ExpressionAttributeValues: { ":pk": hostGSI1PK(hostId) },
-                ScanIndexForward: false,
-                Limit: limit,
-            }),
-        );
-        return (r.Items as Record<string, unknown>[] | undefined) ?? [];
+        return queryGsiThenHydrate<Record<string, unknown>>(this.client, TABLE, {
+            TableName: TABLE,
+            IndexName: "GSI1",
+            KeyConditionExpression: "GSI1PK = :pk",
+            ExpressionAttributeValues: { ":pk": hostGSI1PK(hostId) },
+            ScanIndexForward: false,
+            Limit: limit,
+        });
     }
 
     async appendPractice(entry: PracticeEntry): Promise<void> {

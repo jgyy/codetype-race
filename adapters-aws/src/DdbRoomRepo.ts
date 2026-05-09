@@ -15,6 +15,7 @@ import {
     roomMetaSK,
     roomPK,
 } from "@codetype/shared/ddb-keys";
+import { queryGsiThenHydrate } from "./queryGsiThenHydrate";
 import {
     DomainError,
     type RecordFinishInput,
@@ -105,16 +106,18 @@ export class DdbRoomRepo implements RoomRepo {
     }
 
     async getByCode(code: string): Promise<RoomSnapshot | null> {
-        const r = await this.cfg.client.send(
-            new QueryCommand({
+        const items = await queryGsiThenHydrate<RoomSnapshot>(
+            this.cfg.client,
+            this.cfg.table,
+            {
                 TableName: this.cfg.table,
                 IndexName: "GSI1",
                 KeyConditionExpression: "GSI1PK = :pk",
                 ExpressionAttributeValues: { ":pk": codeGSI1PK(code) },
                 Limit: 1,
-            }),
+            },
         );
-        return (r.Items?.[0] as RoomSnapshot | undefined) ?? null;
+        return items[0] ?? null;
     }
 
     async listPlayers(roomId: string): Promise<SeedPlayer[]> {

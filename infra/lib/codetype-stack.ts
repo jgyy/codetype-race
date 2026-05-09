@@ -53,10 +53,23 @@ export class CodetypeStack extends Stack {
             stream: ddb.StreamViewType.NEW_AND_OLD_IMAGES,
             removalPolicy: RemovalPolicy.RETAIN,
         });
+        // Phase 16.6 — opt-in projection trim. With -c gsi1KeysOnly=true,
+        // GSI1 projects only the index keys + base table keys instead of
+        // ALL non-key attributes. Readers go through queryGsiThenHydrate
+        // which transparently follows up with a BatchGet on the base
+        // table when items come back as keys-only. Toggle in a low-traffic
+        // window — DynamoDB rebuilds the GSI online but it can take
+        // several minutes during which the index is partially populated.
+        const gsi1KeysOnly =
+            this.node.tryGetContext("gsi1KeysOnly") === true ||
+            this.node.tryGetContext("gsi1KeysOnly") === "true";
         table.addGlobalSecondaryIndex({
             indexName: "GSI1",
             partitionKey: { name: "GSI1PK", type: ddb.AttributeType.STRING },
             sortKey: { name: "GSI1SK", type: ddb.AttributeType.STRING },
+            projectionType: gsi1KeysOnly
+                ? ddb.ProjectionType.KEYS_ONLY
+                : ddb.ProjectionType.ALL,
         });
 
         const userPool = new cognito.UserPool(this, "Users", {

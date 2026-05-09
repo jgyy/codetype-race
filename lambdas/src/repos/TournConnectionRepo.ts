@@ -10,6 +10,7 @@ import {
     tournPK,
 } from "@codetype/shared/ddb-keys";
 import { ddb, TABLE } from "../ddb";
+import { queryGsiThenHydrate } from "./queryGsiThenHydrate";
 
 const TTL_SECONDS = 60;
 
@@ -55,20 +56,18 @@ export class TournConnectionRepo {
     async byConnectionId(
         connectionId: string,
     ): Promise<TournConnRow | null> {
-        const r = await this.client.send(
-            new QueryCommand({
-                TableName: TABLE,
-                IndexName: "GSI1",
-                KeyConditionExpression:
-                    "GSI1PK = :pk AND begins_with(GSI1SK, :sk)",
-                ExpressionAttributeValues: {
-                    ":pk": connGSI1PK(connectionId),
-                    ":sk": "TOURN#",
-                },
-                Limit: 1,
-            }),
-        );
-        return (r.Items?.[0] as TournConnRow | undefined) ?? null;
+        const items = await queryGsiThenHydrate<TournConnRow>(this.client, TABLE, {
+            TableName: TABLE,
+            IndexName: "GSI1",
+            KeyConditionExpression:
+                "GSI1PK = :pk AND begins_with(GSI1SK, :sk)",
+            ExpressionAttributeValues: {
+                ":pk": connGSI1PK(connectionId),
+                ":sk": "TOURN#",
+            },
+            Limit: 1,
+        });
+        return items[0] ?? null;
     }
 
     async listByTournament(tournId: string): Promise<string[]> {

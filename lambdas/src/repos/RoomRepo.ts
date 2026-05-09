@@ -15,6 +15,7 @@ import {
     roomMetaSK,
     roomPK,
 } from "@codetype/shared/ddb-keys";
+import { queryGsiThenHydrate } from "./queryGsiThenHydrate";
 import type {
     Player,
     Room,
@@ -103,16 +104,14 @@ export class RoomRepo {
     }
 
     async getByCode(code: string): Promise<Room | null> {
-        const r = await this.client.send(
-            new QueryCommand({
-                TableName: TABLE,
-                IndexName: "GSI1",
-                KeyConditionExpression: "GSI1PK = :pk",
-                ExpressionAttributeValues: { ":pk": codeGSI1PK(code) },
-                Limit: 1,
-            }),
-        );
-        return (r.Items?.[0] as Room | undefined) ?? null;
+        const items = await queryGsiThenHydrate<Room>(this.client, TABLE, {
+            TableName: TABLE,
+            IndexName: "GSI1",
+            KeyConditionExpression: "GSI1PK = :pk",
+            ExpressionAttributeValues: { ":pk": codeGSI1PK(code) },
+            Limit: 1,
+        });
+        return items[0] ?? null;
     }
 
     async isCodeTaken(code: string): Promise<boolean> {

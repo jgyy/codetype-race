@@ -14,6 +14,7 @@ import {
 import { ddb, TABLE } from "../ddb";
 import { Errors } from "../AppError";
 import { metrics } from "../metrics";
+import { queryGsiThenHydrate } from "./queryGsiThenHydrate";
 
 const TTL_SECONDS = 30;
 const CHAT_WINDOW_MS = 10_000;
@@ -63,16 +64,14 @@ export class ConnectionRepo {
     }
 
     async byConnectionId(connectionId: string): Promise<ConnRow | null> {
-        const r = await this.client.send(
-            new QueryCommand({
-                TableName: TABLE,
-                IndexName: "GSI1",
-                KeyConditionExpression: "GSI1PK = :pk",
-                ExpressionAttributeValues: { ":pk": connGSI1PK(connectionId) },
-                Limit: 1,
-            }),
-        );
-        return (r.Items?.[0] as ConnRow | undefined) ?? null;
+        const items = await queryGsiThenHydrate<ConnRow>(this.client, TABLE, {
+            TableName: TABLE,
+            IndexName: "GSI1",
+            KeyConditionExpression: "GSI1PK = :pk",
+            ExpressionAttributeValues: { ":pk": connGSI1PK(connectionId) },
+            Limit: 1,
+        });
+        return items[0] ?? null;
     }
 
     async listByRoom(roomId: string): Promise<string[]> {

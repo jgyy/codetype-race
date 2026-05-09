@@ -12,6 +12,7 @@ import {
 } from "@codetype/shared/ddb-keys";
 import { TEAM_STARTING_RATING } from "@codetype/shared/social";
 import { ddb, TABLE } from "../ddb";
+import { queryGsiThenHydrate } from "./queryGsiThenHydrate";
 
 export interface TeamRatingRow {
     PK: string;
@@ -83,8 +84,10 @@ export class TeamRatingRepo {
         userId: string,
         language: string,
     ): Promise<TeamRatingRow | null> {
-        const r = await this.client.send(
-            new QueryCommand({
+        const items = await queryGsiThenHydrate<TeamRatingRow>(
+            this.client,
+            TABLE,
+            {
                 TableName: TABLE,
                 IndexName: "GSI1",
                 KeyConditionExpression: "GSI1PK = :pk AND GSI1SK = :sk",
@@ -93,9 +96,9 @@ export class TeamRatingRepo {
                     ":sk": teamRatingUserGSI1SK(language),
                 },
                 Limit: 1,
-            }),
+            },
         );
-        return (r.Items?.[0] as TeamRatingRow | undefined) ?? null;
+        return items[0] ?? null;
     }
 
     /**

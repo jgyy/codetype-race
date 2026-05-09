@@ -16,6 +16,7 @@ import {
     type ConnectionRecord,
     type ConnectionRepo,
 } from "@codetype/domain";
+import { queryGsiThenHydrate } from "./queryGsiThenHydrate";
 
 export interface DdbConnectionRepoConfig {
     table: string;
@@ -59,16 +60,18 @@ export class DdbConnectionRepo implements ConnectionRepo {
     async byConnectionId(
         connectionId: string,
     ): Promise<ConnectionRecord | null> {
-        const r = await this.cfg.client.send(
-            new QueryCommand({
+        const items = await queryGsiThenHydrate<ConnectionRecord>(
+            this.cfg.client,
+            this.cfg.table,
+            {
                 TableName: this.cfg.table,
                 IndexName: "GSI1",
                 KeyConditionExpression: "GSI1PK = :pk",
                 ExpressionAttributeValues: { ":pk": connGSI1PK(connectionId) },
                 Limit: 1,
-            }),
+            },
         );
-        return (r.Items?.[0] as ConnectionRecord | undefined) ?? null;
+        return items[0] ?? null;
     }
 
     async listByRoom(roomId: string): Promise<string[]> {

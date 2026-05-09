@@ -26,6 +26,7 @@ import type {
     UserProfile,
 } from "@codetype/shared/schemas";
 import { ddb, TABLE } from "../ddb";
+import { queryGsiThenHydrate } from "./queryGsiThenHydrate";
 
 export const STARTING_RATING = 1000;
 
@@ -329,20 +330,17 @@ export class UserRepo {
         limit = 25,
     ): Promise<UserProfile[]> {
         const lower = prefix.trim().toLowerCase();
-        const r = await this.client.send(
-            new QueryCommand({
-                TableName: TABLE,
-                IndexName: "GSI1",
-                KeyConditionExpression:
-                    "GSI1PK = :pk AND begins_with(GSI1SK, :sk)",
-                ExpressionAttributeValues: {
-                    ":pk": userHandleGSI1PK(lower),
-                    ":sk": lower,
-                },
-                Limit: limit,
-            }),
-        );
-        return (r.Items as UserProfile[] | undefined) ?? [];
+        return queryGsiThenHydrate<UserProfile>(this.client, TABLE, {
+            TableName: TABLE,
+            IndexName: "GSI1",
+            KeyConditionExpression:
+                "GSI1PK = :pk AND begins_with(GSI1SK, :sk)",
+            ExpressionAttributeValues: {
+                ":pk": userHandleGSI1PK(lower),
+                ":sk": lower,
+            },
+            Limit: limit,
+        });
     }
 
     async pageProfiles(

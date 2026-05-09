@@ -19,6 +19,7 @@ import type {
 } from "@codetype/shared/tournaments";
 import { ddb, TABLE } from "../ddb";
 import { Errors } from "../AppError";
+import { queryGsiThenHydrate } from "./queryGsiThenHydrate";
 
 export class MatchRepo {
     constructor(private readonly client: DynamoDBDocumentClient = ddb) { }
@@ -96,17 +97,14 @@ export class MatchRepo {
         tournId: string,
         status: MatchStatus,
     ): Promise<TournamentMatch[]> {
-        const r = await this.client.send(
-            new QueryCommand({
-                TableName: TABLE,
-                IndexName: "GSI1",
-                KeyConditionExpression: "GSI1PK = :pk",
-                ExpressionAttributeValues: {
-                    ":pk": tournMatchStatusGSI1PK(tournId, status),
-                },
-            }),
-        );
-        return (r.Items as TournamentMatch[] | undefined) ?? [];
+        return queryGsiThenHydrate<TournamentMatch>(this.client, TABLE, {
+            TableName: TABLE,
+            IndexName: "GSI1",
+            KeyConditionExpression: "GSI1PK = :pk",
+            ExpressionAttributeValues: {
+                ":pk": tournMatchStatusGSI1PK(tournId, status),
+            },
+        });
     }
 
     async transitionStatus(

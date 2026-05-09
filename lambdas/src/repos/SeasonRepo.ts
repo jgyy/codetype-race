@@ -21,6 +21,7 @@ import type {
 } from "@codetype/shared/tournaments";
 import { ddb, TABLE } from "../ddb";
 import { Errors } from "../AppError";
+import { queryGsiThenHydrate } from "./queryGsiThenHydrate";
 
 export class SeasonRepo {
     constructor(private readonly client: DynamoDBDocumentClient = ddb) { }
@@ -59,17 +60,12 @@ export class SeasonRepo {
     }
 
     async listByStatus(status: SeasonStatus): Promise<Season[]> {
-        const r = await this.client.send(
-            new QueryCommand({
-                TableName: TABLE,
-                IndexName: "GSI1",
-                KeyConditionExpression: "GSI1PK = :pk",
-                ExpressionAttributeValues: {
-                    ":pk": seasonStatusGSI1PK(status),
-                },
-            }),
-        );
-        return (r.Items as Season[] | undefined) ?? [];
+        return queryGsiThenHydrate<Season>(this.client, TABLE, {
+            TableName: TABLE,
+            IndexName: "GSI1",
+            KeyConditionExpression: "GSI1PK = :pk",
+            ExpressionAttributeValues: { ":pk": seasonStatusGSI1PK(status) },
+        });
     }
 
     async transitionStatus(

@@ -35,6 +35,7 @@ import {
 } from "@codetype/shared/social";
 import { ddb, TABLE } from "../ddb";
 import { Errors } from "../AppError";
+import { queryGsiThenHydrate } from "./queryGsiThenHydrate";
 
 interface GuildRow extends Guild {
     PK: string;
@@ -169,20 +170,17 @@ export class GuildRepo {
     /** Public-guild discovery; bucket-prefixed begins_with on GSI1SK. */
     async discoverPublic(slugPrefix: string, limit = 25): Promise<Guild[]> {
         const lower = slugPrefix.toLowerCase();
-        const r = await this.client.send(
-            new QueryCommand({
-                TableName: TABLE,
-                IndexName: "GSI1",
-                KeyConditionExpression:
-                    "GSI1PK = :pk AND begins_with(GSI1SK, :sk)",
-                ExpressionAttributeValues: {
-                    ":pk": `GUILD#PUBLIC#${handleBucket(lower)}`,
-                    ":sk": lower,
-                },
-                Limit: limit,
-            }),
-        );
-        return (r.Items as GuildRow[] | undefined) ?? [];
+        return queryGsiThenHydrate<GuildRow>(this.client, TABLE, {
+            TableName: TABLE,
+            IndexName: "GSI1",
+            KeyConditionExpression:
+                "GSI1PK = :pk AND begins_with(GSI1SK, :sk)",
+            ExpressionAttributeValues: {
+                ":pk": `GUILD#PUBLIC#${handleBucket(lower)}`,
+                ":sk": lower,
+            },
+            Limit: limit,
+        }) as unknown as Promise<Guild[]>;
     }
 
     async addMember(
@@ -452,18 +450,18 @@ export class GuildRepo {
     }
 
     async findInviteByCode(code: string): Promise<GuildInviteRow | null> {
-        const r = await this.client.send(
-            new QueryCommand({
+        const items = await queryGsiThenHydrate<GuildInviteRow>(
+            this.client,
+            TABLE,
+            {
                 TableName: TABLE,
                 IndexName: "GSI1",
                 KeyConditionExpression: "GSI1PK = :pk",
-                ExpressionAttributeValues: {
-                    ":pk": inviteCodeGSI1PK(code),
-                },
+                ExpressionAttributeValues: { ":pk": inviteCodeGSI1PK(code) },
                 Limit: 1,
-            }),
+            },
         );
-        const row = r.Items?.[0] as GuildInviteRow | undefined;
+        const row = items[0];
         if (!row) return null;
         if (Date.parse(row.expiresAt) < Date.now()) return null;
         return row;

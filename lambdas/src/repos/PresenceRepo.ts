@@ -10,6 +10,7 @@ import {
     presencePK,
 } from "@codetype/shared/ddb-keys";
 import { ddb, TABLE } from "../ddb";
+import { queryGsiThenHydrate } from "./queryGsiThenHydrate";
 
 export const PRESENCE_TTL_SECONDS = 60;
 
@@ -51,34 +52,29 @@ export class PresenceRepo {
     }
 
     async userIdByConnection(connectionId: string): Promise<string | null> {
-        const r = await this.client.send(
-            new QueryCommand({
-                TableName: TABLE,
-                IndexName: "GSI1",
-                KeyConditionExpression: "GSI1PK = :pk",
-                ExpressionAttributeValues: {
-                    ":pk": presenceConnLookupGSI1PK(connectionId),
-                },
-                Limit: 1,
-            }),
-        );
-        const row = r.Items?.[0] as PresenceRow | undefined;
-        return row?.user_id ?? null;
+        const items = await queryGsiThenHydrate<PresenceRow>(this.client, TABLE, {
+            TableName: TABLE,
+            IndexName: "GSI1",
+            KeyConditionExpression: "GSI1PK = :pk",
+            ExpressionAttributeValues: {
+                ":pk": presenceConnLookupGSI1PK(connectionId),
+            },
+            Limit: 1,
+        });
+        return items[0]?.user_id ?? null;
     }
 
     async deleteByConnection(connectionId: string): Promise<string | null> {
-        const found = await this.client.send(
-            new QueryCommand({
-                TableName: TABLE,
-                IndexName: "GSI1",
-                KeyConditionExpression: "GSI1PK = :pk",
-                ExpressionAttributeValues: {
-                    ":pk": presenceConnLookupGSI1PK(connectionId),
-                },
-                Limit: 1,
-            }),
-        );
-        const row = found.Items?.[0] as PresenceRow | undefined;
+        const items = await queryGsiThenHydrate<PresenceRow>(this.client, TABLE, {
+            TableName: TABLE,
+            IndexName: "GSI1",
+            KeyConditionExpression: "GSI1PK = :pk",
+            ExpressionAttributeValues: {
+                ":pk": presenceConnLookupGSI1PK(connectionId),
+            },
+            Limit: 1,
+        });
+        const row = items[0];
         if (!row) return null;
         await this.client.send(
             new DeleteCommand({

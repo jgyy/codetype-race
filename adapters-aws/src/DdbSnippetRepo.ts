@@ -15,6 +15,7 @@ import type {
     SnippetRef,
     SnippetRepo,
 } from "@codetype/domain";
+import { queryGsiThenHydrate } from "./queryGsiThenHydrate";
 
 const RANDOM_PAGE_SIZE = 25;
 
@@ -91,25 +92,23 @@ export class DdbSnippetRepo implements SnippetRepo {
         }
         const exprValues: Record<string, unknown> = {
             ":pk": langGSI1PK(filters.language),
-            ":approved": "approved",
         };
         let keyExpr = "GSI1PK = :pk";
         if (filters.difficulty !== undefined) {
             keyExpr += " AND begins_with(GSI1SK, :diff)";
             exprValues[":diff"] = snippetDiffPrefix(filters.difficulty);
         }
-        const r = await this.cfg.client.send(
-            new QueryCommand({
+        return queryGsiThenHydrate<{ snippet_id: string; status?: string }>(
+            this.cfg.client,
+            this.cfg.table,
+            {
                 TableName: this.cfg.table,
                 IndexName: "GSI1",
                 KeyConditionExpression: keyExpr,
-                FilterExpression:
-                    "attribute_not_exists(#status) OR #status = :approved",
-                ExpressionAttributeNames: { "#status": "status" },
                 ExpressionAttributeValues: exprValues,
                 Limit: limit,
-            }),
+            },
+            (s) => s.status === undefined || s.status === "approved",
         );
-        return (r.Items as Array<{ snippet_id: string }> | undefined) ?? [];
     }
 }
