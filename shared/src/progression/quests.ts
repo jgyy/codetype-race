@@ -160,10 +160,6 @@ export const WEEKLY_POOL: QuestDef[] = [
     }),
 ];
 
-/**
- * Hash-based deterministic uniform sampler. Same seed + pool → same picks.
- * Uses FNV-1a 32-bit for portability (no crypto module dep needed in shared).
- */
 function fnv1a(s: string): number {
     let h = 0x811c9dc5;
     for (let i = 0; i < s.length; i++) {
@@ -206,7 +202,7 @@ export function weeklyRotationId(d: Date = new Date()): string {
             ((t.getTime() - firstThu.getTime()) / 86400000 -
                 3 +
                 ((firstThu.getUTCDay() + 6) % 7)) /
-                7,
+            7,
         );
     return `${t.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
 }

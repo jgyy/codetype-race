@@ -1,6 +1,4 @@
 #!/usr/bin/env bun
-// Idempotent seed of data/snippets.json into the codetype DDB table.
-// Usage: AWS_PROFILE=your_profile bun scripts/seed-snippets.ts
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
 import snippets from "../data/snippets.json" with { type: "json" };

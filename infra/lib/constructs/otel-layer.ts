@@ -2,7 +2,7 @@ import { spawnSync } from "node:child_process";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
-import { RemovalPolicy } from "aws-cdk-lib";
+import { AssetHashType, RemovalPolicy } from "aws-cdk-lib";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import { Construct } from "constructs";
 
@@ -35,6 +35,12 @@ export class OtelLayer extends Construct {
             compatibleRuntimes: [lambda.Runtime.NODEJS_20_X],
             removalPolicy: RemovalPolicy.DESTROY,
             code: lambda.Code.fromAsset(OTEL_LAYER_DIR, {
+                // Hash by the bundled output, not the source dir. The source
+                // is just package.json + bootstrap.js, which won't change when
+                // we fix the bundling tool — but the resulting node_modules
+                // tree must, to bust the previously-published 509 MB asset
+                // (built by `bun install --production`) sitting in S3.
+                assetHashType: AssetHashType.OUTPUT,
                 bundling: {
                     image: lambda.Runtime.NODEJS_20_X.bundlingImage,
                     local: { tryBundle: localBundle },
@@ -55,7 +61,11 @@ export class OtelLayer extends Construct {
 }
 
 function localBundle(outputDir: string): boolean {
-    const probe = spawnSync("bun", ["--version"], { stdio: "ignore" });
+    // Must use npm (with hoisting) to stay under Lambda's 250 MB unzipped
+    // layer limit. `bun install --production` produces an isolated
+    // node_modules tree (~500 MB for these OTel deps) because Bun keeps
+    // per-package copies; npm hoists and dedupes to ~127 MB.
+    const probe = spawnSync("npm", ["--version"], { stdio: "ignore" });
     if (probe.status !== 0) return false;
 
     const nodejsDir = path.join(outputDir, "nodejs");
@@ -68,9 +78,10 @@ function localBundle(outputDir: string): boolean {
         path.join(OTEL_LAYER_DIR, "bootstrap.js"),
         path.join(outputDir, "bootstrap.js"),
     );
-    const install = spawnSync("bun", ["install", "--production"], {
-        cwd: nodejsDir,
-        stdio: "inherit",
-    });
+    const install = spawnSync(
+        "npm",
+        ["install", "--omit=dev", "--no-audit", "--no-fund"],
+        { cwd: nodejsDir, stdio: "inherit" },
+    );
     return install.status === 0;
 }

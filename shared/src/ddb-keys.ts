@@ -38,10 +38,6 @@ export const leaderboardGlobalPK = () => "LEADERBOARD#GLOBAL";
 export const leaderboardLangPK = (language: string) =>
     `LEADERBOARD#LANG#${language}`;
 
-// Phase 16.1 — leaderboard read sharding.
-// Writers always dual-write a sharded row; readers may opt-in per language
-// via LEADERBOARD_SHARDED_LANGS. The hash must be deterministic and pure-JS
-// (this module is also imported by the web bundle), so we use FNV-1a 32-bit.
 export const leaderboardShardCount = 16;
 export function leaderboardShardIndex(userId: string): number {
     let h = 2166136261;
@@ -119,7 +115,6 @@ export const userHandleGSI1PK = (handleLower: string) =>
 export const userHandleGSI1SK = (handleLower: string, userId: string) =>
     `${handleLower}#${userId}`;
 
-// Activity feed: reverse-ts SK gives newest-first on a plain Query.
 const FEED_TS_PAD = 16;
 const FEED_TS_BIAS = Number.MAX_SAFE_INTEGER;
 export const feedPK = (userId: string) => `FEED#${userId}`;
@@ -162,7 +157,6 @@ export const userGuildGSI1SK = (guildId: string, joinedAt: string) =>
 export const inviteCodeGSI1PK = (code: string) => `INVITE#${code}`;
 export const inviteCodeGSI1SK = (guildId: string) => `GUILD#${guildId}`;
 
-// Phase 11 — progression (XP / achievements / quests)
 const REVERSE_TS_BASE = 9_999_999_999_999;
 export const xpLedgerPK = (userId: string) => `XP#${userId}`;
 export const xpLedgerSK = (epochMs: number, eventId: string) => {
@@ -182,7 +176,6 @@ export const questActiveSK = (questId: string) => `Q#${questId}`;
 export const questProgressSK = (rotationId: string, questId: string) =>
     `QPROG#${rotationId}#${questId}`;
 
-// Phase 14 — Event sourcing for races
 const RACE_SEQ_PAD = 10;
 export function formatRaceSeq(seq: number): string {
     if (!Number.isInteger(seq) || seq < 0) {

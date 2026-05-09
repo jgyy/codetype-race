@@ -17,15 +17,6 @@ export interface TeamRatingDelta {
     expected: number;
 }
 
-/**
- * Effective team rating for matchmaking purposes:
- *   mean(member ratings) + TEAM_SIZE_BONUS * (size_diff bonus)
- *
- * The "size_diff bonus" caveat in the spec applies *to the smaller
- * team* — we lift its effective rating so the expected outcome of an
- * uneven match is closer to 50/50, which dampens rating swings and
- * removes the obvious "stack a 4v2 to farm" exploit.
- */
 export function effectiveTeamRating(
     members: TeamMemberRating[],
     opponentSize: number,
@@ -42,11 +33,6 @@ function expectedOutcome(rA: number, rB: number): number {
     return 1 / (1 + Math.pow(10, (rB - rA) / 400));
 }
 
-/**
- * Compute per-player team-rating deltas for a 2-team match. Each
- * member of the winning team gets +K*(1-expected); losers get the
- * symmetric -K*expected. Spec K=24.
- */
 export function computeTeamRatingDeltas(
     winning: TeamRatingDeltaInput,
     losing: TeamRatingDeltaInput,

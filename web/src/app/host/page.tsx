@@ -5,6 +5,7 @@ import {
   confirmSignUp,
   getCurrentUser,
   signIn,
+  signOut,
   signUp,
 } from "@/lib/aws/cognito";
 import { createRoom, friendlyMessage } from "@/lib/api";
@@ -106,6 +107,26 @@ export default function HostPage() {
     }
   }
 
+  async function onSignOut() {
+    setErr(null);
+    try {
+      await signOut();
+    } catch (e) {
+      setErr(friendlyMessage(e));
+      return;
+    }
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem("is_host");
+      sessionStorage.removeItem("display_name");
+      sessionStorage.removeItem("role");
+    }
+    setHostUserId(null);
+    setEmail("");
+    setPassword("");
+    setCode("");
+    setMode("signin");
+  }
+
   async function onCreate() {
     setErr(null);
     try {
@@ -193,7 +214,16 @@ export default function HostPage() {
 
       {mode === "ready" && (
         <div className="mt-8 space-y-4">
-          <p>Signed in.</p>
+          <div className="flex items-center justify-between">
+            <p>Signed in.</p>
+            <button
+              type="button"
+              onClick={onSignOut}
+              className="rounded border border-neutral-700 px-3 py-1 text-sm text-neutral-300 hover:border-neutral-500"
+            >
+              Sign out
+            </button>
+          </div>
 
           <div className="flex gap-2 text-sm">
             <button

@@ -1,23 +1,4 @@
 #!/usr/bin/env bun
-/**
- * Phase 16.2 SnapStart-safety gate.
- *
- * SnapStart freezes the *initialised* execution environment and restores it
- * for every subsequent invocation. Anything resolved at module load time —
- * Math.random(), Date.now(), randomUUID(), new Date() — produces an identical
- * value across every restored container. If any HTTP-reachable module
- * captures one of those at top level, every concurrent invocation gets the
- * same "random" value, which is a silent and very nasty class of bug.
- *
- * This script statically scans the source files reachable from the HTTP
- * handler entrypoints and fails CI on any such call outside a function body.
- *
- * It does NOT try to be a full TS parser — it operates on a brace-depth
- * heuristic: any flagged call at brace-depth 0 is a violation. False
- * positives can be suppressed with a trailing `// snapstart-safe: <reason>`
- * comment on the same line.
- */
-
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 
@@ -104,14 +85,6 @@ function isInsideFunctionBody(source: string, offset: number): boolean {
             continue;
         }
         if (ch === "{") {
-            // Default to "fn" so we don't misclassify multi-line method
-            // signatures or methods whose return type contains "{". Mark as
-            // "block" only for the cases that clearly aren't a function body:
-            // class/interface/enum/namespace declarations, object literals
-            // following `=` / `,` / `:` / `(` / `return` / `[`, and control
-            // flow blocks following `if (...)`, `else`, `for (...)`,
-            // `while (...)`, `try`, `catch (...)`, `finally`, `do`, `switch
-            // (...)`, plus bare blocks at top level (`}\s*{`).
             const tail = source
                 .slice(Math.max(0, i - 200), i)
                 .replace(/\s+/g, " ")
@@ -169,9 +142,6 @@ function scanFile(file: string): Violation[] {
                 lineEnd === -1 ? undefined : lineEnd,
             );
             if (SUPPRESS_RE.test(lineText)) continue;
-            // Default parameter values in function signatures
-            // (`function foo(d = new Date()) {`) are evaluated per-call,
-            // not at module load — same safety story as a function body.
             if (
                 /^\s*(export\s+)?(default\s+)?(async\s+)?function\b/.test(
                     lineText,
@@ -200,9 +170,9 @@ if (violations.length === 0) {
 console.error("FAIL snapstart-safe: init-time non-determinism detected\n");
 console.error(
     "  These calls run once per execution environment, not once per\n" +
-        "  invocation. Under SnapStart that produces identical values\n" +
-        "  across every restored container. Move them inside a function\n" +
-        "  body, or annotate the line with // snapstart-safe: <reason>.\n",
+    "  invocation. Under SnapStart that produces identical values\n" +
+    "  across every restored container. Move them inside a function\n" +
+    "  body, or annotate the line with // snapstart-safe: <reason>.\n",
 );
 for (const v of violations) {
     console.error(

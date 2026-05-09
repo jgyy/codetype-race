@@ -218,7 +218,6 @@ export const TEAM_STARTING_RATING = 1000;
 export const TEAM_ELO_K = 24;
 export const TEAM_SIZE_BONUS = 50;
 
-// ─── Activity feed ──────────────────────────────────────────────────
 export const FeedEventTypeSchema = z.enum([
     "raced",
     "joined_guild",

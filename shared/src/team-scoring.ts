@@ -1,18 +1,16 @@
 import type { Team } from "./social";
 
-// Shared input shape: one row per finished racer.
 export interface TeamPlayerResult {
     userId: string;
     teamId: string;
     wpm: number;
-    accuracy: number; // 0..1
+    accuracy: number;
     finishedAt: number;
 }
 
 export interface TeamScore {
     teamId: string;
     score: number;
-    /** Latest finish time among the team's players (used for tiebreak). */
     maxFinishedAt: number;
 }
 
@@ -20,12 +18,6 @@ export function teamScore(rows: TeamPlayerResult[]): number {
     return rows.reduce((s, r) => s + r.wpm * r.accuracy, 0);
 }
 
-/**
- * Score every team and pick the winner. Tiebreak per spec line 200:
- * the team whose *latest* finisher crossed earliest wins. If two teams
- * still tie after the tiebreak, the team with the lower id ('A'<'B'…)
- * wins — deterministic and impossible to grief.
- */
 export function rankTeams(
     teams: Team[],
     results: TeamPlayerResult[],

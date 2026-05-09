@@ -32,14 +32,6 @@ export const AchievementDefSchema = z.object({
 });
 export type AchievementDef = z.infer<typeof AchievementDefSchema>;
 
-/**
- * Aggregated player state used by stateful rules. Loaded lazily by the
- * engine and cached for the lifetime of a stream batch.
- *
- * Fields are sourced from existing rows (no new write path), which is
- * why best_wpm is keyed by language — that matches what UserRepo
- * already persists on race finalization.
- */
 export interface PlayerState {
     totalRaces: number;
     racesWon: number;

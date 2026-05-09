@@ -1,14 +1,4 @@
 #!/usr/bin/env bun
-/**
- * Phase 15 / slice-4 runbook gate.
- *
- * Asserts a 1:1 mapping between alarm ids in
- * `infra/lib/observability/alarms.config.ts` and `<id>.md` files in
- * `docs/runbooks/`. New alarms without a runbook fail CI; orphan
- * runbooks (alarm removed but file lingers) also fail.
- *
- * Exits non-zero on the first violation set.
- */
 import { readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { ALARM_IDS } from "../infra/lib/observability/alarms.config";
