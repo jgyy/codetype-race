@@ -18,6 +18,7 @@
     "./AntiCheatProjection": "./src/services/AntiCheatProjection.ts",
     "./CursorDigest": "./src/services/CursorDigest.ts",
     "./ProjectionComparator": "./src/services/ProjectionComparator.ts",
+    "./DualWriter": "./src/services/DualWriter.ts",
     "./ports/IdempotencyStore": "./src/ports/IdempotencyStore.ts",
     "./ports/OutboxStore": "./src/ports/OutboxStore.ts",
     "./ports/RaceEventStore": "./src/ports/RaceEventStore.ts",
