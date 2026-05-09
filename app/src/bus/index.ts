@@ -3,4 +3,8 @@ export { CommandBus } from "./CommandBus";
 export { QueryBus } from "./QueryBus";
 export type { Middleware, BusMessage, Next } from "./Middleware";
 export { compose } from "./Middleware";
-export { telemetryMiddleware } from "./middlewares/telemetry";
+export {
+    telemetryMiddleware,
+    createTelemetryMiddleware,
+    type TelemetryDeps,
+} from "./middlewares/telemetry";

@@ -1,55 +1,156 @@
-// Phase 15 / slice-1 shim.
+// Phase 15 / slice-2 — OTel-backed adapters for the domain Tracer + Metrics
+// ports. The OTel SDK is loaded by the layer's bootstrap.js into
+// globalThis.__codetypeOtel; if it isn't present (local tests, layer
+// detached) we fall back to the domain's NoopTracer / NoopMetrics so the
+// composition root stays uniform.
 //
-// In slice-1 the OTel layer preloads via NODE_OPTIONS, so SDK init has
-// already happened by the time this module loads. We only re-export a
-// minimal `tracer` surface that slice-2 will use for manual spans.
-//
-// Importing this from a handler is currently optional (the layer's --require
-// preload runs unconditionally). Once slice-2 introduces manual bus spans,
-// every handler will `import './otel'` to get the typed tracer.
-//
-// The domain/ and app/ packages must NEVER import this file directly — they
-// receive a Tracer port instead (added in slice-2). scripts/check-deps.ts
-// enforces no @opentelemetry/* imports in those layers.
+// Importantly, this file is the ONLY place in the codebase that talks to
+// `@opentelemetry/api`. domain/ and app/ are dep-checked to forbid that
+// import (scripts/check-deps.ts).
 
-interface NoopSpan {
-  setAttribute(_k: string, _v: unknown): void;
-  setStatus(_s: { code: number; message?: string }): void;
-  recordException(_e: unknown): void;
-  end(): void;
+import {
+    NoopMetrics,
+    NoopTracer,
+    type Counter,
+    type Histogram,
+    type Labels,
+    type Metrics,
+    type Span,
+    type Tracer,
+} from "@codetype/domain";
+
+interface OtelApiShape {
+    trace: {
+        getTracer: (name: string) => unknown;
+    };
+    metrics?: {
+        getMeter: (name: string) => unknown;
+    };
+    SpanStatusCode: { OK: number; ERROR: number };
 }
 
-interface Tracer {
-  startActiveSpan<T>(name: string, fn: (span: NoopSpan) => T): T;
+function loadOtelApi(): OtelApiShape | undefined {
+    const g = globalThis as { __codetypeOtel?: { api?: OtelApiShape } };
+    return g.__codetypeOtel?.api;
 }
 
-const noopSpan: NoopSpan = {
-  setAttribute: () => {},
-  setStatus: () => {},
-  recordException: () => {},
-  end: () => {},
-};
-
-const noopTracer: Tracer = {
-  startActiveSpan: (_name, fn) => fn(noopSpan),
-};
-
-function resolveTracer(): Tracer {
-  // The bootstrap stashes the loaded @opentelemetry/api on globalThis.
-  // When sampler=always_off (slice-1) the real tracer is still a valid
-  // object — calling startActiveSpan on it is a no-op for export but keeps
-  // the call sites stable for slice-2.
-  const g = globalThis as { __codetypeOtel?: { api?: unknown } };
-  const api = g.__codetypeOtel?.api as
-    | { trace: { getTracer: (name: string) => Tracer } }
-    | undefined;
-  if (!api) return noopTracer;
-  try {
-    return api.trace.getTracer("codetype");
-  } catch {
-    return noopTracer;
-  }
+class OtelSpan implements Span {
+    constructor(
+        private readonly inner: {
+            setAttribute: (k: string, v: unknown) => void;
+            setStatus: (s: { code: number; message?: string }) => void;
+            recordException: (e: unknown) => void;
+            end: () => void;
+        },
+        private readonly statusCodes: { OK: number; ERROR: number },
+    ) {}
+    setAttribute(key: string, value: unknown): void {
+        this.inner.setAttribute(key, value as never);
+    }
+    setStatus(status: { code: "ok" | "error"; message?: string }): void {
+        this.inner.setStatus({
+            code:
+                status.code === "ok"
+                    ? this.statusCodes.OK
+                    : this.statusCodes.ERROR,
+            message: status.message,
+        });
+    }
+    recordException(err: unknown): void {
+        this.inner.recordException(err);
+    }
+    end(): void {
+        this.inner.end();
+    }
 }
 
-export const tracer: Tracer = resolveTracer();
-export type { Tracer, NoopSpan as Span };
+class OtelTracer implements Tracer {
+    constructor(
+        private readonly inner: {
+            startActiveSpan: <T>(
+                name: string,
+                fn: (span: unknown) => Promise<T> | T,
+            ) => Promise<T> | T;
+        },
+        private readonly statusCodes: { OK: number; ERROR: number },
+    ) {}
+
+    async startActiveSpan<T>(
+        name: string,
+        fn: (span: Span) => Promise<T>,
+    ): Promise<T> {
+        return Promise.resolve(
+            this.inner.startActiveSpan(name, async (raw) => {
+                const span = new OtelSpan(
+                    raw as ConstructorParameters<typeof OtelSpan>[0],
+                    this.statusCodes,
+                );
+                try {
+                    return await fn(span);
+                } finally {
+                    span.end();
+                }
+            }),
+        );
+    }
+}
+
+class OtelCounter implements Counter {
+    constructor(
+        private readonly inner: { add: (n: number, l?: Labels) => void },
+    ) {}
+    add(value: number, labels?: Labels): void {
+        this.inner.add(value, labels);
+    }
+}
+
+class OtelHistogram implements Histogram {
+    constructor(
+        private readonly inner: { record: (n: number, l?: Labels) => void },
+    ) {}
+    record(value: number, labels?: Labels): void {
+        this.inner.record(value, labels);
+    }
+}
+
+class OtelMetrics implements Metrics {
+    constructor(
+        private readonly meter: {
+            createCounter: (name: string) => OtelCounter["inner"];
+            createHistogram: (name: string) => OtelHistogram["inner"];
+        },
+    ) {}
+    counter(name: string): Counter {
+        return new OtelCounter(this.meter.createCounter(name));
+    }
+    histogram(name: string): Histogram {
+        return new OtelHistogram(this.meter.createHistogram(name));
+    }
+}
+
+function buildTracer(api: OtelApiShape): Tracer {
+    try {
+        const inner = api.trace.getTracer("codetype") as ConstructorParameters<
+            typeof OtelTracer
+        >[0];
+        return new OtelTracer(inner, api.SpanStatusCode);
+    } catch {
+        return new NoopTracer();
+    }
+}
+
+function buildMetrics(api: OtelApiShape): Metrics {
+    try {
+        if (!api.metrics) return new NoopMetrics();
+        const meter = api.metrics.getMeter(
+            "codetype",
+        ) as ConstructorParameters<typeof OtelMetrics>[0];
+        return new OtelMetrics(meter);
+    } catch {
+        return new NoopMetrics();
+    }
+}
+
+const api = loadOtelApi();
+export const tracer: Tracer = api ? buildTracer(api) : new NoopTracer();
+export const metrics: Metrics = api ? buildMetrics(api) : new NoopMetrics();

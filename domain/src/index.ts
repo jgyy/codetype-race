@@ -27,3 +27,13 @@ export type {
     LeaderboardEntry,
     UnitOfWork,
 } from "./ports";
+export type {
+    Tracer,
+    Span,
+    SpanStatusCode,
+    Metrics,
+    Counter,
+    Histogram,
+    Labels,
+} from "./ports";
+export { NoopTracer, NoopMetrics } from "./ports";

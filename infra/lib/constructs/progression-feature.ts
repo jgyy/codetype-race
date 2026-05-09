@@ -12,11 +12,6 @@ import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as lambdaSources from "aws-cdk-lib/aws-lambda-event-sources";
 import * as s3 from "aws-cdk-lib/aws-s3";
 
-/**
- * Factory that creates a NodejsFunction with project conventions
- * (runtime, architecture, log retention, env). Owned by the parent
- * stack so feature constructs can stay agnostic of bundling settings.
- */
 export type LambdaFactory = (
     id: string,
     entry: string,
@@ -34,27 +29,12 @@ export interface ProgressionFeatureProps {
     jwtAuth: apigwv2Auth.HttpJwtAuthorizer;
     lambdaFactory: LambdaFactory;
     integFactory: IntegFactory;
-    /**
-     * Optional: enables WS pushes (XP_GAINED, LEVEL_UP, etc.) to the
-     * user's presence connections. When omitted, the stream consumer
-     * runs the engines but emits no toasts (graceful degradation).
-     */
     presenceWs?: {
         endpoint: string;
         manageConnectionsArn: string;
     };
 }
 
-/**
- * Phase-11 progression feature: event-log archive + XP + achievements
- * (and, in slice 4, quests). Owns its bucket, Firehose, stream
- * consumer lambda, and HTTP surface.
- *
- * Why a Construct: this feature is event-sourced and end-to-end
- * decoupled from the race path — keeping its CDK definitions
- * co-located makes it trivial to remove or feature-flag at the
- * infra layer.
- */
 export class ProgressionFeature extends Construct {
     readonly env: Record<string, string>;
     readonly streamConsumer: lambda.Function;

@@ -35,3 +35,7 @@ export type {
 export { TransactionConflictError } from "./RaceEventStore";
 export type { RaceProjectionStore } from "./RaceProjectionStore";
 export { ProjectionConflictError } from "./RaceProjectionStore";
+export type { Tracer, Span, SpanStatusCode } from "./Tracer";
+export { NoopTracer } from "./Tracer";
+export type { Metrics, Counter, Histogram, Labels } from "./Metrics";
+export { NoopMetrics } from "./Metrics";
