@@ -18,17 +18,6 @@ export interface DrainOptions {
     maxAttempts?: number;
 }
 
-/**
- * One pass of the outbox-drain loop. Pure orchestration over the store +
- * dispatcher ports — the Lambda wraps this in a stream-trigger / poll loop.
- *
- * Semantics:
- *   - dispatch failures retry with exponential backoff up to maxAttempts
- *   - on the (maxAttempts + 1)th failure the entry is dead-lettered with the
- *     last error message
- *   - ack/fail/deadLetter are best-effort; their own failures bubble up so the
- *     Lambda re-runs and the entry is re-claimed (at-least-once)
- */
 export async function drainOnce(
     store: OutboxStore,
     dispatcher: OutboxDispatcher,
@@ -65,7 +54,6 @@ export async function drainOnce(
     return { claimed: claims.length, acked, retried, deadLettered };
 }
 
-/** Build an outbox entry from an event — used inside command handlers. */
 export function outboxEntryFor(args: {
     id: string;
     raceId: string;

@@ -53,13 +53,6 @@ export class CodetypeStack extends Stack {
             stream: ddb.StreamViewType.NEW_AND_OLD_IMAGES,
             removalPolicy: RemovalPolicy.RETAIN,
         });
-        // Phase 16.6 — opt-in projection trim. With -c gsi1KeysOnly=true,
-        // GSI1 projects only the index keys + base table keys instead of
-        // ALL non-key attributes. Readers go through queryGsiThenHydrate
-        // which transparently follows up with a BatchGet on the base
-        // table when items come back as keys-only. Toggle in a low-traffic
-        // window — DynamoDB rebuilds the GSI online but it can take
-        // several minutes during which the index is partially populated.
         const gsi1KeysOnly =
             this.node.tryGetContext("gsi1KeysOnly") === true ||
             this.node.tryGetContext("gsi1KeysOnly") === "true";
@@ -912,18 +905,6 @@ export class CodetypeStack extends Stack {
             props?.siteDomainName && props.certificate
                 ? { domainNames: [props.siteDomainName], certificate: props.certificate }
                 : {};
-        // Phase 16.14 — pin the HTML cache policy in source.
-        // CDK's Distribution default is already CachingOptimized (strips
-        // query strings, forwards no headers, no cookies — exactly what
-        // the spec wants for HTML routes), but making it explicit means a
-        // future "let's forward Cookie/Authorization for personalization"
-        // PR shows up in code review instead of slipping through as an
-        // implicit-default change.
-        //
-        // The spec's /api/* cache-key rules don't apply here: this
-        // distribution only fronts the S3 static site. The HTTP API goes
-        // directly to API Gateway, so /api caching is governed by the
-        // Cache-Control response headers set by handlers (slice 16.15).
         const distribution = new cloudfront.Distribution(this, "Cdn", {
             defaultBehavior: {
                 origin: origins.S3BucketOrigin.withOriginAccessControl(siteBucket),

@@ -106,7 +106,6 @@ export function reduce(
             const charsTyped = Number(ev.payload.charsTyped ?? p.charsTyped);
             const errors = Number(ev.payload.errors ?? p.errors);
             const accuracy = Number(ev.payload.accuracy ?? p.accuracy);
-            // Cursor events are monotonic per player; ignore out-of-order regressions.
             const next: PlayerState =
                 charsTyped >= p.charsTyped
                     ? { ...p, charsTyped, errors, accuracy }
@@ -140,8 +139,6 @@ export function reduce(
         case "RACE_CANCELLED":
             return { ...s, status: "cancelled", lastSeq };
         case "CURSOR_DIGEST":
-            // Replay-only event — projection state ignores it. We still bump
-            // lastSeq so projection writes don't loop on the digest insert.
             return { ...s, lastSeq };
         case "PLAYER_FLAGGED": {
             const userId = String(ev.actorId ?? ev.payload.userId ?? "");

@@ -20,12 +20,6 @@ export interface RaceEventDraft {
 
 export interface CommandPayload<T> {
     events: RaceEventDraft[];
-    /**
-     * Per-event channel selector. If omitted, every event spawns one outbox row
-     * on the `broadcast` channel — covers the room-WS notify case which is the
-     * common path. Return `[]` to emit no outbox row for an event (e.g., a
-     * cursor-progress event that's already covered by the projection update).
-     */
     outboxChannelsFor?: (
         draft: RaceEventDraft,
         index: number,
@@ -38,13 +32,9 @@ export interface DispatchInput<T> {
     userId: string;
     commandId: string;
     raceId: string;
-    /** Typically the request id; falls back to commandId. */
     correlationId?: string;
-    /** Causal predecessor — for events triggered by other events. */
     causationId?: string | null;
-    /** Cache lifetime for the idempotency row. Defaults to 1 hour. */
     idempotencyTtlSeconds?: number;
-    /** Caller-provided id factory for outbox rows. */
     newOutboxId: () => string;
     clock: Clock;
     handler: () => Promise<CommandPayload<T>>;
@@ -91,8 +81,6 @@ export class RaceCommandBus {
         const causationId = input.causationId ?? null;
 
         if (payload.events.length === 0) {
-            // Pure read-side command (e.g., redrive). Still write the idempotency
-            // row so retries don't re-run the handler.
             const idem = this.idempotencyRow(input, payload.result, httpStatus);
             await this.deps.eventStore.appendCommand({
                 events: [],
@@ -129,8 +117,6 @@ export class RaceCommandBus {
                     eventSeq: events[i].seq,
                     eventType: events[i].type,
                     channel,
-                    // Full event so dispatchers can reconstruct the broadcast
-                    // frame without an extra event-store read.
                     payload: events[i] as unknown as Record<string, unknown>,
                     attempts: 0,
                     enqueuedAt,
@@ -149,8 +135,6 @@ export class RaceCommandBus {
             });
         } catch (e) {
             if (e instanceof TransactionConflictError) {
-                // Distinguish "another writer used this commandId first" from
-                // "something else collided" by re-reading the idempotency row.
                 const existing = await this.deps.idempotencyStore.get(
                     input.userId,
                     input.commandId,

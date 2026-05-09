@@ -21,17 +21,6 @@ export interface ApplyBatchResult {
     skippedSeqs: number[];
 }
 
-/**
- * Apply a batch of events to a projection state. Pure — no I/O.
- *
- * Semantics:
- *   - Events with `seq <= state.lastSeq` are skipped (already applied);
- *     this makes the function idempotent under at-least-once stream delivery.
- *   - The first un-applied event must be exactly `state.lastSeq + 1`.
- *     Otherwise we throw ProjectionGapError so the caller can backfill via
- *     RaceEventStore.listEvents before retrying.
- *   - Events within the batch must be strictly increasing in seq.
- */
 export function applyEventBatch(
     prev: RaceState,
     events: readonly RaceEvent[],

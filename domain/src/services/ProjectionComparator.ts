@@ -11,9 +11,6 @@ export interface DivergenceReport {
     raceId: string;
     divergent: boolean;
     fields: FieldDivergence[];
-    /** True if one side is missing entirely — usually a transient race
-     * condition during the dual-write window, not a real bug. Surfaced
-     * separately so ops can triage. */
     oneSidedMissing: "none" | "projection" | "snapshot";
 }
 
@@ -24,7 +21,6 @@ const LEGACY_TO_PROJECTION_STATUS: Record<string, RaceState["status"]> = {
     finished: "finished",
 };
 
-/** Normalised view of a player for cross-storage comparison. */
 interface ComparablePlayer {
     displayName: string;
     charsTyped: number;
@@ -46,9 +42,6 @@ function snapshotPlayers(players: SeedPlayer[]): ComparablePlayer[] {
         displayName: p.display_name,
         charsTyped: p.chars_typed,
         errors: p.errors,
-        // SeedPlayer doesn't carry a finished flag directly; legacy stores
-        // RESULT# rows under the room. Caller passes finished-merged players;
-        // if not, we infer "fully typed" from progress >= 1.
         finished: p.progress >= 1,
     }));
 }
@@ -132,14 +125,6 @@ function comparePlayers(
     return out;
 }
 
-/**
- * Compare an event-sourced RaceState projection to the legacy room snapshot.
- *
- * Fields explicitly NOT compared (expected to differ — not bugs):
- *   - lastSeq (projection-only)
- *   - code, host_id, snippet_id, created_at, version (snapshot-only)
- *   - id (different formats)
- */
 export function compareProjectionToSnapshot(args: {
     raceId: string;
     projection: RaceState | null;

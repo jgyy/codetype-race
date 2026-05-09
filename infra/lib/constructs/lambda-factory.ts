@@ -15,21 +15,9 @@ export interface LambdaFactoryOptions {
     readonly otlpEndpoint?: string;
     readonly sampleRatio?: number;
     readonly snapStart?: boolean;
-    /**
-     * Phase 16.3 — apply per-tier reserved concurrency. Off by default;
-     * opt in once load tests have validated that the per-tier ceilings
-     * don't throttle real traffic. AWS requires the unreserved pool to
-     * stay >= 100, so all tier values combined target a budget under 900
-     * out of the default 1000-per-account.
-     */
     readonly reservedConcurrency?: boolean;
 }
 
-/**
- * Per-tier reserved concurrency ceilings. Each value is per-handler;
- * `LambdaFactory.totalReserved` exposes the running sum so the stack can
- * surface it as a CfnOutput for review during cdk diff.
- */
 export const RESERVED_CONCURRENCY: Record<ConcurrencyTier, number> = {
     http_hot: 30,
     http_warm: 12,

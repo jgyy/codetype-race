@@ -3,11 +3,6 @@ import type { OutboxDispatcher } from "../ports/OutboxStore";
 
 export type ChannelHandler = (entry: OutboxEntry) => Promise<void>;
 
-/**
- * Dispatcher that routes by `entry.channel` to a registered handler.
- * Throws on unregistered channels — better to fail fast than silently swallow,
- * since the outbox partition is supposed to drain to *something*.
- */
 export class RoutingDispatcher implements OutboxDispatcher {
     constructor(
         private readonly handlers: Partial<Record<OutboxChannel, ChannelHandler>>,
@@ -22,7 +17,6 @@ export class RoutingDispatcher implements OutboxDispatcher {
     }
 }
 
-/** Logs each dispatch via the supplied sink. Useful as a default and in tests. */
 export class LoggingDispatcher implements OutboxDispatcher {
     constructor(
         private readonly tag: string,

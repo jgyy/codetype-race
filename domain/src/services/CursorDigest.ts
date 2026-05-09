@@ -1,9 +1,5 @@
 import type { RaceEvent } from "../events/RaceEvent";
 
-/**
- * One downsampled cursor sample: time relative to race start (ms), with the
- * player's progress at that moment.
- */
 export interface CursorSample {
     t: number;
     charsTyped: number;
@@ -18,21 +14,8 @@ export interface CursorDigestPayload {
     perPlayer: Record<string, CursorSample[]>;
 }
 
-/**
- * 5 Hz target downsampling. Cursor events are emitted at ~20 Hz (50 ms
- * windows); 4× downsampling yields one sample per 200 ms — enough for a
- * smooth replay timeline at much lower storage cost.
- */
 export const DEFAULT_DIGEST_BUCKET_MS = 200;
 
-/**
- * Downsample a chronological event list into a CURSOR_DIGEST payload. Pure;
- * does not consult the event store. Caller passes the full event log; this
- * function picks out RACE_STARTED / RACE_FINISHED for timestamps and groups
- * CURSOR_PROGRESS events by player + bucket, retaining the LATEST sample
- * within each bucket (so a player's furthest-progress in the window is
- * preserved).
- */
 export function buildCursorDigest(
     events: readonly RaceEvent[],
     opts: { bucketMs?: number } = {},
@@ -51,7 +34,6 @@ export function buildCursorDigest(
     if (!startedAt) return null;
     const startMs = Date.parse(startedAt);
 
-    // Map<userId, Map<bucketIndex, CursorSample>>
     const buckets = new Map<string, Map<number, CursorSample>>();
     for (const ev of events) {
         if (ev.type !== "CURSOR_PROGRESS") continue;
@@ -67,8 +49,6 @@ export function buildCursorDigest(
             perBucket = new Map();
             buckets.set(userId, perBucket);
         }
-        // Keep the latest cursor reading within the bucket — represents the
-        // farthest the player progressed before the next bucket boundary.
         perBucket.set(bucket, sample);
     }
 
@@ -81,7 +61,6 @@ export function buildCursorDigest(
     return { raceId, startedAt, finishedAt, bucketMs, perPlayer };
 }
 
-/** True if any CURSOR_DIGEST event already exists in the log. */
 export function hasCursorDigest(events: readonly RaceEvent[]): boolean {
     return events.some((e) => e.type === "CURSOR_DIGEST");
 }

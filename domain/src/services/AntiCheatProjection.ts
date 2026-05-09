@@ -36,12 +36,6 @@ export function emptyPlayerAcStats(
     };
 }
 
-/**
- * Pure: derive a single player's anti-cheat stats from a chronological event
- * sequence. Tracks the largest single-event jump in charsTyped (paste signal)
- * and captures startedAt / finishedAt / final counters for downstream
- * evaluation.
- */
 export function aggregateForPlayer(
     events: readonly RaceEvent[],
     playerId: string,
@@ -86,11 +80,6 @@ export function aggregateForPlayer(
     return s;
 }
 
-/**
- * Convert the aggregated projection into RunStats and run the existing
- * heuristic evaluator. Returns an empty list when the player has not finished
- * (we only judge complete runs).
- */
 export function evaluatePlayer(
     stats: PlayerAntiCheatStats,
     opts: {

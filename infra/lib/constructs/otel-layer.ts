@@ -35,11 +35,6 @@ export class OtelLayer extends Construct {
             compatibleRuntimes: [lambda.Runtime.NODEJS_20_X],
             removalPolicy: RemovalPolicy.DESTROY,
             code: lambda.Code.fromAsset(OTEL_LAYER_DIR, {
-                // Hash by the bundled output, not the source dir. The source
-                // is just package.json + bootstrap.js, which won't change when
-                // we fix the bundling tool — but the resulting node_modules
-                // tree must, to bust the previously-published 509 MB asset
-                // (built by `bun install --production`) sitting in S3.
                 assetHashType: AssetHashType.OUTPUT,
                 bundling: {
                     image: lambda.Runtime.NODEJS_20_X.bundlingImage,
@@ -61,10 +56,6 @@ export class OtelLayer extends Construct {
 }
 
 function localBundle(outputDir: string): boolean {
-    // Must use npm (with hoisting) to stay under Lambda's 250 MB unzipped
-    // layer limit. `bun install --production` produces an isolated
-    // node_modules tree (~500 MB for these OTel deps) because Bun keeps
-    // per-package copies; npm hoists and dedupes to ~127 MB.
     const probe = spawnSync("npm", ["--version"], { stdio: "ignore" });
     if (probe.status !== 0) return false;
 
