@@ -15,6 +15,7 @@
     "./OutboxPublisher": "./src/services/OutboxPublisher.ts",
     "./RoutingDispatcher": "./src/services/RoutingDispatcher.ts",
     "./RaceCommandBus": "./src/services/RaceCommandBus.ts",
+    "./AntiCheatProjection": "./src/services/AntiCheatProjection.ts",
     "./ports/IdempotencyStore": "./src/ports/IdempotencyStore.ts",
     "./ports/OutboxStore": "./src/ports/OutboxStore.ts",
     "./ports/RaceEventStore": "./src/ports/RaceEventStore.ts",
