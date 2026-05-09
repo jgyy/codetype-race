@@ -397,7 +397,7 @@ export const WsServerEventAppendSchema = z.object({
     eventType: z.string(),
     occurredAt: z.string().datetime(),
     actorId: z.string().nullable(),
-    payload: z.record(z.unknown()),
+    payload: z.record(z.string(), z.unknown()),
     correlationId: z.string().uuid(),
 });
 export type WsServerEventAppend = z.infer<typeof WsServerEventAppendSchema>;

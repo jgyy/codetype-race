@@ -20,7 +20,7 @@ export const EventEnvelopeSchema = z.object({
     type: EventTypeSchema,
     occurredAt: z.string().datetime(),
     userId: z.string().min(1),
-    payload: z.record(z.unknown()),
+    payload: z.record(z.string(), z.unknown()),
     source: EventSourceSchema,
     v: z.literal(1).default(1),
 });

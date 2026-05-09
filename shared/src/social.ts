@@ -234,7 +234,7 @@ export const FeedEventSchema = z.object({
     user_id: z.string(),
     event_id: z.string().uuid(),
     type: FeedEventTypeSchema,
-    payload: z.record(z.unknown()),
+    payload: z.record(z.string(), z.unknown()),
     created_at: z.string().datetime(),
 });
 export type FeedEvent = z.infer<typeof FeedEventSchema>;

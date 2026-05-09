@@ -15,7 +15,7 @@ export const RaceEventSchema: z.ZodType<RaceEvent> = z.object({
     type: RaceEventTypeSchema,
     occurredAt: z.string().datetime(),
     actorId: z.string().nullable(),
-    payload: z.record(z.unknown()),
+    payload: z.record(z.string(), z.unknown()),
     commandId: z.string().uuid().nullable(),
     causationId: z.string().uuid().nullable(),
     correlationId: z.string().uuid(),
