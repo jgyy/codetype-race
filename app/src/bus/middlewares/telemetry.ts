@@ -18,7 +18,8 @@ export function createTelemetryMiddleware(
     const tracer = deps.tracer ?? new NoopTracer();
     const metrics = deps.metrics ?? new NoopMetrics();
     const kind = deps.kind ?? "command";
-    const totalCounter = metrics.counter(`app.${kind}s.total`);
+    const plural = kind === "query" ? "queries" : "commands";
+    const totalCounter = metrics.counter(`app.${plural}.total`);
     const durationHistogram = metrics.histogram(`app.${kind}.duration_ms`);
 
     return async (msg, next) => {
