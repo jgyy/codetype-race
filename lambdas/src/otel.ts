@@ -1,13 +1,3 @@
-// Phase 15 / slice-2 — OTel-backed adapters for the domain Tracer + Metrics
-// ports. The OTel SDK is loaded by the layer's bootstrap.js into
-// globalThis.__codetypeOtel; if it isn't present (local tests, layer
-// detached) we fall back to the domain's NoopTracer / NoopMetrics so the
-// composition root stays uniform.
-//
-// Importantly, this file is the ONLY place in the codebase that talks to
-// `@opentelemetry/api`. domain/ and app/ are dep-checked to forbid that
-// import (scripts/check-deps.ts).
-
 import {
     NoopMetrics,
     NoopTracer,
@@ -43,7 +33,7 @@ class OtelSpan implements Span {
             end: () => void;
         },
         private readonly statusCodes: { OK: number; ERROR: number },
-    ) {}
+    ) { }
     setAttribute(key: string, value: unknown): void {
         this.inner.setAttribute(key, value as never);
     }
@@ -73,7 +63,7 @@ class OtelTracer implements Tracer {
             ) => Promise<T> | T;
         },
         private readonly statusCodes: { OK: number; ERROR: number },
-    ) {}
+    ) { }
 
     async startActiveSpan<T>(
         name: string,
@@ -98,7 +88,7 @@ class OtelTracer implements Tracer {
 class OtelCounter implements Counter {
     constructor(
         private readonly inner: { add: (n: number, l?: Labels) => void },
-    ) {}
+    ) { }
     add(value: number, labels?: Labels): void {
         this.inner.add(value, labels);
     }
@@ -107,7 +97,7 @@ class OtelCounter implements Counter {
 class OtelHistogram implements Histogram {
     constructor(
         private readonly inner: { record: (n: number, l?: Labels) => void },
-    ) {}
+    ) { }
     record(value: number, labels?: Labels): void {
         this.inner.record(value, labels);
     }
@@ -119,7 +109,7 @@ class OtelMetrics implements Metrics {
             createCounter: (name: string) => OtelCounter["inner"];
             createHistogram: (name: string) => OtelHistogram["inner"];
         },
-    ) {}
+    ) { }
     counter(name: string): Counter {
         return new OtelCounter(this.meter.createCounter(name));
     }

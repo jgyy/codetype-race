@@ -68,11 +68,6 @@ export interface RaceCommandHandlerArgs<I, O> {
     build: (input: I, ctx: RaceCommandCtx) => Promise<CommandPayload<O>>;
 }
 
-/**
- * HTTP wrapper for race-event-sourced commands. Reads Idempotency-Key,
- * delegates to RaceCommandBus, surfaces replay via the X-Idempotent-Replay
- * response header. Returns the handler's `result` body.
- */
 export function withRaceCommand<I, O>(
     args: RaceCommandHandlerArgs<I, O>,
 ): (event: HttpEvent) => Promise<APIGatewayProxyResultV2> {

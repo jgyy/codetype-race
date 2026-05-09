@@ -135,6 +135,7 @@ import {
 } from "@codetype/adapters-aws";
 import { ddb, TABLE } from "../src/ddb";
 import { tracer as otelTracer, metrics as otelMetrics } from "../src/otel";
+import { log as structuredLog } from "../src/logger";
 import { teamRooms } from "../src/repos/TeamRoomRepo";
 import { quests } from "../src/repos/QuestsRepo";
 import { achievements } from "../src/repos/AchievementsRepo";
@@ -332,6 +333,7 @@ export const commandBus = new CommandBus()
         createTelemetryMiddleware({
             tracer: otelTracer,
             metrics: otelMetrics,
+            logger: structuredLog,
             kind: "command",
         }),
     )
@@ -451,6 +453,7 @@ export const queryBus = new QueryBus()
         createTelemetryMiddleware({
             tracer: otelTracer,
             metrics: otelMetrics,
+            logger: structuredLog,
             kind: "query",
         }),
     )

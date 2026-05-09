@@ -42,6 +42,7 @@ import {
     tracer as otelTracer,
     metrics as otelMetrics,
 } from "../src/otel";
+import { log as structuredLog } from "../src/logger";
 import { users } from "../src/repos/UserRepo";
 import { teamRatings } from "../src/repos/TeamRatingRepo";
 import { teamRooms } from "../src/repos/TeamRoomRepo";
@@ -130,6 +131,7 @@ export const commandBus = new CommandBus()
         createTelemetryMiddleware({
             tracer: otelTracer,
             metrics: otelMetrics,
+            logger: structuredLog,
             kind: "command",
         }),
     )

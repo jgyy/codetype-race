@@ -29,25 +29,17 @@ function getBus(): RaceCommandBus {
     return cachedBus;
 }
 
-/** Reset for tests. */
 export function __resetBusCache(bus: RaceCommandBus | null = null) {
     cachedBus = bus;
 }
 
 export interface MaybeDualWriteInput<L> {
-    /** Path identifier used to scope the deterministic commandId — e.g. 'createRoom'. */
     path: string;
-    /** Env var name (defaults to PHASE_14_DUALWRITE) controlling rollout per-path. */
     flagEnv?: string;
-    /** The legacy snapshot write — its return type is what the handler's caller sees. */
     legacy: () => Promise<L>;
-    /** Build the event-side payload from the legacy result. Return null to skip. */
     toEvents: (legacyResult: L) => CommandPayload<unknown> | null;
-    /** Where to read the host/user id off the legacy result. */
     userId: (legacyResult: L) => string;
-    /** Where to read the raceId off the legacy result. */
     raceId: (legacyResult: L) => string;
-    /** Optional: derive the idempotency commandId. Defaults to uuidv5(path:raceId). */
     commandIdFor?: (legacyResult: L) => string;
 }
 
@@ -60,19 +52,11 @@ function defaultCommandIdFor(path: string, raceId: string): string {
     return uuidv5(`${path}:${raceId}`, DUALWRITE_NAMESPACE);
 }
 
-/**
- * Run the legacy operation; if the dual-write flag is on, also emit events
- * via RaceCommandBus. Always returns the legacy result so callers stay
- * snapshot-compatible during Phase A. Event-side failures are logged with
- * tag 'dualwrite.event_error' for a CloudWatch metric-filter alarm; they do
- * not propagate.
- */
 export async function maybeDualWrite<L>(
     input: MaybeDualWriteInput<L>,
 ): Promise<L> {
     const flagEnv = input.flagEnv ?? "PHASE_14_DUALWRITE";
     if (!isFlagOn(flagEnv)) {
-        // Fast path: dual-write disabled. Behaviour unchanged.
         return input.legacy();
     }
 

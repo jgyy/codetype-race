@@ -175,7 +175,37 @@ describe("createTelemetryMiddleware (Phase 15 / slice-2)", () => {
         const bus = new CommandBus()
             .use(createTelemetryMiddleware())
             .register(EchoCommand, new OkHandler());
-        // Just exercising the path — should not throw.
         await expect(bus.dispatch(new EchoCommand("x"))).resolves.toBe("x");
+    });
+
+    test("routes log lines through the injected logger", async () => {
+        const infoCalls: Record<string, unknown>[] = [];
+        const errorCalls: Record<string, unknown>[] = [];
+        const logger = {
+            info: (f: Record<string, unknown>) => infoCalls.push(f),
+            error: (f: Record<string, unknown>) => errorCalls.push(f),
+        };
+        const okBus = new CommandBus()
+            .use(createTelemetryMiddleware({ logger, kind: "command" }))
+            .register(EchoCommand, new OkHandler());
+        await okBus.dispatch(new EchoCommand("hi"));
+        expect(infoCalls).toHaveLength(1);
+        expect(infoCalls[0]).toMatchObject({
+            msg: "bus.dispatch",
+            bus: "EchoCommand",
+            ok: true,
+        });
+
+        const failBus = new CommandBus()
+            .use(createTelemetryMiddleware({ logger, kind: "command" }))
+            .register(EchoCommand, new FailHandler());
+        await expect(failBus.dispatch(new EchoCommand("x"))).rejects.toThrow();
+        expect(errorCalls).toHaveLength(1);
+        expect(errorCalls[0]).toMatchObject({
+            msg: "bus.dispatch",
+            bus: "EchoCommand",
+            ok: false,
+            code: "EXPLODED",
+        });
     });
 });
