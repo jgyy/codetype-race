@@ -3,6 +3,7 @@ import {
     PostToConnectionCommand,
 } from "@aws-sdk/client-apigatewaymanagementapi";
 import type { Broadcaster } from "@codetype/domain";
+import { wsHttpHandler } from "./wsHttpHandler";
 
 export interface ApiGwBroadcasterConfig {
     endpoint: string;
@@ -13,6 +14,7 @@ export class ApiGwBroadcaster implements Broadcaster {
     constructor(cfg: ApiGwBroadcasterConfig) {
         this.client = new ApiGatewayManagementApiClient({
             endpoint: cfg.endpoint,
+            requestHandler: wsHttpHandler,
         });
     }
 

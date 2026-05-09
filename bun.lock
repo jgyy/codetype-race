@@ -23,6 +23,7 @@
         "@aws-sdk/lib-dynamodb": "^3.658.0",
         "@codetype/domain": "workspace:*",
         "@codetype/shared": "workspace:*",
+        "@smithy/node-http-handler": "^4.0.0",
         "uuid": "^10.0.0",
       },
       "devDependencies": {

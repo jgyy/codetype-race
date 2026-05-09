@@ -3,11 +3,12 @@ import {
   PostToConnectionCommand,
   GoneException,
 } from "@aws-sdk/client-apigatewaymanagementapi";
+import { wsHttpHandler } from "@codetype/adapters-aws";
 import { withTraceparent } from "./traceContext";
 
 const endpoint = process.env.WS_ENDPOINT;
 export const wsClient = endpoint
-  ? new ApiGatewayManagementApiClient({ endpoint })
+  ? new ApiGatewayManagementApiClient({ endpoint, requestHandler: wsHttpHandler })
   : null;
 
 export async function postTo(connectionId: string, payload: unknown) {

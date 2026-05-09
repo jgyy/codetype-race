@@ -9,6 +9,7 @@ export {
     type DdbConnectionRepoConfig,
 } from "./DdbConnectionRepo";
 export { ApiGwBroadcaster, type ApiGwBroadcasterConfig } from "./ApiGwBroadcaster";
+export { wsHttpHandler } from "./wsHttpHandler";
 export {
     DdbLeaderboardProjection,
     type DdbLeaderboardProjectionConfig,

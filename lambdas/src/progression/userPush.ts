@@ -3,11 +3,15 @@ import {
     PostToConnectionCommand,
     GoneException,
 } from "@aws-sdk/client-apigatewaymanagementapi";
+import { wsHttpHandler } from "@codetype/adapters-aws";
 import { presence } from "../repos/PresenceRepo";
 
 const endpoint = process.env.PRESENCE_WS_ENDPOINT;
 const client = endpoint
-    ? new ApiGatewayManagementApiClient({ endpoint })
+    ? new ApiGatewayManagementApiClient({
+          endpoint,
+          requestHandler: wsHttpHandler,
+      })
     : null;
 
 export type ProgressionToast =
