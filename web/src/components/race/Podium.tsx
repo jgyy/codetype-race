@@ -1,4 +1,5 @@
 "use client";
+import { Medal, type MedalPlace } from "@/components/icons/Medal";
 
 interface Result {
   id: string;
@@ -26,20 +27,26 @@ export function Podium({
     if (b.scaled_wpm !== a.scaled_wpm) return b.scaled_wpm - a.scaled_wpm;
     return a.finished_at - b.finished_at;
   });
-  const medals = ["🥇", "🥈", "🥉"];
   return (
     <div className="space-y-3">
       <h2 className="text-2xl font-semibold">Podium</h2>
       <ol className="space-y-2">
         {sorted.map((r, i) => {
           const rd = ratings?.[r.display_name];
+          const place = (i + 1) as MedalPlace | number;
           return (
             <li
               key={r.id}
               className="flex items-center justify-between rounded border border-neutral-800 bg-neutral-900 p-3"
             >
               <span className="flex items-center gap-3">
-                <span className="text-xl">{medals[i] ?? `${i + 1}.`}</span>
+                <span className="text-xl">
+                  {place <= 3 ? (
+                    <Medal place={place as MedalPlace} />
+                  ) : (
+                    <span aria-label={`${place}th place`}>{place}.</span>
+                  )}
+                </span>
                 <span className="font-mono">{r.display_name}</span>
                 {rd && (
                   <span

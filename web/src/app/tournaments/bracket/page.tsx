@@ -10,6 +10,7 @@ import {
     type TournamentDetail,
 } from "@/lib/api";
 import { Bracket } from "@/components/tournaments/Bracket";
+import { Trophy } from "@/components/icons/Medal";
 import { WS_TOURN_API } from "@/lib/config";
 import { getCurrentUser } from "@/lib/aws/cognito";
 
@@ -110,8 +111,9 @@ function BracketView() {
             </header>
 
             {winner && (
-                <div className="rounded border border-emerald-700 bg-emerald-950 px-4 py-3 text-sm">
-                    🏆 Winner: <span className="font-mono">{winner}</span>
+                <div className="flex items-center gap-2 rounded border border-emerald-700 bg-emerald-950 px-4 py-3 text-sm">
+                    <Trophy className="text-base" />
+                    <span>Winner: <span className="font-mono">{winner}</span></span>
                 </div>
             )}
 
