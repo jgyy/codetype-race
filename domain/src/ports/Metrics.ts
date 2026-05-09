@@ -1,12 +1,3 @@
-/**
- * Vendor-neutral metrics port. Phase 15 / slice-2.
- *
- * Bounded label cardinality is the caller's responsibility — the spec
- * forbids unbounded ids (userId, roomId) on metric labels (see
- * docs/specs/15-observability-otel.md "Cardinality cap"). Treat label
- * sets as effectively enums.
- */
-
 export type Labels = Readonly<Record<string, string>>;
 
 export interface Counter {
@@ -23,10 +14,10 @@ export interface Metrics {
 }
 
 class NoopCounter implements Counter {
-    add(): void {}
+    add(): void { }
 }
 class NoopHistogram implements Histogram {
-    record(): void {}
+    record(): void { }
 }
 
 export class NoopMetrics implements Metrics {

@@ -18,6 +18,8 @@ export {
     type Next,
     compose,
     telemetryMiddleware,
+    createTelemetryMiddleware,
+    type TelemetryDeps,
 } from "./bus";
 
 export {

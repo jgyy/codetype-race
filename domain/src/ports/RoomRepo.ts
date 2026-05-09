@@ -23,22 +23,13 @@ export interface RecordFinishInput {
 
 export interface RoomRepo {
     save(room: Room, seedPlayers: SeedPlayer[]): Promise<void>;
-
     isCodeTaken(code: string): Promise<boolean>;
-
     getById(roomId: string): Promise<RoomSnapshot | null>;
-
     getByCode(code: string): Promise<RoomSnapshot | null>;
-
     listPlayers(roomId: string): Promise<SeedPlayer[]>;
-
     startCountdown(roomId: string, startedAt: number): Promise<void>;
-
     markPlayerDnf(roomId: string, displayName: string): Promise<void>;
-
     recordFinish(input: RecordFinishInput): Promise<void>;
-
     addPlayer(roomId: string, player: SeedPlayer & { role?: "racer" | "spectator" }): Promise<void>;
-
     recordReplay(roomId: string, replayKey: string): Promise<void>;
 }

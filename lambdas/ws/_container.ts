@@ -26,7 +26,7 @@ import {
     DisconnectPresenceHandler,
     TouchPresenceCommand,
     TouchPresenceHandler,
-    telemetryMiddleware,
+    createTelemetryMiddleware,
 } from "@codetype/app";
 import {
     ApiGwBroadcaster,
@@ -38,6 +38,10 @@ import {
 import { userPK, userRaceSK } from "@codetype/shared/ddb-keys";
 import { ddb, TABLE } from "../src/ddb";
 import { metrics } from "../src/metrics";
+import {
+    tracer as otelTracer,
+    metrics as otelMetrics,
+} from "../src/otel";
 import { users } from "../src/repos/UserRepo";
 import { teamRatings } from "../src/repos/TeamRatingRepo";
 import { teamRooms } from "../src/repos/TeamRoomRepo";
@@ -122,7 +126,13 @@ const presenceSink = {
 };
 
 export const commandBus = new CommandBus()
-    .use(telemetryMiddleware)
+    .use(
+        createTelemetryMiddleware({
+            tracer: otelTracer,
+            metrics: otelMetrics,
+            kind: "command",
+        }),
+    )
     .register(
         ConnectToRoomCommand,
         new ConnectToRoomHandler(rooms, connections),

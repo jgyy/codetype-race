@@ -10,9 +10,9 @@ describe("lambdas/src/otel shim (Phase 15 / slice-1)", () => {
 
   it("returns a no-op tracer when the layer hasn't preloaded", async () => {
     const { tracer } = await import("../src/otel");
-    const result = tracer.startActiveSpan("test", (span) => {
+    const result = await tracer.startActiveSpan("test", async (span) => {
       span.setAttribute("k", "v");
-      span.setStatus({ code: 1 });
+      span.setStatus({ code: "ok" });
       span.recordException(new Error("ignored"));
       span.end();
       return 42;

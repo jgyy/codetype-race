@@ -105,7 +105,7 @@ import {
     ListTournamentsHandler,
     GetTournamentBracketQuery,
     GetTournamentBracketHandler,
-    telemetryMiddleware,
+    createTelemetryMiddleware,
     type AchievementsReadsSink,
     type DailyReadsSink,
     type FeedReadsSink,
@@ -134,6 +134,7 @@ import {
     SystemClock,
 } from "@codetype/adapters-aws";
 import { ddb, TABLE } from "../src/ddb";
+import { tracer as otelTracer, metrics as otelMetrics } from "../src/otel";
 import { teamRooms } from "../src/repos/TeamRoomRepo";
 import { quests } from "../src/repos/QuestsRepo";
 import { achievements } from "../src/repos/AchievementsRepo";
@@ -327,7 +328,13 @@ const matchReads: MatchReadsSink = {
 };
 
 export const commandBus = new CommandBus()
-    .use(telemetryMiddleware)
+    .use(
+        createTelemetryMiddleware({
+            tracer: otelTracer,
+            metrics: otelMetrics,
+            kind: "command",
+        }),
+    )
     .register(
         CreateRoomCommand,
         new CreateRoomHandler(rooms, snippets, clock, random, teamRoomSink),
@@ -440,7 +447,13 @@ export const commandBus = new CommandBus()
     );
 
 export const queryBus = new QueryBus()
-    .use(telemetryMiddleware)
+    .use(
+        createTelemetryMiddleware({
+            tracer: otelTracer,
+            metrics: otelMetrics,
+            kind: "query",
+        }),
+    )
     .register(GetRoomQuery, new GetRoomHandler(rooms))
     .register(GetLeaderboardQuery, new GetLeaderboardHandler(leaderboard))
     .register(
