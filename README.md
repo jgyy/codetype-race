@@ -1,5 +1,7 @@
 # codetype-race
 
+[![CI](https://github.com/jgyy/codetype-race/actions/workflows/ci.yml/badge.svg)](https://github.com/jgyy/codetype-race/actions/workflows/ci.yml)
+
 **An async code-typing leaderboard for teams.** Race against curated snippets,
 keep persistent stats when you sign in, and let Claude coach you toward weak
 topics on a spaced-repetition schedule.
