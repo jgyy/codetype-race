@@ -187,21 +187,41 @@ If we outgrow SM-2 (multi-cohort data, >50k attempts), FSRS is the next stop.
   system prompt in `hint-guardrails.ts::buildSystemPrompt`.
 
 ### Key prompts
+The full prompt templates and runtime system prompt live in
+[`src/lib/server/hint-guardrails.ts`](src/lib/server/hint-guardrails.ts) — see
+the [Prompt Guardrails](#prompt-guardrails) section below for the rendered
+template and validation contract.
+
 - *"Design a stateless session cookie for a SvelteKit app that proves
   integrity, expiry, and constant-time PIN compare without a server-side
   store."* → produced the `<uid>.<exp>.<sig>` format and the scrypt PIN hash.
 - *"Write a coach system prompt that refuses to write the full solution but
-  still helps a stuck typist."* → produced the rules in `buildSystemPrompt`.
+  still helps a stuck typist."* → produced the rules in
+  [`buildSystemPrompt`](src/lib/server/hint-guardrails.ts).
 - *"Pick a spaced-repetition algorithm appropriate for <1k attempts of training
   data and justify the choice."* → SM-2 over FSRS.
 
 ### Review points and decisions
+Each decision is anchored to the commit that landed it:
+
 - **Should we mock the DB in integration tests?** Decided no — use an in-memory
   libSQL via `file::memory:?cache=shared` so the test exercises the real SQL.
+  ([`5b429ff`](../../commit/5b429ff))
 - **Should anonymous attempts appear on the leaderboard?** Decided no — only
   signed-in users rank, which gives a concrete incentive to sign up while
   keeping the practice surface frictionless for visitors.
+  ([`c180601`](../../commit/c180601))
 - **WPM in the SM-2 quality score?** Decided no — see §spaced-repetition.
+  ([`b8176e9`](../../commit/b8176e9))
+- **Post-call sanitiser for jailbroken hints.** Added `sanitizeHint` after a
+  prompt-injection test smuggled back a full solution.
+  ([`d976a1d`](../../commit/d976a1d))
+- **Move review state from `attempts` to `topic_mastery`.** Turned "what's due
+  now?" from an aggregation into an indexed scan.
+  ([`8da37cf`](../../commit/8da37cf))
+- **Featured race + per-snippet leaderboard on `/`.** Made the multi-user
+  property visible without sign-in (Project #2 evidence).
+  ([`3c16646`](../../commit/3c16646))
 
 ### Prompt Guardrails
 
@@ -289,20 +309,17 @@ by reference?"` passes validation and produces a bounded hint.
 
 ## Installation
 
+Fresh clone to running locally in 5 commands:
+
 ```sh
-git clone https://github.com/jgyy/codetype-race
-cd codetype-race
+git clone https://github.com/jgyy/codetype-race && cd codetype-race
 npm install
-
-cp .env.example .env
-# Edit .env: set SESSION_SECRET (>=32 chars) and ANTHROPIC_API_KEY.
-
-mkdir -p data
-npm run db:push         # creates ./data/codetype.db with the schema
-npm run db:seed         # inserts 5 starter snippets + demo user (handle: demo, pin: 123456)
-
+cp .env.example .env    # then set SESSION_SECRET (>=32 chars) + ANTHROPIC_API_KEY
+mkdir -p data && npm run db:push && npm run db:seed
 npm run dev             # http://localhost:5173
 ```
+
+`db:seed` inserts 5 starter snippets and a demo user (handle: `demo`, pin: `123456`).
 
 For Turso/prod: set `DATABASE_URL=libsql://...` and `DATABASE_AUTH_TOKEN=...`
 in your Vercel project env, then `vercel deploy`.
