@@ -35,7 +35,7 @@
 <textarea
   spellcheck="false"
   autocapitalize="none"
-  autocorrect="off"
+  {...{ autocorrect: 'off' }}
   value={typed}
   oninput={onInput}
   disabled={finished}

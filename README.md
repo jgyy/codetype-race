@@ -60,7 +60,10 @@ User flow (no recording required to grasp; screenshots TBC):
 - **SvelteKit server routes**, deployed as Vercel Functions via
   `@sveltejs/adapter-vercel`.
 - **Drizzle ORM over libSQL** — local SQLite file (`./data/codetype.db`) in dev,
-  Turso-hosted libSQL in prod. See [§libSQL/Turso rationale](#libsql-vs-postgres).
+  Turso-hosted libSQL in prod. See
+  [ADR 0001: libSQL over Postgres](docs/adr/0001-libsql-over-postgres.md) for
+  the full rationale (zero-ops dev parity, edge replicas, no `pg_*` needs,
+  migration path) — short version below.
 - **HMAC-signed session cookie** (`<userId>.<expiry>.<sig>`), 30-day TTL,
   constant-time PIN compare via `crypto.timingSafeEqual`, scrypt-hashed PINs.
 - **Anthropic Claude API** — `POST /api/hint` gated by `hint-guardrails.ts`,
@@ -70,21 +73,21 @@ User flow (no recording required to grasp; screenshots TBC):
 
 ### libSQL vs Postgres
 
-libSQL was chosen over Postgres for three reasons:
+See [ADR 0001: libSQL over Postgres](docs/adr/0001-libsql-over-postgres.md) for
+the full write-up. TL;DR:
 
-1. **Single binary in dev, single HTTP hop in prod.** Postgres requires a
-   container or managed instance even locally; libSQL is a file path in dev and
-   a URL in prod, with no dialect drift in between (both speak SQLite).
-2. **Edge-shaped writes.** Turso replicates per region; our writes are
-   small-and-frequent (one row per race finish), which fits libSQL's HTTP-based
-   protocol better than Postgres' connection-per-Function model on Vercel.
-3. **B1 scale.** We expect ≤ 1k attempts/day during the programme. Postgres'
-   strengths (row-level concurrency, rich type system, extensions) buy us
-   nothing at this scale; SQLite-class simplicity wins.
+1. **Same engine local + prod** — file path in dev, Turso URL in prod, no
+   dialect drift; no containers to run for development.
+2. **Edge-shaped writes via Turso** — HTTP protocol fits Vercel Functions
+   better than Postgres' connection-per-invocation model (no PgBouncer needed).
+3. **No Postgres-specific features needed** — we use no `pg_vector`, no
+   `LISTEN/NOTIFY`, no `JSONB`. SQLite-class SQL is sufficient at B1 scale
+   (≤ 1k attempts/day).
 
-Trade-off accepted: no per-row concurrent writers, no `pg_*` extensions. If the
-leaderboard ever needs real-time multiplayer (explicitly a non-goal of this
-async variant), we'd revisit.
+The ADR also documents the pre-nuke `better-sqlite3` → `@libsql/client`
+migration (evidence the choice was iterated on, not assumed) and the
+migration path back to Postgres if scope ever grows beyond async typing
+practice.
 
 ### Claude prompt guardrails
 
