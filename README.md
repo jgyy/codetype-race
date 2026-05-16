@@ -139,7 +139,10 @@ Tests in `tests/guardrails.test.ts` verify each rule.
 We use **SuperMemo-2** (Wozniak, 1987) rather than newer alternatives (FSRS,
 Anki's variants) for one reason: SM-2 needs no per-user training data. With
 fewer than 1k attempts across the cohort, FSRS' learned parameters would
-over-fit; SM-2's hand-tuned constants are appropriate at this scale.
+over-fit; SM-2's hand-tuned constants are appropriate at this scale. See
+[ADR 0002: SM-2 for spaced repetition](docs/adr/0002-spaced-repetition-algorithm.md)
+for the full rationale and a worked example of the `ease` / `intervalDays`
+update.
 
 Mapping is `quality = round(accuracy * 5)`. **WPM intentionally does not feed
 quality** — speed is a learned consequence of accuracy, and gating reviews on
