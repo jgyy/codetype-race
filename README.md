@@ -45,6 +45,28 @@ User flow (no recording required to grasp; screenshots TBC):
 5. `/leaderboard` ranks signed-in users by best WPM; `/profile` shows your
    recent attempts and any topics now due for review.
 
+### Multi-user demo (Project #2 evidence)
+
+codetype-race is a **shared resource** — multiple accounts compete on the same
+snippets, and the rankings are visible to anonymous visitors. To reproduce:
+
+1. Open `/` in a browser — the **Featured race** card lists the top 10 WPM
+   attempts on the most-attempted snippet, and the page header shows the
+   distinct racer count. Both are visible without signing in.
+2. Register account A (`/login` → choose handle + PIN), race the featured
+   snippet, log out.
+3. Register account B in a private window, race the same snippet with a
+   different time, log out.
+4. Visit `/s/<snippet-id>/leaderboard` (also linked from each row on `/` and
+   from the race page) — both accounts appear side by side, ordered by WPM,
+   alongside any anonymous `(guest)` attempts.
+5. `/leaderboard` continues to show the cross-snippet ranking of signed-in
+   users by best WPM.
+
+This proves the shared-resource property end-to-end: two distinct identities,
+one snippet, comparative stats — the multi-user dimension that distinguishes
+this from a single-user practice tool.
+
 ---
 
 ## Technology Stack

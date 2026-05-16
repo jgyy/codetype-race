@@ -36,7 +36,10 @@
 </script>
 
 <h1>{data.snippet.title}</h1>
-<p class="meta">{data.snippet.language} · {data.snippet.topic}</p>
+<p class="meta">
+  {data.snippet.language} · {data.snippet.topic} ·
+  <a href="/s/{data.snippet.id}/leaderboard">leaderboard for this snippet</a>
+</p>
 
 <Typer target={data.snippet.body} {onComplete} />
 
