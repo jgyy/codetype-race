@@ -1,28 +1,18 @@
 {
   "name": "codetype-race",
   "private": true,
-  "workspaces": ["shared", "domain", "app", "adapters-aws", "lambdas", "web", "infra"],
+  "workspaces": ["shared", "domain", "app", "web"],
   "scripts": {
     "dev": "bun --filter @codetype/web dev",
     "build": "bun --filter @codetype/web build",
     "start": "bun --filter @codetype/web start",
     "lint": "bun --filter @codetype/web lint",
     "test": "bun --filter '*' test",
-    "cdk": "cd infra && bunx cdk",
-    "deploy:all": "bun --filter @codetype/web build && bunx cdk deploy --all --require-approval never",
-    "seed": "bun scripts/seed-snippets.ts",
     "check:deps": "bun scripts/check-deps.ts",
-    "check:runbooks": "bun scripts/check-runbooks.ts",
-    "check:snapstart": "bun scripts/check-snapstart-safe.ts",
     "check:fonts": "bun --filter @codetype/web check:fonts",
-    "check": "bun run check:deps && bun run check:runbooks && bun run check:snapstart && bun run check:fonts"
-  },
-  "dependencies": {
-    "@aws-sdk/client-dynamodb": "^3.1045.0",
-    "@aws-sdk/lib-dynamodb": "^3.1045.0"
+    "check": "bun run check:deps && bun run check:fonts"
   },
   "devDependencies": {
-    "aws-cdk": "^2.1121.0",
     "tsx": "^4.21.0"
   }
 }
