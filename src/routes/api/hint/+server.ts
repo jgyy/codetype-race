@@ -26,8 +26,13 @@ function rateLimit(key: string): boolean {
   return true;
 }
 
-export const POST: RequestHandler = async ({ request, locals }) => {
-  if (!rateLimit(locals.sessionId)) error(429, 'slow down');
+export const POST: RequestHandler = async ({ request, locals, getClientAddress }) => {
+  // Prefer authenticated user id so anonymous callers can't bypass by clearing cookies.
+  // Fall back to client IP for fully anonymous requests, then sessionId as last resort.
+  let ip = '';
+  try { ip = getClientAddress(); } catch { /* not available in some adapters */ }
+  const rateKey = locals.user?.id != null ? `u:${locals.user.id}` : `a:${ip || locals.sessionId}`;
+  if (!rateLimit(rateKey)) error(429, 'slow down');
 
   const body = await request.json().catch(() => null);
   const check = checkHintRequest(body);

@@ -10,11 +10,13 @@ function getClient(): Anthropic {
   return client;
 }
 
-const MODEL = process.env.ANTHROPIC_MODEL ?? 'claude-sonnet-4-6';
+function getModel(): string {
+  return process.env.ANTHROPIC_MODEL ?? 'claude-sonnet-4-6';
+}
 
 export async function complete(system: string, user: string, maxTokens = 256): Promise<string> {
   const resp = await getClient().messages.create({
-    model: MODEL,
+    model: getModel(),
     max_tokens: maxTokens,
     system,
     messages: [{ role: 'user', content: user }]

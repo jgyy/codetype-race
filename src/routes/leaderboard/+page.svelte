@@ -14,8 +14,8 @@
       <tr>
         <td>{i + 1}</td>
         <td>{r.handle}</td>
-        <td>{r.bestWpm.toFixed(1)}</td>
-        <td>{(r.avgAccuracy * 100).toFixed(1)}%</td>
+        <td>{r.bestWpm?.toFixed(1) ?? '—'}</td>
+        <td>{r.avgAccuracy != null ? `${(r.avgAccuracy * 100).toFixed(1)}%` : '—'}</td>
         <td>{r.runs}</td>
       </tr>
     {/each}

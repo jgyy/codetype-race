@@ -39,10 +39,18 @@ export const actions: Actions = {
     }
     const existing = await db.select().from(schema.users).where(eq(schema.users.handle, handle)).limit(1);
     if (existing[0]) return fail(409, { error: 'handle taken' });
-    const inserted = await db
-      .insert(schema.users)
-      .values({ handle, pinHash: hashPin(pin) })
-      .returning();
+    let inserted;
+    try {
+      inserted = await db
+        .insert(schema.users)
+        .values({ handle, pinHash: hashPin(pin) })
+        .returning();
+    } catch (e: unknown) {
+      // Concurrent insert lost the race on the UNIQUE(handle) constraint.
+      const msg = e instanceof Error ? e.message : String(e);
+      if (/UNIQUE|constraint/i.test(msg)) return fail(409, { error: 'handle taken' });
+      throw e;
+    }
     cookies.set(SESSION_COOKIE, issueSession(inserted[0].id), {
       path: '/',
       httpOnly: true,

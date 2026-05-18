@@ -1,12 +1,29 @@
 # codetype-race
 
-[![CI](https://github.com/jgyy/codetype-race/actions/workflows/ci.yml/badge.svg)](https://github.com/jgyy/codetype-race/actions/workflows/ci.yml)
-
 **An async code-typing leaderboard for teams.** Race against curated snippets,
 keep persistent stats when you sign in, and let Claude coach you toward weak
 topics on a spaced-repetition schedule.
 
-B1 Builders Programme — *team / organisational* project submission.
+### B1 Builders Programme — Project #2 of 2: *For team, department, or organisational use*
+
+> *"A project that operates on shared resources and **supports multiple users**
+> rather than a single individual."*
+> — B1 Builders Programme, Step 1
+
+This repository is the **team / organisational-use** submission. Multiple
+signed-in identities compete on the **same** curated snippet set; per-snippet
+and cross-snippet leaderboards are the central shared resource. The companion
+submission [`codetype-solo`](../codetype-solo) is the **individual-use** project
+— same domain (code typing), but explicitly scoped to one person, with no
+shared state, no leaderboard, and no account model.
+
+| Axis | This project (`codetype-race`) | Companion (`codetype-solo`) |
+|---|---|---|
+| Rubric scale | Team / organisational use | Individual use |
+| Users | Many, comparing on shared snippets | One per install |
+| Identity | Signed-in handle + scrypt PIN | PIN-only HMAC cookie, no account |
+| Shared resource | Snippets, leaderboards, ranked stats | None — purely local progression |
+| AI surface | Hints + AI summary, plus per-snippet shared signal | Hints + per-session AI summary, scoped to one user |
 
 ---
 
@@ -52,17 +69,7 @@ B1 Builders Programme — *team / organisational* project submission.
 
 ## Demo
 
-User flow (no recording required to grasp; screenshots TBC):
-
-1. Land on `/` → pick a snippet from the list (language + topic + difficulty).
-2. `/race/[id]` shows the target code in a panel; type into the textarea below.
-   WPM clock starts on first keystroke; accuracy updates per char.
-3. On match-complete, the client POSTs to `/api/attempt` → row inserted, and if
-   you're signed in, `topic_mastery` is updated via SM-2.
-4. Stuck? "Ask Claude for a hint." Guardrails (see below) reject "give me the
-   solution" prompts before any tokens are spent.
-5. `/leaderboard` ranks signed-in users by best WPM; `/profile` shows your
-   recent attempts and any topics now due for review.
+To do live during interview
 
 ### Multi-user demo (Project #2 evidence)
 
@@ -90,14 +97,14 @@ this from a single-user practice tool.
 
 ## Technology Stack
 
-### Frontend
+### Frontend components
 - **SvelteKit + TypeScript** — routing, server endpoints, UI.
 - **Svelte 5 runes** (`$state`, `$derived`) for the typing surface.
 - **CodeMirror 6** — wired in `package.json` for the upcoming syntax-highlighted
   typing surface (current MVP uses a controlled textarea).
 - **Vite** — dev server + bundler.
 
-### Backend
+### Backend components
 - **SvelteKit server routes**, deployed as Vercel Functions via
   `@sveltejs/adapter-vercel`.
 - **Drizzle ORM over libSQL** — local SQLite file (`./data/codetype.db`) in dev,
