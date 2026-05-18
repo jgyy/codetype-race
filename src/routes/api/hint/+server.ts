@@ -36,19 +36,27 @@ export const POST: RequestHandler = async ({ request, locals, getClientAddress }
 
   const body = await request.json().catch(() => null);
   const check = checkHintRequest(body);
-  if (!check.ok) error(400, check.reason);
+  if (!check.ok) error(400, `hint: ${check.reason}`);
 
   const snippet = await db
     .select()
     .from(schema.snippets)
     .where(eq(schema.snippets.id, check.sanitized.snippetId))
     .limit(1);
-  if (!snippet[0]) error(404, 'snippet not found');
+  if (!snippet[0]) error(404, `hint: snippet ${check.sanitized.snippetId} not found`);
+
+  // Re-validate values read from the DB before splicing into the prompt — a
+  // corrupted row (newlines, quotes) is a prompt-injection vector even though
+  // the user-supplied fields are already validated.
+  const language = snippet[0].language;
+  if (!/^[a-z0-9+\-#.]{1,20}$/i.test(language)) {
+    error(500, 'hint: snippet has invalid language code');
+  }
 
   const system = buildSystemPrompt(check.sanitized.topic);
   const userMsg = [
     `Topic: ${check.sanitized.topic}`,
-    `Language: ${snippet[0].language}`,
+    `Language: ${language}`,
     `User question: ${check.sanitized.question}`
   ].join('\n');
 
@@ -56,8 +64,8 @@ export const POST: RequestHandler = async ({ request, locals, getClientAddress }
   try {
     raw = await complete(system, userMsg, 200);
   } catch (e) {
-    console.error('claude error', e);
-    error(502, 'hint service unavailable');
+    console.error('hint: claude call failed', e);
+    error(502, 'hint: upstream model unavailable');
   }
 
   return json({ hint: sanitizeHint(raw) });

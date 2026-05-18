@@ -57,9 +57,18 @@ export function hashPin(pin: string, saltHex?: string): string {
   return `${salt.toString('hex')}:${derived.toString('hex')}`;
 }
 
+const HEX_RE = /^[0-9a-f]+$/i;
+
 export function verifyPin(pin: string, stored: string): boolean {
-  const [saltHex, hashHex] = stored.split(':');
-  if (!saltHex || !hashHex) return false;
+  const parts = stored.split(':');
+  if (parts.length !== 2) throw new Error('corrupt pin hash: bad format');
+  const [saltHex, hashHex] = parts;
+  if (!saltHex || !hashHex || !HEX_RE.test(saltHex) || !HEX_RE.test(hashHex)) {
+    throw new Error('corrupt pin hash: bad hex');
+  }
+  if (saltHex.length % 2 !== 0 || hashHex.length % 2 !== 0) {
+    throw new Error('corrupt pin hash: odd hex length');
+  }
   const expected = Buffer.from(hashHex, 'hex');
   const candidate = scryptSync(pin, Buffer.from(saltHex, 'hex'), expected.length);
   if (candidate.length !== expected.length) return false;

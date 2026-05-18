@@ -27,63 +27,70 @@ function validate(raw: unknown): AttemptPayload | null {
 
 export const POST: RequestHandler = async ({ request, locals }) => {
   const body = await request.json().catch(() => null);
+  if (body === null) error(400, 'attempt: body is not valid JSON');
   const payload = validate(body);
-  if (!payload) error(400, 'invalid attempt');
+  if (!payload) error(400, 'attempt: payload failed validation (snippetId/wpm/accuracy/durationMs)');
 
   const snippet = await db
     .select()
     .from(schema.snippets)
     .where(eq(schema.snippets.id, payload.snippetId))
     .limit(1);
-  if (!snippet[0]) error(404, 'snippet not found');
+  if (!snippet[0]) error(404, `attempt: snippet ${payload.snippetId} not found`);
 
-  const inserted = await db
-    .insert(schema.attempts)
-    .values({
-      userId: locals.user?.id ?? null,
-      sessionId: locals.sessionId,
-      snippetId: payload.snippetId,
-      wpm: payload.wpm,
-      accuracy: payload.accuracy,
-      durationMs: payload.durationMs
-    })
-    .returning();
+  const userId = locals.user?.id ?? null;
+  const topic = snippet[0].topic;
 
-  // Spaced repetition update — only for signed-in users.
-  if (locals.user) {
-    const existing = await db
-      .select()
-      .from(schema.topicMastery)
-      .where(
-        and(
-          eq(schema.topicMastery.userId, locals.user.id),
-          eq(schema.topicMastery.topic, snippet[0].topic)
+  // Wrap insert + SM-2 read-modify-write in a transaction so concurrent
+  // submissions for the same (userId, topic) can't lose updates.
+  const attemptId = await db.transaction(async (tx) => {
+    const inserted = await tx
+      .insert(schema.attempts)
+      .values({
+        userId,
+        sessionId: locals.sessionId,
+        snippetId: payload.snippetId,
+        wpm: payload.wpm,
+        accuracy: payload.accuracy,
+        durationMs: payload.durationMs
+      })
+      .returning({ id: schema.attempts.id });
+
+    if (locals.user) {
+      const existing = await tx
+        .select()
+        .from(schema.topicMastery)
+        .where(
+          and(
+            eq(schema.topicMastery.userId, locals.user.id),
+            eq(schema.topicMastery.topic, topic)
+          )
         )
-      )
-      .limit(1);
-    const prev = existing[0] ?? { ease: 2.5, intervalDays: 0, repetitions: 0 };
-    const next = nextReview(prev, accuracyToQuality(payload.accuracy));
-    if (existing[0]) {
-      await db
-        .update(schema.topicMastery)
-        .set({
+        .limit(1);
+      const prev = existing[0] ?? { ease: 2.5, intervalDays: 0, repetitions: 0 };
+      const next = nextReview(prev, accuracyToQuality(payload.accuracy));
+      await tx
+        .insert(schema.topicMastery)
+        .values({
+          userId: locals.user.id,
+          topic,
           ease: next.ease,
           intervalDays: next.intervalDays,
           repetitions: next.repetitions,
           nextReviewAt: next.nextReviewAt
         })
-        .where(eq(schema.topicMastery.id, existing[0].id));
-    } else {
-      await db.insert(schema.topicMastery).values({
-        userId: locals.user.id,
-        topic: snippet[0].topic,
-        ease: next.ease,
-        intervalDays: next.intervalDays,
-        repetitions: next.repetitions,
-        nextReviewAt: next.nextReviewAt
-      });
+        .onConflictDoUpdate({
+          target: [schema.topicMastery.userId, schema.topicMastery.topic],
+          set: {
+            ease: next.ease,
+            intervalDays: next.intervalDays,
+            repetitions: next.repetitions,
+            nextReviewAt: next.nextReviewAt
+          }
+        });
     }
-  }
+    return inserted[0].id;
+  });
 
-  return json({ ok: true, attemptId: inserted[0].id });
+  return json({ ok: true, attemptId });
 };

@@ -1,17 +1,18 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { env } from '$env/dynamic/private';
 
 let client: Anthropic | null = null;
 
 function getClient(): Anthropic {
   if (client) return client;
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error('ANTHROPIC_API_KEY not set');
   client = new Anthropic({ apiKey });
   return client;
 }
 
 function getModel(): string {
-  return process.env.ANTHROPIC_MODEL ?? 'claude-sonnet-4-6';
+  return env.ANTHROPIC_MODEL ?? 'claude-sonnet-4-6';
 }
 
 export async function complete(system: string, user: string, maxTokens = 256): Promise<string> {

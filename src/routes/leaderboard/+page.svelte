@@ -29,11 +29,31 @@
   }
   th, td {
     text-align: left;
-    padding: 0.4rem 0.6rem;
-    border-bottom: 1px solid #1c1d22;
+    padding: var(--space-2) var(--space-3);
+    border-bottom: 1px solid var(--border);
   }
   th {
-    color: #888;
-    font-weight: normal;
+    color: var(--text-muted);
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+  }
+  td:nth-child(1) {
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+    width: 3rem;
+  }
+  td:nth-child(2) {
+    font-weight: 600;
+  }
+  td:nth-child(n + 3) {
+    font-variant-numeric: tabular-nums;
+  }
+  tbody tr:hover {
+    background: var(--bg-elev);
   }
 </style>

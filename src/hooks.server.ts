@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { eq } from 'drizzle-orm';
-import type { Handle } from '@sveltejs/kit';
+import type { Handle, HandleServerError } from '@sveltejs/kit';
 import { db, schema } from '$lib/server/db';
 import { SESSION_COOKIE, verifySession } from '$lib/server/session';
 
@@ -36,4 +36,14 @@ export const handle: Handle = async ({ event, resolve }) => {
   }
 
   return resolve(event);
+};
+
+export const handleError: HandleServerError = ({ error, event, status }) => {
+  // 4xx thrown via `error(...)` are expected; only log/sanitize true 5xx.
+  if (status >= 500) {
+    const errorId = randomUUID();
+    console.error(`[${errorId}] ${event.request.method} ${event.url.pathname}`, error);
+    return { message: 'Internal error', errorId };
+  }
+  return { message: 'Unexpected error' };
 };

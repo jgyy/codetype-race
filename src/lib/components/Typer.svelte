@@ -33,6 +33,7 @@
 
 <pre class="target">{target}</pre>
 <textarea
+  class:finished
   spellcheck="false"
   autocapitalize="none"
   {...{ autocorrect: 'off' }}
@@ -40,31 +41,67 @@
   oninput={onInput}
   disabled={finished}
   rows={Math.max(6, target.split('\n').length)}
+  aria-label="Type the snippet above"
 ></textarea>
-<p class="stats">
-  chars: {typed.length}/{target.length} · accuracy: {(accuracy * 100).toFixed(1)}%
-  {#if finished}<strong> · finished</strong>{/if}
-</p>
+<div class="stats" role="status" aria-live="polite">
+  <span>chars <strong>{typed.length}</strong>/{target.length}</span>
+  <span class="sep">·</span>
+  <span>accuracy <strong>{(accuracy * 100).toFixed(1)}%</strong></span>
+  {#if finished}
+    <span class="badge">Complete ✓</span>
+  {/if}
+</div>
 
 <style>
   .target {
-    background: #16171c;
-    padding: 0.75rem;
-    border-radius: 4px;
+    background: var(--bg-elev);
+    padding: var(--space-3);
+    border-radius: var(--radius);
     white-space: pre-wrap;
-    border: 1px solid #222;
+    border: 1px solid var(--border);
+    margin: 0 0 var(--space-2);
+    overflow-x: auto;
   }
   textarea {
     width: 100%;
-    background: #0a0b0e;
-    color: #e6e6e6;
-    border: 1px solid #333;
-    padding: 0.75rem;
+    box-sizing: border-box;
+    background: var(--bg-inset);
+    color: var(--text);
+    border: 1px solid var(--border-strong);
+    padding: var(--space-3);
     font: inherit;
-    border-radius: 4px;
+    border-radius: var(--radius);
     resize: vertical;
+    transition: border-color 120ms ease, background 120ms ease;
+  }
+  textarea:focus {
+    border-color: var(--accent);
+  }
+  textarea.finished {
+    border-color: var(--success);
+    background: rgba(126, 226, 168, 0.06);
+    color: var(--text-muted);
   }
   .stats {
-    color: #888;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-top: var(--space-2);
+    font-variant-numeric: tabular-nums;
+    flex-wrap: wrap;
+  }
+  .stats .sep {
+    color: var(--text-dim);
+  }
+  .badge {
+    margin-left: auto;
+    background: rgba(126, 226, 168, 0.12);
+    color: var(--success);
+    border: 1px solid rgba(126, 226, 168, 0.3);
+    padding: 2px var(--space-2);
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
   }
 </style>

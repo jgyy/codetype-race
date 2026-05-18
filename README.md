@@ -92,12 +92,12 @@ Tests in `tests/guardrails.test.ts` verify each rule.
 3. *"Pick a spaced-repetition algorithm appropriate for <1k attempts and justify the choice."* → SM-2 over FSRS.
 
 **Key review points and decisions:**
-- **Mock the DB in integration tests?** No — in-memory libSQL via `file::memory:?cache=shared` exercises real SQL. (`5b429ff`)
-- **Anonymous attempts on the leaderboard?** No — only signed-in users rank; incentive to sign up, no friction for visitors. (`c180601`)
-- **WPM in the SM-2 quality score?** No — speed is a consequence of accuracy; gating reviews on speed punishes beginners. (`b8176e9`)
-- **Post-call sanitiser for jailbroken hints.** Added `sanitizeHint` after a prompt-injection test smuggled a full solution back. (`d976a1d`)
-- **Move review state from `attempts` to `topic_mastery`.** Turned "what's due now?" from aggregation to indexed scan. (`8da37cf`)
-- **Featured race + per-snippet leaderboard on `/`.** Made multi-user property visible without sign-in. (`3c16646`)
+- **Mock the DB in integration tests?** No — in-memory libSQL via `file::memory:?cache=shared` exercises real SQL.
+- **Anonymous attempts on the leaderboard?** No — only signed-in users rank; incentive to sign up, no friction for visitors.
+- **WPM in the SM-2 quality score?** No — speed is a consequence of accuracy; gating reviews on speed punishes beginners.
+- **Post-call sanitiser for jailbroken hints.** Added `sanitizeHint` after a prompt-injection test smuggled a full solution back.
+- **Move review state from `attempts` to `topic_mastery`.** Turned "what's due now?" from aggregation to indexed scan.
+- **Featured race + per-snippet leaderboard on `/`.** Made multi-user property visible without sign-in.
 
 ---
 

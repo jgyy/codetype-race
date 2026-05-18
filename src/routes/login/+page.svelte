@@ -19,20 +19,44 @@
     gap: 0.6rem;
     max-width: 320px;
   }
+  label {
+    display: grid;
+    gap: var(--space-1);
+    font-size: 13px;
+    color: var(--text-muted);
+  }
   input {
-    padding: 0.4rem;
-    background: #0a0b0e;
-    color: #e6e6e6;
-    border: 1px solid #333;
+    padding: var(--space-2);
+    background: var(--bg-inset);
+    color: var(--text);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    font: inherit;
+  }
+  input:focus {
+    border-color: var(--accent);
+    outline: none;
   }
   button {
-    padding: 0.4rem 0.9rem;
-    background: #2a3140;
-    color: #e6e6e6;
-    border: 1px solid #444;
-    cursor: pointer;
+    padding: var(--space-2) var(--space-4);
+    background: var(--accent);
+    color: var(--bg);
+    border: none;
+    border-radius: var(--radius-sm);
+    font: inherit;
+    font-weight: 600;
+  }
+  button[formaction="?/register"] {
+    background: transparent;
+    color: var(--accent);
+    border: 1px solid var(--border-strong);
   }
   .err {
-    color: #f48771;
+    color: var(--danger);
+    background: rgba(255, 122, 99, 0.1);
+    border: 1px solid rgba(255, 122, 99, 0.3);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-sm);
+    font-weight: 500;
   }
 </style>

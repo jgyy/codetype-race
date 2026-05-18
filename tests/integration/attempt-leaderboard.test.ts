@@ -12,7 +12,7 @@ import { accuracyToQuality, nextReview } from '../../src/lib/server/sm2';
  * keep the test independent of the SvelteKit dev server.
  */
 
-const client = createClient({ url: 'file::memory:?cache=shared' });
+const client = createClient({ url: ':memory:' });
 const db = drizzle(client, { schema });
 
 beforeAll(async () => {
@@ -50,6 +50,9 @@ beforeAll(async () => {
     repetitions INTEGER NOT NULL DEFAULT 0,
     next_review_at INTEGER NOT NULL DEFAULT (unixepoch())
   )`);
+  await client.execute(
+    `CREATE UNIQUE INDEX topic_mastery_user_topic_idx ON topic_mastery(user_id, topic)`
+  );
 });
 
 afterAll(() => client.close());

@@ -11,8 +11,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "db:push": "drizzle-kit push",
-    "db:seed": "tsx scripts/seed.ts",
-    "lint": "eslint ."
+    "db:seed": "tsx scripts/seed.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.30.0",
@@ -21,7 +20,7 @@
     "@codemirror/state": "^6.4.1",
     "@codemirror/view": "^6.34.0",
     "@libsql/client": "^0.14.0",
-    "drizzle-orm": "^0.36.0"
+    "drizzle-orm": "^0.45.2"
   },
   "devDependencies": {
     "@sveltejs/adapter-vercel": "^5.4.0",

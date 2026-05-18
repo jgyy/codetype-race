@@ -49,46 +49,77 @@
 
 <style>
   .featured {
-    background: #14161b;
-    border: 1px solid #2a2d35;
-    padding: 1rem 1.25rem;
-    margin: 1rem 0 1.5rem;
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: var(--space-4) var(--space-5);
+    margin: var(--space-4) 0 var(--space-5);
   }
   .featured h2 {
     margin-top: 0;
+    font-size: 1rem;
+    color: var(--text-muted);
+    font-weight: 600;
+  }
+  .featured h2 a {
+    color: var(--accent-strong);
+    font-size: 1.1rem;
   }
   .board {
     list-style: decimal;
-    padding-left: 1.5rem;
+    padding-left: var(--space-5);
+    margin: var(--space-3) 0 0;
   }
   .board li {
-    padding: 0.25rem 0;
+    padding: var(--space-1) 0;
     display: grid;
     grid-template-columns: 1fr auto auto;
-    gap: 1rem;
+    gap: var(--space-4);
   }
   .board li.guest .handle {
-    color: #888;
+    color: var(--text-muted);
     font-style: italic;
   }
   .stat {
-    color: #9cdcfe;
+    color: var(--accent);
     font-variant-numeric: tabular-nums;
   }
   .more {
-    margin-top: 0.5rem;
+    margin-top: var(--space-2);
   }
   .snippets {
     list-style: none;
     padding: 0;
   }
   .snippets li {
-    padding: 0.5rem 0;
-    border-bottom: 1px solid #1c1d22;
+    padding: var(--space-3) var(--space-2);
+    border-bottom: 1px solid var(--border);
     display: flex;
     justify-content: space-between;
+    align-items: center;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+    border-radius: var(--radius-sm);
+    transition: background 120ms ease;
+  }
+  .snippets li:hover {
+    background: var(--bg-elev);
+  }
+  .snippets li > a:first-child {
+    font-weight: 600;
   }
   .meta {
-    color: #777;
+    color: var(--text-muted);
+    font-size: 13px;
+  }
+  @media (max-width: 600px) {
+    .featured {
+      padding: var(--space-3);
+    }
+    .snippets li {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: var(--space-1);
+    }
   }
 </style>

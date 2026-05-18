@@ -17,7 +17,16 @@ export const actions: Actions = {
     }
     const rows = await db.select().from(schema.users).where(eq(schema.users.handle, handle)).limit(1);
     const user = rows[0];
-    if (!user || !verifyPin(pin, user.pinHash)) {
+    let pinOk = false;
+    if (user) {
+      try {
+        pinOk = verifyPin(pin, user.pinHash);
+      } catch (e) {
+        console.error('login: corrupt pin hash for user', user.id, e);
+        return fail(500, { error: 'account state is corrupted, please contact support' });
+      }
+    }
+    if (!user || !pinOk) {
       return fail(401, { error: 'wrong handle or PIN' });
     }
     cookies.set(SESSION_COOKIE, issueSession(user.id), {
