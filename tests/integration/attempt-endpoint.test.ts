@@ -47,9 +47,7 @@ beforeAll(async () => {
 });
 
 // Minimal RequestEvent stub — handlers only read `request`, `locals`, `params`.
-// Cast through `any` so the same helper feeds both POST and load event shapes.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function mockEvent<T = any>(overrides: Record<string, unknown>): T {
+function mockEvent<T = unknown>(overrides: Record<string, unknown>): T {
   return overrides as unknown as T;
 }
 

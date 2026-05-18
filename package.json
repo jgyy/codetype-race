@@ -23,15 +23,22 @@
     "drizzle-orm": "^0.45.2"
   },
   "devDependencies": {
+    "@eslint/compat": "^2.1.0",
+    "@eslint/js": "^10.0.1",
     "@sveltejs/adapter-vercel": "^5.4.0",
     "@sveltejs/kit": "^2.8.0",
     "@sveltejs/vite-plugin-svelte": "^4.0.0",
     "@types/node": "^22.9.0",
     "drizzle-kit": "^0.28.0",
+    "eslint": "^10.4.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-svelte": "^3.17.1",
+    "globals": "^17.6.0",
     "svelte": "^5.1.0",
     "svelte-check": "^4.0.0",
     "tsx": "^4.19.0",
     "typescript": "^5.6.0",
+    "typescript-eslint": "^8.59.3",
     "vite": "^5.4.0",
     "vitest": "^2.1.0"
   }

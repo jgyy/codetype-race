@@ -7,32 +7,15 @@ import {
   sanitizeHint
 } from '$lib/server/hint-guardrails';
 import { complete } from '$lib/server/claude';
+import { makeLimiter, rateKey } from '$lib/server/rate-limit';
 import type { RequestHandler } from './$types';
 
-// crude in-memory rate limit per session (per cold-start instance)
-const HITS = new Map<string, { count: number; resetAt: number }>();
-const WINDOW_MS = 60_000;
-const MAX_PER_WINDOW = 6;
-
-function rateLimit(key: string): boolean {
-  const now = Date.now();
-  const bucket = HITS.get(key);
-  if (!bucket || now > bucket.resetAt) {
-    HITS.set(key, { count: 1, resetAt: now + WINDOW_MS });
-    return true;
-  }
-  if (bucket.count >= MAX_PER_WINDOW) return false;
-  bucket.count += 1;
-  return true;
-}
+const hintLimiter = makeLimiter(60_000, 6);
 
 export const POST: RequestHandler = async ({ request, locals, getClientAddress }) => {
-  // Prefer authenticated user id so anonymous callers can't bypass by clearing cookies.
-  // Fall back to client IP for fully anonymous requests, then sessionId as last resort.
   let ip = '';
   try { ip = getClientAddress(); } catch { /* not available in some adapters */ }
-  const rateKey = locals.user?.id != null ? `u:${locals.user.id}` : `a:${ip || locals.sessionId}`;
-  if (!rateLimit(rateKey)) error(429, 'slow down');
+  if (!hintLimiter.hit(rateKey(locals.user?.id, ip))) error(429, 'slow down');
 
   const body = await request.json().catch(() => null);
   const check = checkHintRequest(body);
@@ -52,10 +35,19 @@ export const POST: RequestHandler = async ({ request, locals, getClientAddress }
   if (!/^[a-z0-9+\-#.]{1,20}$/i.test(language)) {
     error(500, 'hint: snippet has invalid language code');
   }
+  const topic = snippet[0].topic;
+  if (!/^[a-z0-9-]{1,40}$/.test(topic)) {
+    error(500, 'hint: snippet has invalid topic');
+  }
+  // The user-supplied topic must match the snippet's actual topic. Without this,
+  // a client can request a hint about an unrelated topic at our token expense.
+  if (check.sanitized.topic.toLowerCase() !== topic.toLowerCase()) {
+    error(400, 'hint: topic does not match snippet');
+  }
 
-  const system = buildSystemPrompt(check.sanitized.topic);
+  const system = buildSystemPrompt(topic);
   const userMsg = [
-    `Topic: ${check.sanitized.topic}`,
+    `Topic: ${topic}`,
     `Language: ${language}`,
     `User question: ${check.sanitized.question}`
   ].join('\n');

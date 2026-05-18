@@ -24,7 +24,9 @@
     typed = v;
     if (!finished && v === target && startedAt) {
       finished = true;
-      const durationMs = Date.now() - startedAt;
+      // Clamp to >=500ms so paste-attacks and same-tick completes don't produce
+      // Infinity WPM (and match the server's minimum durationMs check).
+      const durationMs = Math.max(500, Date.now() - startedAt);
       const wpm = correct / 5 / (durationMs / 60_000);
       onComplete({ wpm, accuracy, durationMs });
     }

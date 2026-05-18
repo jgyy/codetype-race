@@ -2,7 +2,12 @@ import { and, eq } from 'drizzle-orm';
 import { error, json } from '@sveltejs/kit';
 import { db, schema } from '$lib/server/db';
 import { accuracyToQuality, nextReview } from '$lib/server/sm2';
+import { makeLimiter, rateKey } from '$lib/server/rate-limit';
 import type { RequestHandler } from './$types';
+
+// Cap attempts at 20/min per user-or-IP. Submitting a real attempt requires
+// typing through a whole snippet, so legitimate throughput is far below this.
+const attemptLimiter = makeLimiter(60_000, 20);
 
 interface AttemptPayload {
   snippetId: number;
@@ -25,7 +30,11 @@ function validate(raw: unknown): AttemptPayload | null {
   return { snippetId, wpm, accuracy, durationMs };
 }
 
-export const POST: RequestHandler = async ({ request, locals }) => {
+export const POST: RequestHandler = async ({ request, locals, getClientAddress }) => {
+  let ip = '';
+  try { ip = getClientAddress(); } catch { /* not available in some adapters */ }
+  if (!attemptLimiter.hit(rateKey(locals.user?.id, ip))) error(429, 'slow down');
+
   const body = await request.json().catch(() => null);
   if (body === null) error(400, 'attempt: body is not valid JSON');
   const payload = validate(body);

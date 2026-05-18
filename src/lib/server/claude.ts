@@ -23,5 +23,8 @@ export async function complete(system: string, user: string, maxTokens = 256): P
     messages: [{ role: 'user', content: user }]
   });
   const part = resp.content[0];
-  return part && part.type === 'text' ? part.text : '';
+  if (!part || part.type !== 'text' || !part.text) {
+    throw new Error('empty completion from model');
+  }
+  return part.text;
 }

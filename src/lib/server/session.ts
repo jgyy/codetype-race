@@ -3,10 +3,12 @@ import { createHmac, randomBytes, timingSafeEqual, scryptSync } from 'node:crypt
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 export const SESSION_COOKIE = 'ctr_session';
 
+const PLACEHOLDER_SECRET = 'replace-me-with-openssl-rand-hex-32';
+
 function secret(): Buffer {
   const s = process.env.SESSION_SECRET;
-  if (!s || s.length < 32) {
-    throw new Error('SESSION_SECRET must be set and at least 32 chars');
+  if (!s || s.length < 32 || s === PLACEHOLDER_SECRET) {
+    throw new Error('SESSION_SECRET must be set to a real random value of at least 32 chars');
   }
   return Buffer.from(s, 'utf8');
 }
@@ -15,8 +17,12 @@ function b64url(buf: Buffer): string {
   return buf.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
+function signRaw(payload: string): Buffer {
+  return createHmac('sha256', secret()).update(payload).digest();
+}
+
 function sign(payload: string): string {
-  return b64url(createHmac('sha256', secret()).update(payload).digest());
+  return b64url(signRaw(payload));
 }
 
 /** Format: `<userId>.<expiryEpochMs>.<sig>` */
@@ -40,10 +46,16 @@ export function verifySession(token: string | undefined, now = Date.now()): Veri
   if (!Number.isInteger(userId) || !Number.isFinite(expiry)) {
     return { ok: false, reason: 'malformed' };
   }
-  const expected = sign(`${uidStr}.${expStr}`);
-  const a = Buffer.from(sig);
-  const b = Buffer.from(expected);
-  if (a.length !== b.length || !timingSafeEqual(a, b)) {
+  // Compare raw 32-byte HMAC digests in constant time, not variable-length
+  // base64url strings. Pad the candidate to fixed length so timingSafeEqual
+  // always runs on equal-length buffers regardless of attacker input.
+  const expectedDigest = signRaw(`${uidStr}.${expStr}`);
+  const candidateDigest = Buffer.from(sig, 'base64url');
+  const padded = Buffer.alloc(expectedDigest.length);
+  candidateDigest.copy(padded, 0, 0, Math.min(candidateDigest.length, expectedDigest.length));
+  const lengthMatches = candidateDigest.length === expectedDigest.length;
+  const bytesMatch = timingSafeEqual(padded, expectedDigest);
+  if (!lengthMatches || !bytesMatch) {
     return { ok: false, reason: 'badsig' };
   }
   if (now > expiry) return { ok: false, reason: 'expired' };
@@ -61,13 +73,13 @@ const HEX_RE = /^[0-9a-f]+$/i;
 
 export function verifyPin(pin: string, stored: string): boolean {
   const parts = stored.split(':');
-  if (parts.length !== 2) throw new Error('corrupt pin hash: bad format');
+  if (parts.length !== 2) return false;
   const [saltHex, hashHex] = parts;
   if (!saltHex || !hashHex || !HEX_RE.test(saltHex) || !HEX_RE.test(hashHex)) {
-    throw new Error('corrupt pin hash: bad hex');
+    return false;
   }
   if (saltHex.length % 2 !== 0 || hashHex.length % 2 !== 0) {
-    throw new Error('corrupt pin hash: odd hex length');
+    return false;
   }
   const expected = Buffer.from(hashHex, 'hex');
   const candidate = scryptSync(pin, Buffer.from(saltHex, 'hex'), expected.length);
