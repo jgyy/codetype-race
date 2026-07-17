@@ -1,12 +1,18 @@
 import { createHmac, randomBytes, timingSafeEqual, scryptSync } from 'node:crypto';
+import { env } from '$env/dynamic/private';
 
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 export const SESSION_COOKIE = 'ctr_session';
 
 const PLACEHOLDER_SECRET = 'replace-me-with-openssl-rand-hex-32';
 
+// $env/dynamic/private, not process.env: SvelteKit's Vite plugin loads
+// .env into this module directly. Plain `vite dev` never copies .env into
+// process.env, so reading process.env.SESSION_SECRET here 500s on every
+// session-issuing route in local dev even with a correctly filled-in .env
+// (it only "works" in prod because the host injects real process env vars).
 function secret(): Buffer {
-  const s = process.env.SESSION_SECRET;
+  const s = env.SESSION_SECRET;
   if (!s || s.length < 32 || s === PLACEHOLDER_SECRET) {
     throw new Error('SESSION_SECRET must be set to a real random value of at least 32 chars');
   }
